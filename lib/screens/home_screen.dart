@@ -1,0 +1,379 @@
+import 'package:flutter/material.dart';
+import '../models/user_model.dart';
+import '../services/storage_service.dart';
+import '../widgets/side_menu.dart';
+import '../widgets/top_bar.dart';
+import 'role_screens/admin_screen.dart';
+import 'login_screen.dart';
+
+class HomeScreen extends StatefulWidget {
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  User? _user;
+  String _currentRole = UserRole.admin.value;
+  bool _isLoading = true;
+  bool _redirectToLogin = false;
+  bool _showAdminConsole = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAuthentication();
+  }
+
+  Future<void> _checkAuthentication() async {
+    try {
+      final hasValidSession = await StorageService.hasValidSession;
+      
+      if (!hasValidSession) {
+        setState(() {
+          _redirectToLogin = true;
+          _isLoading = false;
+        });
+        return;
+      }
+
+      await _loadUserData();
+    } catch (e) {
+      print('Authentication error: $e');
+      setState(() {
+        _redirectToLogin = true;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final user = StorageService.userData;
+      final role = StorageService.currentRole;
+      
+      if (user == null) {
+        setState(() {
+          _redirectToLogin = true;
+          _isLoading = false;
+        });
+        return;
+      }
+      
+      setState(() {
+        _user = user;
+        _currentRole = role.value;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Load user data error: $e');
+      setState(() {
+        _redirectToLogin = true;
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _handleMenuTap(String menuItem) async {
+    if (menuItem == 'Open Admin Console') {
+      // Switch to Admin Console without closing drawer
+      setState(() {
+        _showAdminConsole = true;
+      });
+      return;
+    }
+
+    if (menuItem.startsWith('Admin: ')) {
+      final adminItem = menuItem.replaceFirst('Admin: ', '');
+      _handleAdminMenuItem(adminItem);
+      return;
+    }
+
+    switch (menuItem) {
+      case 'Log Out':
+        await _showLogoutDialog();
+        break;
+      case 'Name':
+        _showUserProfile();
+        break;
+      case 'Rides':
+      case 'My Rides':
+        _navigateToRides();
+        break;
+      case 'User Creations':
+      case 'Pending User Creations':
+        _navigateToUserCreations();
+        break;
+      case 'Approvals':
+      case 'Pending Trip Approvals':
+      case 'Safety Approvals':
+        _navigateToApprovals();
+        break;
+    }
+  }
+
+  void _handleBackToMain() {
+    // Switch back to main sidebar without closing drawer
+    setState(() {
+      _showAdminConsole = false;
+    });
+  }
+
+  void _handleAdminMenuItem(String adminItem) {
+    switch (adminItem) {
+      case 'Company':
+        _navigateToCompanyManagement();
+        break;
+      case 'Departments':
+        _navigateToDepartmentManagement();
+        break;
+      case 'Cost Centers':
+        _navigateToCostCenterManagement();
+        break;
+      case 'Vehicles':
+        _navigateToVehicleManagement();
+        break;
+      case 'Approvals':
+        _navigateToApprovalManagement();
+        break;
+    }
+  }
+
+  void _navigateToCompanyManagement() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Navigate to Company Management')),
+    );
+  }
+
+  void _navigateToDepartmentManagement() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Navigate to Department Management')),
+    );
+  }
+
+  void _navigateToCostCenterManagement() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Navigate to Cost Center Management')),
+    );
+  }
+
+  void _navigateToVehicleManagement() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Navigate to Vehicle Management')),
+    );
+  }
+
+  void _navigateToApprovalManagement() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Navigate to Approval Management')),
+    );
+  }
+
+  Future<void> _showLogoutDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Log Out'),
+        content: Text('Are you sure you want to log out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Log Out', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      await StorageService.clearUserData();
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => LoginScreen()),
+      );
+    }
+  }
+
+  void _showUserProfile() {
+    if (_user == null) return;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('User Profile'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Name: ${_user?.displayname ?? 'N/A'}'),
+            Text('Email: ${_user?.email ?? 'N/A'}'),
+            Text('Phone: ${_user?.phone ?? 'N/A'}'),
+            Text('Role: ${_user?.role ?? 'N/A'}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _navigateToRides() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Navigate to Rides')),
+    );
+  }
+
+  void _navigateToUserCreations() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Navigate to User Creations')),
+    );
+  }
+
+  void _navigateToApprovals() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Navigate to Approvals')),
+    );
+  }
+
+  void _handleCreateTrip() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Create New Trip clicked')),
+    );
+  }
+
+  void _handleNearbyVehicles() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Nearby Vehicles clicked')),
+    );
+  }
+
+  void _handleRoleChange(String newRole) async {
+    setState(() {
+      _currentRole = newRole;
+    });
+  }
+
+  Widget _getRoleScreen() {
+    if (_isLoading) {
+      return Center(child: CircularProgressIndicator());
+    }
+    return AdminScreen();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_redirectToLogin) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => LoginScreen()),
+        );
+      });
+      return Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_isLoading) {
+      return Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_user == null) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('User data not available'),
+              SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => LoginScreen()),
+                  );
+                },
+                child: Text('Go to Login'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      key: _scaffoldKey,
+      drawer: SideMenu(
+        user: _user!,
+        onMenuTap: _handleMenuTap,
+        isAdminConsole: _showAdminConsole,
+        onBackToMain: _showAdminConsole ? _handleBackToMain : null,
+      ),
+      onDrawerChanged: (isOpened) {
+        if (!isOpened) {
+          // When drawer closes, reset to main sidebar
+          setState(() {
+            _showAdminConsole = false;
+          });
+        }
+      },
+      body: Column(
+        children: [
+          TopBar(
+            user: _user!,
+            onMenuTap: () => _scaffoldKey.currentState?.openDrawer(),
+            onCreateTrip: _handleCreateTrip,
+            onNearbyVehicles: _handleNearbyVehicles,
+          ),
+          
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: Colors.grey[50],
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: ['Driver', 'Admin', 'Manager'].map((role) {
+                return GestureDetector(
+                  onTap: () => _handleRoleChange(role),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _currentRole == role ? Colors.blue : Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 2,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      role,
+                      style: TextStyle(
+                        color: _currentRole == role ? Colors.white : Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          
+          Expanded(
+            child: _getRoleScreen(),
+          ),
+        ],
+      ),
+    );
+  }
+}

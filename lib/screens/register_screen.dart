@@ -1,0 +1,473 @@
+import 'package:flutter/material.dart';
+import '../services/api_service.dart';
+
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
+
+  @override
+  State<RegisterScreen> createState() => _RegisterScreenState();
+}
+
+class _RegisterScreenState extends State<RegisterScreen> {
+  final TextEditingController _displayNameController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _mobileController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
+
+  bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+  bool _hasCompanyEmail = false;
+  String? _selectedRole;
+
+  final List<String> _roles = ['Employee', 'Admin', 'Hr', 'Security', 'Driver'];
+
+  Future<void> _register() async {
+    final displayName = _displayNameController.text.trim();
+    final username = _usernameController.text.trim();
+    final mobile = _mobileController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
+
+    if (displayName.isEmpty || username.isEmpty || mobile.isEmpty || password.isEmpty || 
+        confirmPassword.isEmpty || (_hasCompanyEmail && email.isEmpty)) {
+      _showErrorDialog('Please fill all required fields');
+      return;
+    }
+
+    if (!RegExp(r"^[0-9]{10}$").hasMatch(mobile)) {
+      _showErrorDialog('Please enter a valid 10-digit mobile number');
+      return;
+    }
+
+    if (_hasCompanyEmail && !RegExp(r"^[^@\s]+@[^@\s]+\.[^@\s]+$").hasMatch(email)) {
+      _showErrorDialog('Please enter a valid email address');
+      return;
+    }
+
+    if (password.length < 6) {
+      _showErrorDialog('Password should be at least 6 characters');
+      return;
+    }
+
+    if (password != confirmPassword) {
+      _showErrorDialog('Passwords do not match');
+      return;
+    }
+
+    if (_selectedRole == null) {
+      _showErrorDialog('Please select a user role');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+      try {
+      final res = await ApiService.signUp(
+        username,
+        password,
+        confirmPassword,
+        _hasCompanyEmail ? null : email,
+        phone: mobile,
+        displayName: displayName,
+        role: _selectedRole,
+      );
+      
+      _showSuccessDialog(res['message'] ?? 'Registration successful');
+    } catch (e) {
+      _showErrorDialog('Registration failed: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSuccessDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Success'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // close dialog
+              Navigator.pop(context); // go back to login
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _displayNameController.dispose();
+    _usernameController.dispose();
+    _mobileController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        elevation: 0,
+        toolbarHeight: 100,
+        automaticallyImplyLeading: false, // This removes the back button
+        title: Container(
+          padding: const EdgeInsets.only(top: 40, bottom: 20), // Padding around the title
+          child: const Center(
+            child: Text('Create Account', 
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              )
+            ),
+          ),
+        ),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.only(top: 0, bottom: 0, left: 24, right: 24), // 10px bottom padding
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Switch for company email
+              Container(
+                padding: const EdgeInsets.only(top: 0, bottom: 20, left: 4, right: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("I don't have a company email",
+                        style: TextStyle(color: Colors.white, fontSize: 16)
+                    ),
+                    Transform.scale(
+                      scale: 0.8,
+                      child: Switch(
+                        value: _hasCompanyEmail,
+                        onChanged: (bool value) {
+                          setState(() {
+                            _hasCompanyEmail = value;
+                          });
+                        },
+                        inactiveTrackColor: Colors.transparent,
+                        inactiveThumbColor: Colors.yellow.shade600,
+                        activeColor: Colors.yellow[600],
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Display Name Field
+              TextField(
+                controller: _displayNameController,
+                style: const TextStyle(color: Colors.yellow),
+                decoration: InputDecoration(
+                  labelText: 'Display Name *',
+                  labelStyle: const TextStyle(color: Colors.grey),
+                  floatingLabelStyle: const TextStyle(color: Colors.yellow),
+                  prefixIcon: const Icon(Icons.person, color: Colors.yellow),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade600, width: 2),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.yellow, width: 2),
+                  ),
+                  filled: true,
+                  fillColor: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Username Field
+              TextField(
+                controller: _usernameController,
+                style: const TextStyle(color: Colors.yellow),
+                decoration: InputDecoration(
+                  labelText: 'Username *',
+                  labelStyle: const TextStyle(color: Colors.grey),
+                  floatingLabelStyle: const TextStyle(color: Colors.yellow),
+                  prefixIcon: const Icon(Icons.account_circle, color: Colors.yellow),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade600, width: 2),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.yellow, width: 2),
+                  ),
+                  filled: true,
+                  fillColor: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Mobile Number Field
+              TextField(
+                controller: _mobileController,
+                keyboardType: TextInputType.phone,
+                style: const TextStyle(color: Colors.yellow),
+                decoration: InputDecoration(
+                  labelText: 'Mobile Number *',
+                  labelStyle: const TextStyle(color: Colors.grey),
+                  floatingLabelStyle: const TextStyle(color: Colors.yellow),
+                  prefixIcon: const Icon(Icons.phone_android, color: Colors.yellow),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade600, width: 2),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.yellow, width: 2),
+                  ),
+                  filled: true,
+                  fillColor: Colors.black,
+                ),
+              ),
+
+              // Company Email Field (conditionally shown)
+              if (!_hasCompanyEmail) ...[
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  style: const TextStyle(color: Colors.yellow),
+                  decoration: InputDecoration(
+                    labelText: 'Company Email',
+                    labelStyle: const TextStyle(color: Colors.grey),
+                    floatingLabelStyle: const TextStyle(color: Colors.yellow),
+                    prefixIcon: const Icon(Icons.email, color: Colors.yellow),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey.shade600, width: 2),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.yellow, width: 2),
+                    ),
+                    filled: true,
+                    fillColor: Colors.black,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+
+              // Password Field
+              TextField(
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                style: const TextStyle(color: Colors.yellow),
+                decoration: InputDecoration(
+                  labelText: 'Password *',
+                  labelStyle: const TextStyle(color: Colors.grey),
+                  floatingLabelStyle: const TextStyle(color: Colors.yellow),
+                  prefixIcon: const Icon(Icons.lock, color: Colors.yellow),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      color: Colors.yellow,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscurePassword = !_obscurePassword;
+                      });
+                    },
+                  ),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade600, width: 2),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.yellow, width: 2),
+                  ),
+                  filled: true,
+                  fillColor: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Confirm Password Field
+              TextField(
+                controller: _confirmPasswordController,
+                obscureText: _obscureConfirmPassword,
+                style: const TextStyle(color: Colors.yellow),
+                decoration: InputDecoration(
+                  labelText: 'Confirm Password *',
+                  labelStyle: const TextStyle(color: Colors.grey),
+                  floatingLabelStyle: const TextStyle(color: Colors.yellow),
+                  prefixIcon: const Icon(Icons.lock_outline, color: Colors.yellow),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                      color: Colors.yellow,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscureConfirmPassword = !_obscureConfirmPassword;
+                      });
+                    },
+                  ),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade600, width: 2),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.yellow, width: 2),
+                  ),
+                  filled: true,
+                  fillColor: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // User Role Dropdown
+              DropdownButtonFormField<String>(
+                value: _selectedRole,
+                decoration: InputDecoration(
+                  labelText: 'User Role *',
+                  labelStyle: TextStyle(
+                    color: _selectedRole != null ? Colors.yellow[600] : Colors.grey[500],
+                  ),
+                  floatingLabelStyle: const TextStyle(color: Colors.yellow),
+                  prefixIcon: const Icon(Icons.admin_panel_settings, color: Colors.yellow),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade600, width: 2),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.yellow, width: 2),
+                  ),
+                  filled: true,
+                  fillColor: Colors.black,
+                ),
+                dropdownColor: Colors.black,
+                icon: const Icon(Icons.arrow_drop_down, color: Colors.yellow),
+                style: const TextStyle(color: Colors.yellow),
+                items: _roles.map((String role) {
+                  return DropdownMenuItem<String>(
+                    value: role,
+                    child: Text(role, style: const TextStyle(color: Colors.yellow)),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  if (newValue != null) {
+                    setState(() {
+                      _selectedRole = newValue;
+                    });
+                  }
+                },
+              ),
+
+              const SizedBox(height: 30),
+
+              // Create Account Button
+              SizedBox(
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _register,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.yellow[600],
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                          ),
+                        )
+                      : const Text(
+                          'Create account',
+                          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              Wrap(
+                alignment: WrapAlignment.center,
+                children: [
+                  const Text(
+                    'Already have an account ? ',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 16,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: const Text(
+                      ' Sign In',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        decoration: TextDecoration.underline,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 20), // Extra space to ensure content scrolls properly
+              
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: Image.asset('Icon_half.png'),
+              ),
+
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
