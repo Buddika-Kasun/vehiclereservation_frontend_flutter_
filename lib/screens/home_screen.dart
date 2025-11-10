@@ -3,8 +3,18 @@ import '../models/user_model.dart';
 import '../services/storage_service.dart';
 import '../widgets/side_menu.dart';
 import '../widgets/top_bar.dart';
-import 'role_screens/admin_screen.dart';
 import 'login_screen.dart';
+
+// Import all the screens
+import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/dashboard_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/rides_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/user_creations_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/approvals_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/admin/company_management_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/admin/department_management_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/admin/cost_center_management_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/admin/vehicle_management_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/admin/approval_management_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -14,10 +24,12 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   User? _user;
-  String _currentRole = UserRole.admin.value;
   bool _isLoading = true;
   bool _redirectToLogin = false;
   bool _showAdminConsole = false;
+  
+  // Current screen state - Start with Dashboard
+  Widget _currentScreen = DashboardScreen();
 
   @override
   void initState() {
@@ -50,7 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadUserData() async {
     try {
       final user = StorageService.userData;
-      final role = StorageService.currentRole;
+      //final role = StorageService.currentRole;
       
       if (user == null) {
         setState(() {
@@ -62,7 +74,6 @@ class _HomeScreenState extends State<HomeScreen> {
       
       setState(() {
         _user = user;
-        _currentRole = role.value;
         _isLoading = false;
       });
     } catch (e) {
@@ -76,7 +87,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _handleMenuTap(String menuItem) async {
     if (menuItem == 'Open Admin Console') {
-      // Switch to Admin Console without closing drawer
       setState(() {
         _showAdminConsole = true;
       });
@@ -96,6 +106,9 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'Name':
         _showUserProfile();
         break;
+      case 'Home':
+        _navigateToDashboard();
+        break;
       case 'Rides':
       case 'My Rides':
         _navigateToRides();
@@ -113,9 +126,33 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _handleBackToMain() {
-    // Switch back to main sidebar without closing drawer
     setState(() {
       _showAdminConsole = false;
+    });
+  }
+
+  // Navigation methods
+  void _navigateToDashboard() {
+    setState(() {
+      _currentScreen = DashboardScreen();
+    });
+  }
+
+  void _navigateToRides() {
+    setState(() {
+      _currentScreen = RidesScreen();
+    });
+  }
+
+  void _navigateToUserCreations() {
+    setState(() {
+      _currentScreen = UserCreationsScreen();
+    });
+  }
+
+  void _navigateToApprovals() {
+    setState(() {
+      _currentScreen = ApprovalsScreen();
     });
   }
 
@@ -134,39 +171,39 @@ class _HomeScreenState extends State<HomeScreen> {
         _navigateToVehicleManagement();
         break;
       case 'Approvals':
-        _navigateToApprovalManagement();
+        _navigateToAdminApprovalManagement();
         break;
     }
   }
 
   void _navigateToCompanyManagement() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Navigate to Company Management')),
-    );
+    setState(() {
+      _currentScreen = CompanyManagementScreen();
+    });
   }
 
   void _navigateToDepartmentManagement() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Navigate to Department Management')),
-    );
+    setState(() {
+      _currentScreen = DepartmentManagementScreen();
+    });
   }
 
   void _navigateToCostCenterManagement() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Navigate to Cost Center Management')),
-    );
+    setState(() {
+      _currentScreen = CostCenterManagementScreen();
+    });
   }
 
   void _navigateToVehicleManagement() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Navigate to Vehicle Management')),
-    );
+    setState(() {
+      _currentScreen = VehicleManagementScreen();
+    });
   }
 
-  void _navigateToApprovalManagement() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Navigate to Approval Management')),
-    );
+  void _navigateToAdminApprovalManagement() {
+    setState(() {
+      _currentScreen = ApprovalManagementScreen();
+    });
   }
 
   Future<void> _showLogoutDialog() async {
@@ -224,24 +261,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _navigateToRides() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Navigate to Rides')),
-    );
-  }
-
-  void _navigateToUserCreations() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Navigate to User Creations')),
-    );
-  }
-
-  void _navigateToApprovals() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Navigate to Approvals')),
-    );
-  }
-
   void _handleCreateTrip() {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Create New Trip clicked')),
@@ -252,19 +271,6 @@ class _HomeScreenState extends State<HomeScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Nearby Vehicles clicked')),
     );
-  }
-
-  void _handleRoleChange(String newRole) async {
-    setState(() {
-      _currentRole = newRole;
-    });
-  }
-
-  Widget _getRoleScreen() {
-    if (_isLoading) {
-      return Center(child: CircularProgressIndicator());
-    }
-    return AdminScreen();
   }
 
   @override
@@ -320,7 +326,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       onDrawerChanged: (isOpened) {
         if (!isOpened) {
-          // When drawer closes, reset to main sidebar
           setState(() {
             _showAdminConsole = false;
           });
@@ -335,42 +340,8 @@ class _HomeScreenState extends State<HomeScreen> {
             onNearbyVehicles: _handleNearbyVehicles,
           ),
           
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: Colors.grey[50],
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: ['Driver', 'Admin', 'Manager'].map((role) {
-                return GestureDetector(
-                  onTap: () => _handleRoleChange(role),
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: _currentRole == role ? Colors.blue : Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 2,
-                          offset: Offset(0, 1),
-                        ),
-                      ],
-                    ),
-                    child: Text(
-                      role,
-                      style: TextStyle(
-                        color: _currentRole == role ? Colors.white : Colors.black,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          
           Expanded(
-            child: _getRoleScreen(),
+            child: _currentScreen,
           ),
         ],
       ),

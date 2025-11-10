@@ -285,13 +285,13 @@ class SideMenu extends StatelessWidget {
         ),
         onTap: () {
           if (isAdminConsole) {
-            Navigator.pop(context); // Close drawer for admin menu items
+            Navigator.pop(context);
             onMenuTap('Admin: ${item.title}');
           } else if (item.title == 'Admin Console') {
             // Don't close drawer, just switch to admin console
             onMenuTap('Open Admin Console');
           } else {
-            Navigator.pop(context); // Close drawer for other menu items
+            Navigator.pop(context);
             onMenuTap(item.title);
           }
         },
