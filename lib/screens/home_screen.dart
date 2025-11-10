@@ -62,7 +62,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadUserData() async {
     try {
       final user = StorageService.userData;
-      //final role = StorageService.currentRole;
       
       if (user == null) {
         setState(() {
@@ -86,10 +85,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _handleMenuTap(String menuItem) async {
+    // Close drawer first for all menu items
+    if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+      Navigator.pop(context);
+    }
+
     if (menuItem == 'Open Admin Console') {
+      // Open Admin Console sidebar
       setState(() {
         _showAdminConsole = true;
       });
+      _scaffoldKey.currentState?.openDrawer();
       return;
     }
 
@@ -248,7 +254,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Text('Name: ${_user?.displayname ?? 'N/A'}'),
             Text('Email: ${_user?.email ?? 'N/A'}'),
             Text('Phone: ${_user?.phone ?? 'N/A'}'),
-            Text('Role: ${_user?.role ?? 'N/A'}'),
+            Text('Role: ${_user?.role.displayName ?? 'N/A'}'),
           ],
         ),
         actions: [
@@ -258,18 +264,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  void _handleCreateTrip() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Create New Trip clicked')),
-    );
-  }
-
-  void _handleNearbyVehicles() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Nearby Vehicles clicked')),
     );
   }
 
@@ -336,8 +330,6 @@ class _HomeScreenState extends State<HomeScreen> {
           TopBar(
             user: _user!,
             onMenuTap: () => _scaffoldKey.currentState?.openDrawer(),
-            onCreateTrip: _handleCreateTrip,
-            onNearbyVehicles: _handleNearbyVehicles,
           ),
           
           Expanded(
