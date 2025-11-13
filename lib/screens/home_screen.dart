@@ -190,7 +190,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _navigateToDepartmentManagement() {
     setState(() {
-      _currentScreen = DepartmentManagementScreen();
+      _currentScreen = DepartmentsManagementScreen();
     });
   }
 
