@@ -40,6 +40,24 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> getRegisterStatus() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/validate/canRegisterUser'),
+        headers: {'Content-Type': 'application/json'},
+      );
+      
+      
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('Failed to get app status');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+
   // Add other API methods here
   static Future<Map<String, dynamic>> signUp(
       String username, String password, String confirmPassword, String? email,
@@ -278,6 +296,113 @@ static Future<Map<String, dynamic>> authenticatedApiCall(
     return await authenticatedApiCall(
       'company/delete/$id',
       method: 'DELETE',
+    );
+  }
+
+  static Future<Map<String, dynamic>> getCompanyStatus() async {
+    return await authenticatedApiCall(
+      'validate/haveCompany',
+      method: 'GET',
+    );
+  }
+
+  static Future<Map<String, dynamic>> getCostCenterStatus() async {
+    return await authenticatedApiCall(
+      'validate/haveCostCenter',
+      method: 'GET',
+    );
+  }
+
+  static Future<Map<String, dynamic>> getDepartmentStatus() async {
+    return await authenticatedApiCall(
+      'validate/haveDepartment',
+      method: 'GET',
+    );
+  }
+
+  static Future<Map<String, dynamic>> getCostCenters([int? companyId]) async {
+    String url = 'cost-center/get-all';
+    
+    if (companyId != null) {
+      url += '?companyId=$companyId';
+    }
+    
+    return await authenticatedApiCall(
+      url,
+      method: 'GET',
+    );
+  }
+
+  static Future<Map<String, dynamic>> createCostCenter(Map<String, dynamic> data) async {
+    return await authenticatedApiCall(
+      'cost-center/create',
+      method: 'POST',
+      body: data,
+    );
+  }
+
+  static Future<Map<String, dynamic>> updateCostCenter(int id, Map<String, dynamic> data) async {
+    return await authenticatedApiCall(
+      'cost-center/update/$id',
+      method: 'PUT',
+      body: data,
+    );
+  }
+
+  static Future<Map<String, dynamic>> deleteCostCenter(int id) async {
+    return await authenticatedApiCall(
+      'cost-center/delete/$id',
+      method: 'DELETE',
+    );
+  }
+
+  static Future<Map<String, dynamic>> getDepartments([int? companyId]) async {
+    String url = 'department/get-all';
+    
+    if (companyId != null) {
+      url += '?companyId=$companyId';
+    }
+    
+    return await authenticatedApiCall(
+      url,
+      method: 'GET',
+    );
+  }
+
+  static Future<Map<String, dynamic>> createDepartment(Map<String, dynamic> data) async {
+    return await authenticatedApiCall(
+      'department/create',
+      method: 'POST',
+      body: data,
+    );
+  }
+
+  static Future<Map<String, dynamic>> updateDepartment(int id, Map<String, dynamic> data) async {
+    return await authenticatedApiCall(
+      'department/update/$id',
+      method: 'PUT',
+      body: data,
+    );
+  }
+
+  static Future<Map<String, dynamic>> deleteDepartment(int id) async {
+    return await authenticatedApiCall(
+      'department/delete/$id',
+      method: 'DELETE',
+    );
+  }
+
+  static Future<Map<String, dynamic>> getUsers() async {
+    return await authenticatedApiCall(
+      'user/get-all',
+      method: 'GET',
+    );
+  }
+
+  static Future<Map<String, dynamic>> getUsersByDepartment(int departmentId) async {
+    return await authenticatedApiCall(
+      'user/get-all-by-department/$departmentId',
+      method: 'GET',
     );
   }
 

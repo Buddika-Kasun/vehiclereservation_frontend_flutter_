@@ -16,7 +16,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
 
+  bool _isAppActive = false;
   bool _isLoading = false;
+  bool _hasError = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _hasCompanyEmail = false;
@@ -137,6 +139,127 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _checkAppStatus();
+  }
+
+  Future<void> _checkAppStatus() async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final response = await ApiService.getRegisterStatus();
+      
+      if (response['success'] == true) {
+        setState(() {
+          _isAppActive = response['data'] ?? false;
+          _isLoading = false;
+        });
+      } else {
+        throw Exception(response['message'] ?? 'Failed to get app status');
+      }
+    } catch (e) {
+      print('Error checking app status: $e');
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+      });
+    }
+  }
+
+  Widget _buildLoading() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 16),
+          Text('Checking app status...'),
+        ],
+      ),
+    );
+  }
+
+  void _goToLogin() {
+    Navigator.pop(context);
+  }
+
+  Widget _buildErrorWidget() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.error_outline, size: 64, color: Colors.red),
+          SizedBox(height: 16),
+          Text(
+            'Failed to check app status',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Please check your connection and try again',
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: _checkAppStatus,
+            child: Text('Retry'),
+          ),
+          SizedBox(height: 16),
+          TextButton(
+            onPressed: _goToLogin,
+            child: Text('Go to Login'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAppInactiveWidget() {
+    return Padding(
+      padding: const EdgeInsets.only(left: 24, right: 24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.admin_panel_settings, size: 80, color: Colors.orange),
+          SizedBox(height: 24),
+          Text(
+            'App is Not Active',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.orange,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 16),
+          Text(
+            'Please contact system administrator to activate the application',
+            style: TextStyle(fontSize: 16, color: Colors.grey[400]),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 32),
+          ElevatedButton.icon(
+            onPressed: _goToLogin,
+            icon: Icon(Icons.login),
+            label: Text('Go to Login Page'),
+            style: ElevatedButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+            ),
+          ),
+          SizedBox(height: 16),
+          TextButton(
+            onPressed: _checkAppStatus,
+            child: Text('Check Again'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
@@ -158,7 +281,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ),
       ),
-      body: SafeArea(
+      body: _isLoading
+          ? _buildLoading()
+          : _hasError
+              ? _buildErrorWidget()
+              : _isAppActive
+                  ? _buildSignUpForm()
+                  : _buildAppInactiveWidget(),
+    );
+  }
+
+  Widget _buildSignUpForm() {
+    return SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.only(top: 0, bottom: 0, left: 24, right: 24), // 10px bottom padding
           child: Column(
@@ -467,7 +601,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
+
+  
 }

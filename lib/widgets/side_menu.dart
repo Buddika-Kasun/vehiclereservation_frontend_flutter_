@@ -23,8 +23,8 @@ class SideMenu extends StatelessWidget {
       // Admin Console menu items
       return [
         MenuItem(Icons.business, 'Company'),
-        MenuItem(Icons.account_balance, 'Departments'),
         MenuItem(Icons.account_balance_wallet, 'Cost Centers'),
+        MenuItem(Icons.account_balance, 'Departments'),
         MenuItem(Icons.directions_car, 'Vehicles'),
         MenuItem(Icons.verified, 'Approvals'),
       ];
