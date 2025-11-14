@@ -5,6 +5,8 @@ class Company {
   final String emailDomain;
   final String contactNumber;
   final bool isActive;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   Company({
     required this.id,
@@ -13,6 +15,8 @@ class Company {
     required this.emailDomain,
     required this.contactNumber,
     required this.isActive,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory Company.fromJson(Map<String, dynamic> json) {
@@ -23,6 +27,8 @@ class Company {
       emailDomain: json['emailDomain'] ?? json['email_domain'] ?? '',
       contactNumber: json['contactNumber'] ?? json['contact_no'] ?? '',
       isActive: json['isActive'] ?? json['is_active'] ?? true,
+      createdAt: DateTime.parse(json['createdAt'] ?? DateTime.now().toString()),
+      updatedAt: DateTime.parse(json['updatedAt'] ?? DateTime.now().toString()),
     );
   }
 
