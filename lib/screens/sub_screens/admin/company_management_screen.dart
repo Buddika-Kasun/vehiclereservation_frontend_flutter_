@@ -373,7 +373,7 @@ class _CompanyManagementScreenState extends State<CompanyManagementScreen> {
         SizedBox(width: 12),
         
         // Delete Button
-        Container(
+        /*Container(
           width: 46,
           height: 46,
           decoration: BoxDecoration(
@@ -405,6 +405,7 @@ class _CompanyManagementScreenState extends State<CompanyManagementScreen> {
             ),
           ),
         ),
+        */
       ],
     );
   }
@@ -555,6 +556,24 @@ class _CompanyManagementScreenState extends State<CompanyManagementScreen> {
                     ),
                   ],
                 ),
+
+                SizedBox(height: 20),
+
+                Row(
+                  children: [
+                    _buildDetailItem(
+                      icon: Icons.calendar_today,
+                      title: 'Created At',
+                      value: _company!.createdAt?.toIso8601String().split('T').first ?? 'N/A',
+                    ),
+                    SizedBox(width: 24),
+                    _buildDetailItem(
+                      icon: Icons.update,
+                      title: 'Updated At',
+                      value: _company!.updatedAt?.toIso8601String().split('T').first ?? 'N/A',
+                    )
+                  ],
+                )
               ],
             ),
           ),
