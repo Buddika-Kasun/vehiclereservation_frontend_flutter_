@@ -35,7 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _showSuccessDialog(res['message'] ?? "Login Successful!");
             
     } catch (e) {
-      _showErrorDialog("Login failed1: $e");
+      _showErrorDialog("Login failed: $e");
     } finally {
       setState(() {
         _isLoading = false;
