@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/admin/vehicleType_managemnet_screen.dart';
 import '../models/user_model.dart';
 import '../services/storage_service.dart';
 import '../widgets/side_menu.dart';
@@ -176,6 +177,9 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'Vehicles':
         _navigateToVehicleManagement();
         break;
+      case 'Vehicle Types':
+        _navigateToVehicleTypeManagement();
+        break;
       case 'Approvals':
         _navigateToAdminApprovalManagement();
         break;
@@ -203,6 +207,12 @@ class _HomeScreenState extends State<HomeScreen> {
   void _navigateToVehicleManagement() {
     setState(() {
       _currentScreen = VehicleManagementScreen();
+    });
+  }
+
+  void _navigateToVehicleTypeManagement() {
+    setState(() {
+      _currentScreen = VehicleTypeManagementScreen();
     });
   }
 
