@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
+import 'package:vehiclereservation_frontend_flutter_/screens/home_screen.dart';
 
 class TopBar extends StatelessWidget {
   final User user;
@@ -23,12 +24,22 @@ class TopBar extends StatelessWidget {
             icon: Icon(Icons.menu, color: Colors.white),
             onPressed: onMenuTap,
           ),
-          title: Text(
-            'PCW RIDE',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
+          // In TopBar widget
+          title: GestureDetector(
+            onTap: () {
+              // Navigate to home screen
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => HomeScreen()),
+                (Route<dynamic> route) => false,
+              );
+            },
+            child: Text(
+              'PCW RIDE',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
             ),
           ),
           centerTitle: true,
