@@ -61,7 +61,7 @@ class ApiService {
   // Add other API methods here
   static Future<Map<String, dynamic>> signUp(
       String username, String password, String confirmPassword, String? email,
-      {required String phone, required String displayName, String? role}) async {
+      {required String phone, required String displayName, String? role, String? departmentId}) async {
     
     // Check if passwords match
     if (password != confirmPassword) {
@@ -73,6 +73,7 @@ class ApiService {
       'password': password,
       'phone': phone,
       'displayname': displayName, // Made required
+      'departmentId': departmentId,
     };
 
     // Only add email if provided (optional)
@@ -137,7 +138,7 @@ class ApiService {
   }
 
   // Enhanced API call with automatic token refresh
-static Future<Map<String, dynamic>> authenticatedApiCall(
+  static Future<Map<String, dynamic>> authenticatedApiCall(
   String endpoint, {
   String method = 'GET',
   dynamic body,
@@ -299,6 +300,7 @@ static Future<Map<String, dynamic>> authenticatedApiCall(
     );
   }
 
+  // Status API methods
   static Future<Map<String, dynamic>> getCompanyStatus() async {
     return await authenticatedApiCall(
       'validate/haveCompany',
@@ -320,6 +322,7 @@ static Future<Map<String, dynamic>> authenticatedApiCall(
     );
   }
 
+  // CostCenter API methods
   static Future<Map<String, dynamic>> getCostCenters([int? companyId]) async {
     String url = 'cost-center/get-all';
     
@@ -356,6 +359,7 @@ static Future<Map<String, dynamic>> authenticatedApiCall(
     );
   }
 
+  // Department API methods
   static Future<Map<String, dynamic>> getDepartments([int? companyId]) async {
     String url = 'department/get-all';
     
@@ -392,6 +396,7 @@ static Future<Map<String, dynamic>> authenticatedApiCall(
     );
   }
 
+  // User API methods
   static Future<Map<String, dynamic>> getUsers() async {
     return await authenticatedApiCall(
       'user/get-all',
@@ -403,6 +408,110 @@ static Future<Map<String, dynamic>> authenticatedApiCall(
     return await authenticatedApiCall(
       'user/get-all-by-department/$departmentId',
       method: 'GET',
+    );
+  }
+
+  // VehicleTypes API methods
+  static Future<Map<String, dynamic>> getVehicleTypes() async {
+    String url = 'cost-configurations/get-all';
+    
+    return await authenticatedApiCall(
+      url,
+      method: 'GET',
+    );
+  }
+
+  static Future<Map<String, dynamic>> createVehicleType(Map<String, dynamic> data) async {
+    return await authenticatedApiCall(
+      'cost-configurations/create',
+      method: 'POST',
+      body: data,
+    );
+  }
+
+  static Future<Map<String, dynamic>> updateVehicleType(int id, Map<String, dynamic> data) async {
+    return await authenticatedApiCall(
+      'cost-configurations/update/$id',
+      method: 'PUT',
+      body: data,
+    );
+  }
+
+  static Future<Map<String, dynamic>> deleteVehicleType(int id) async {
+    return await authenticatedApiCall(
+      'cost-configurations/delete/$id',
+      method: 'DELETE',
+    );
+  }
+
+  // Vehicle API methods
+  static Future<Map<String, dynamic>> getVehicles() async {
+    String url = 'vehicle/get-all';
+    
+    return await authenticatedApiCall(
+      url,
+      method: 'GET',
+    );
+  }
+
+  static Future<Map<String, dynamic>> createVehicle(Map<String, dynamic> data) async {
+    return await authenticatedApiCall(
+      'vehicle/create',
+      method: 'POST',
+      body: data,
+    );
+  }
+
+  static Future<Map<String, dynamic>> updateVehicle(int id, Map<String, dynamic> data) async {
+    return await authenticatedApiCall(
+      'vehicle/update/$id',
+      method: 'PUT',
+      body: data,
+    );
+  }
+
+  static Future<Map<String, dynamic>> deleteVehicle(int id) async {
+    return await authenticatedApiCall(
+      'vehicle/delete/$id',
+      method: 'DELETE',
+    );
+  }
+
+  // UserCreation API methods
+  static Future<Map<String, dynamic>> getUserCreations() async {
+    return await authenticatedApiCall(
+      //'user-creations',
+      'user/get-all',
+      method: 'GET',
+    );
+  }
+
+  static Future<Map<String, dynamic>> approveUserCreationWithDetails(
+    int userCreationId, {
+    required String role,
+    required String? departmentId, // Change to departmentId
+  }) async {
+    final body = {
+      'role': role,
+    };
+    
+    // Only add departmentId if it's not null and not empty
+    if (departmentId != null && departmentId.isNotEmpty && departmentId != 'None') {
+      body['departmentId'] = departmentId;
+    }
+    
+    return await authenticatedApiCall(
+      'user/approve/$userCreationId',
+      method: 'PUT',
+      body: body,
+    );
+  }
+
+  static Future<Map<String, dynamic>> rejectUserCreation(int userCreationId) async {
+    return await authenticatedApiCall(
+      'user/reject/$userCreationId',
+      method: 'PUT',
+      body: {},
     );
   }
 
