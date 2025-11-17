@@ -195,10 +195,12 @@ class _VehicleManagementScreenState extends State<VehicleManagementScreen> {
     }
   }
 
+/*
   String _generateShortName(String regNo) {
     if (regNo.isEmpty) return 'VH';
     return regNo.length <= 4 ? regNo.toUpperCase() : regNo.substring(regNo.length - 4).toUpperCase();
   }
+*/
 
   Future<void> _downloadQRCode(String regNo, String? qrCodeBase64) async {
     if (qrCodeBase64 == null || qrCodeBase64.isEmpty) {
@@ -464,7 +466,7 @@ class _VehicleManagementScreenState extends State<VehicleManagementScreen> {
                     itemBuilder: (context, index) {
                       final vehicle = _vehicles[index];
                       final isExpanded = _expandedIndex == index;
-                      final shortName = _generateShortName(vehicle.regNo);
+                      //final shortName = _generateShortName(vehicle.regNo);
                       
                       return Container(
                         margin: EdgeInsets.only(bottom: 12),
@@ -2064,7 +2066,6 @@ class _VehicleManagementScreenState extends State<VehicleManagementScreen> {
       // Decode base64 to bytes
       return base64.decode(base64String);
     } catch (e) {
-      print('Error decoding base64: $e');
       throw Exception('Invalid QR code data');
     }
   }

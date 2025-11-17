@@ -15,14 +15,6 @@ class _CompanyManagementScreenState extends State<CompanyManagementScreen> {
   Company? _company; // Initialize as null
   bool _isLoading = true;
   bool _isSubmitting = false;
-  /*Company? _company = Company(
-    id: '1',
-    name: 'Reliable General Works',
-    address: '123 Main Street, Colombo',
-    emailDomain: 'reliable.com',
-    contactNumber: '+94 11 2345678',
-    isActive: true,
-  );*/
 
   @override
   void initState() {
@@ -131,46 +123,15 @@ class _CompanyManagementScreenState extends State<CompanyManagementScreen> {
     }
   }
 
-  Future<void> _deleteCompany() async {
-    try {
-      setState(() {
-        _isSubmitting = true;
-      });
-
-      final response = await ApiService.deleteCompany(_company!.id);
-      print('Delete response: $response');
-      
-      if (response['success'] == true) {
-        setState(() {
-          _company = null;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Company deleted successfully')),
-        );
-      } else {
-        throw Exception(response['message'] ?? 'Failed to delete company');
-      }
-    } catch (e) {
-      print('Error deleting company: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to delete company: $e')),
-      );
-      rethrow;
-    } finally {
-      setState(() {
-        _isSubmitting = false;
-      });
-    }
-  }
-
-  // Sample data for dropdowns or future use
+ /* // Sample email domain for dropdowns or future use
   final List<String> _domains = [
     'company.com',
     'business.org',
     'enterprise.net',
     'corp.io'
   ];
-
+*/
+  
   String _generateShortName(String companyName) {
     if (companyName.isEmpty) return 'CO';
     // Get first letter of each word and capitalize
@@ -1158,6 +1119,39 @@ class _CompanyManagementScreenState extends State<CompanyManagementScreen> {
     );
   }
 
+/* // Company deletion part
+  Future<void> _deleteCompany() async {
+    try {
+      setState(() {
+        _isSubmitting = true;
+      });
+
+      final response = await ApiService.deleteCompany(_company!.id);
+      print('Delete response: $response');
+      
+      if (response['success'] == true) {
+        setState(() {
+          _company = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Company deleted successfully')),
+        );
+      } else {
+        throw Exception(response['message'] ?? 'Failed to delete company');
+      }
+    } catch (e) {
+      print('Error deleting company: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete company: $e')),
+      );
+      rethrow;
+    } finally {
+      setState(() {
+        _isSubmitting = false;
+      });
+    }
+  }
+
   void _showDeleteConfirmation() {
     showDialog(
       context: context,
@@ -1286,4 +1280,6 @@ class _CompanyManagementScreenState extends State<CompanyManagementScreen> {
       ),
     );
   }
+*/
+
 }
