@@ -1,9 +1,11 @@
+import 'package:vehiclereservation_frontend_flutter_/models/department_model.dart';
+
 enum UserRole {
   sysadmin('sysadmin', 'System Administrator'),
   employee('employee', 'Employee'),
   driver('driver', 'Driver'),
   admin('admin', 'Administrator'),
-  hr('hr', 'HR Manager'),
+  hr('hr', 'HR'),
   security('security', 'Security');
 
   const UserRole(this.value, this.displayName);
@@ -27,8 +29,9 @@ class User {
   final String email;
   final String phone;
   final UserRole role; // Use enum
+  final String? department;
   final bool isActive;
-  final bool isApproved;
+  final String isApproved;
   final String? profilePicture;
   final int authenticationLevel;
   final DateTime createdAt;
@@ -41,6 +44,7 @@ class User {
     required this.email,
     required this.phone,
     required this.role,
+    this.department,
     required this.isActive,
     required this.isApproved,
     this.profilePicture,
@@ -57,8 +61,9 @@ class User {
       email: json['email'] as String,
       phone: json['phone'] as String,
       role: UserRole.fromString(json['role'] as String),
+      department: json['department']?['name'],
       isActive: json['isActive'] as bool,
-      isApproved: json['isApproved'] as bool,
+      isApproved: json['isApproved'],
       profilePicture: json['profilePicture'],
       authenticationLevel: json['authenticationLevel'] as int,
       createdAt: DateTime.parse(json['createdAt'] as String),
@@ -83,27 +88,27 @@ class User {
     };
   }
 
-  factory User.admin() {
-    return User(
-      id: 0,
-      username: 'admin',
-      displayname: 'Administrator',
-      email: 'admin@system.com',
-      phone: '',
-      role: UserRole.admin,
-      isActive: true,
-      isApproved: true,
-      profilePicture: null,
-      authenticationLevel: 0,
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    );
-  }
-
   // Helper methods for role checking
   bool get isAdmin => role == UserRole.admin || role == UserRole.sysadmin;
   bool get isDriver => role == UserRole.driver;
   bool get isSecurity => role == UserRole.security;
   bool get isHr => role == UserRole.hr;
   bool get isEmployee => role == UserRole.employee;
+}
+
+class ShortUser {
+  final int id;
+  final String displayname;
+
+  ShortUser({
+    required this.id,
+    required this.displayname,
+  });
+
+  factory ShortUser.fromJson(Map<String, dynamic> json) {
+    return ShortUser(
+      id: json['id'] as int,
+      displayname: json['displayname'] as String,
+    );
+  }
 }
