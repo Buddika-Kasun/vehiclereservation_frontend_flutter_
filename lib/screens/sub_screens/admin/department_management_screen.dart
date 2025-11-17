@@ -15,8 +15,8 @@ class DepartmentsManagementScreen extends StatefulWidget {
 
 class _DepartmentsManagementScreenState extends State<DepartmentsManagementScreen> {
   List<Department> _departments = [];
-  List<User> _users = [];
-  List<User> _departmentUsers = [];
+  //List<User> _users = [];
+  List<ShortUser> _departmentUsers = [];
   List<CostCenter> _costCenters = [];
   int? _expandedIndex;
   bool _isLoading = true;
@@ -57,7 +57,7 @@ class _DepartmentsManagementScreenState extends State<DepartmentsManagementScree
             // Load all data only if company exists
             await Future.wait([
               _loadDepartments(),
-              _loadUsers(),
+              //_loadUsers(),
               _loadCostCenters(),
             ]);
             setState(() {
@@ -102,6 +102,7 @@ class _DepartmentsManagementScreenState extends State<DepartmentsManagementScree
     }
   }
 
+  /*
   Future<void> _loadUsers() async {
     try {
       final response = await ApiService.getUsers();
@@ -120,14 +121,16 @@ class _DepartmentsManagementScreenState extends State<DepartmentsManagementScree
     }
   }
 
+  */
   Future<void> _loadUsersByDepartment(int departmentId) async {
     try {
       final response = await ApiService.getUsersByDepartment(departmentId);
+      //final response = await ApiService.getUsers();
       
       if (response['success'] == true) {
         final List<dynamic> usersData = response['data']['users'] ?? [];
         setState(() {
-          _departmentUsers = usersData.map((data) => User.fromJson(data)).toList();
+          _departmentUsers = usersData.map((data) => ShortUser.fromJson(data)).toList();
         });
       } else {
         throw Exception(response['message'] ?? 'Failed to load department users');
@@ -585,7 +588,7 @@ class _DepartmentsManagementScreenState extends State<DepartmentsManagementScree
       );    
   }
 
- void _showEditDepartmentDialog(int index, Department department) async {
+  void _showEditDepartmentDialog(int index, Department department) async {
     String fullName = department.name;
     bool isActive = department.isActive;
     bool _isSubmitting = false;
@@ -952,8 +955,8 @@ class _DepartmentsManagementScreenState extends State<DepartmentsManagementScree
     );
   }
 
-// Helper methods to validate dropdown values
-String? _getValidHeadValue(String? headId, List<User> userList) {
+  // Helper methods to validate dropdown values
+  String? _getValidHeadValue(String? headId, List<ShortUser> userList) {
   if (headId == null || headId.isEmpty) return null;
   
   // Check if the headId exists in the provided user list
@@ -961,7 +964,7 @@ String? _getValidHeadValue(String? headId, List<User> userList) {
   return userExists ? headId : null;
 }
 
-String? _getValidCostCenterValue(String? costCenterId) {
+  String? _getValidCostCenterValue(String? costCenterId) {
   if (costCenterId == null || costCenterId.isEmpty) return null;
   
   // Check if the costCenterId exists in _costCenters list
@@ -1285,8 +1288,6 @@ String? _getValidCostCenterValue(String? costCenterId) {
       ),
     );
   }
-
-  // Rest of your existing UI code remains the same, just update the dialog methods:
 
   void _showCreateDepartmentDialog() {
     String fullName = '';
