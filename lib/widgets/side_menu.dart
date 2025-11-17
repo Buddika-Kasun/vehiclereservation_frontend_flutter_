@@ -25,6 +25,7 @@ class SideMenu extends StatelessWidget {
         MenuItem(Icons.business, 'Company'),
         MenuItem(Icons.account_balance_wallet, 'Cost Centers'),
         MenuItem(Icons.account_balance, 'Departments'),
+        MenuItem(Icons.directions_bus, 'Vehicle Types'),
         MenuItem(Icons.directions_car, 'Vehicles'),
         MenuItem(Icons.verified, 'Approvals'),
       ];
