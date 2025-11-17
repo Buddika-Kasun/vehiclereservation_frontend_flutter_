@@ -22,9 +22,10 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
   String _errorMessage = '';
   String _selectedFilter = 'Pending'; // 'Pending', 'Approved', 'Rejected', 'All'
 
-  // Store temporary editable values for current session only
-  final Map<int, String> _tempSelectedRoles = {};
-  final Map<int, String> _tempSelectedDepartmentIds = {};
+  // Store temporary editable values ONLY for currently expanded item
+  String? _tempSelectedRole;
+  String? _tempSelectedDepartmentId;
+  int? _tempEditingUserId;
 
   @override
   void initState() {
@@ -41,6 +42,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
       });
 
       _expandedIndex = -1;
+      _clearTempValues(); // Clear temp values when reloading
 
       final response = await ApiService.getUserCreations();
       
@@ -48,11 +50,6 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
         final List<dynamic> userCreationsData = response['data']['users'] ?? [];
         setState(() {
           _userCreations = userCreationsData.map((data) => UserCreation.fromJson(data)).toList();
-          
-          // Clear temporary maps when loading new data
-          _tempSelectedRoles.clear();
-          _tempSelectedDepartmentIds.clear();
-          
           _applyFilter();
           _isLoading = false;
         });
@@ -86,6 +83,13 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
       default:
         _filteredUserCreations = _userCreations;
     }
+  }
+
+  // Clear temporary values when changing filter or collapsing
+  void _clearTempValues() {
+    _tempSelectedRole = null;
+    _tempSelectedDepartmentId = null;
+    _tempEditingUserId = null;
   }
 
   Future<void> _approveUserCreation(int userCreationId, int index, String role, String? departmentId) async {
@@ -186,6 +190,22 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
     } catch (e) {
       return 'Unknown';
     }
+  }
+
+  // Get safe department ID - ensures the value exists in available departments
+  String _getSafeDepartmentId(UserCreation userCreation) {
+    if (_availableDepartments.isEmpty) return '';
+    
+    // First try to use the user's department if it exists
+    if (userCreation.departmentId != null) {
+      final userDeptId = userCreation.departmentId.toString();
+      if (_availableDepartments.any((dept) => dept.id.toString() == userDeptId)) {
+        return userDeptId;
+      }
+    }
+    
+    // Otherwise use the first available department
+    return _availableDepartments.first.id.toString();
   }
   
   String _generateShortName(String displayName) {
@@ -347,11 +367,14 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
                       final isExpanded = _expandedIndex == index;
                       final shortName = _generateShortName(userCreation.displayname);
                       
-                      // Get current values - use temp values if available, otherwise use original
-                      final currentRole = _tempSelectedRoles[userCreation.id] ?? userCreation.role.name;
-                      final currentDepartmentId = _tempSelectedDepartmentIds[userCreation.id] ?? 
-                          (userCreation.departmentId?.toString() ?? 
-                          (_availableDepartments.isNotEmpty ? _availableDepartments.first.id.toString() : ''));
+                      // Get current values - use temp values ONLY if this is the currently expanded item
+                      final bool isCurrentlyEditing = _tempEditingUserId == userCreation.id;
+                      final currentRole = isCurrentlyEditing && _tempSelectedRole != null 
+                          ? _tempSelectedRole! 
+                          : userCreation.role.name;
+                      final currentDepartmentId = isCurrentlyEditing && _tempSelectedDepartmentId != null
+                          ? _tempSelectedDepartmentId!
+                          : _getSafeDepartmentId(userCreation);
                       final canApprove = _canApprove(currentDepartmentId);
                       
                       return Container(
@@ -364,7 +387,18 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
                             borderRadius: BorderRadius.circular(12),
                             onTap: () {
                               setState(() {
-                                _expandedIndex = isExpanded ? null : index;
+                                if (isExpanded) {
+                                  // Collapsing - clear temp values
+                                  _expandedIndex = null;
+                                  _clearTempValues();
+                                } else {
+                                  // Expanding - set this as currently editing item
+                                  _expandedIndex = index;
+                                  _tempEditingUserId = userCreation.id;
+                                  // Initialize temp values with original values
+                                  _tempSelectedRole = userCreation.role.name;
+                                  _tempSelectedDepartmentId = _getSafeDepartmentId(userCreation);
+                                }
                               });
                             },
                             child: AnimatedContainer(
@@ -469,7 +503,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
                                         onChanged: (value) {
                                           if (value != null) {
                                             setState(() {
-                                              _tempSelectedRoles[userCreation.id] = value;
+                                              _tempSelectedRole = value;
                                             });
                                           }
                                         },
@@ -483,7 +517,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
                                         onChanged: (value) {
                                           if (value != null) {
                                             setState(() {
-                                              _tempSelectedDepartmentIds[userCreation.id] = value;
+                                              _tempSelectedDepartmentId = value;
                                             });
                                           }
                                         },
@@ -814,48 +848,48 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
               color: (status == 'pending' && canApprove) || status == 'rejected' 
                   ? Colors.green
                   : Colors.grey[400],
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: (status == 'pending' && canApprove) || status == 'rejected' ? [
+              BoxShadow(
+                color: Colors.green.withOpacity(0.3),
+                blurRadius: 8,
+                offset: Offset(0, 4),
+              ),
+            ] : [],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
               borderRadius: BorderRadius.circular(12),
-              boxShadow: (status == 'pending' && canApprove) || status == 'rejected' ? [
-                BoxShadow(
-                  color: Colors.green.withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: Offset(0, 4),
-                ),
-              ] : [],
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: (status == 'pending' && canApprove) || status == 'rejected' ? () {
-                  if (status == 'pending') {
-                    _showApproveConfirmation(index, currentRole, currentDepartmentId);
-                  } else if (status == 'rejected') {
-                    _showChangeToApproveConfirmation(index);
-                  }
-                } : null,
-                child: Center(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(width: 8),
-                      Text(
-                        status == 'rejected' ? 'Change to Approve' : 'Approve',
-                        style: TextStyle(
-                          color: (status == 'pending' && canApprove) || status == 'rejected' 
-                              ? Colors.white 
-                              : Colors.grey[600],
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
+              onTap: (status == 'pending' && canApprove) || status == 'rejected' ? () {
+                if (status == 'pending') {
+                  _showApproveConfirmation(index, currentRole, currentDepartmentId);
+                } else if (status == 'rejected') {
+                  _showChangeToApproveConfirmation(index);
+                }
+              } : null,
+              child: Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(width: 8),
+                    Text(
+                      status == 'rejected' ? 'Change to Approve' : 'Approve',
+                      style: TextStyle(
+                        color: (status == 'pending' && canApprove) || status == 'rejected' 
+                            ? Colors.white 
+                            : Colors.grey[600],
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
         ),
+        )
       ],
     );
   }
@@ -878,6 +912,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
                   setState(() {
                     _selectedFilter = filter;
                     _expandedIndex = -1;
+                    _clearTempValues(); // Clear temp values when changing filter
                     _applyFilter();
                   });
                 },
@@ -899,6 +934,13 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
     required String currentDepartmentId,
     required Function(String?) onChanged,
   }) {
+    // Ensure the current value exists in available departments
+    String safeCurrentDepartmentId = currentDepartmentId;
+    if (_availableDepartments.isNotEmpty && 
+        !_availableDepartments.any((dept) => dept.id.toString() == currentDepartmentId)) {
+      safeCurrentDepartmentId = _availableDepartments.first.id.toString();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -924,7 +966,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
-              value: currentDepartmentId,
+              value: safeCurrentDepartmentId,
               isExpanded: true,
               items: _availableDepartments.map((department) {
                 return DropdownMenuItem(
@@ -1273,10 +1315,8 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
     final userCreation = _filteredUserCreations[index];
     
     // Use temporary values if available, otherwise use original values
-    String _tempSelectedRole = _tempSelectedRoles[userCreation.id] ?? userCreation.role.name;
-    String _tempSelectedDepartmentId = _tempSelectedDepartmentIds[userCreation.id] ?? 
-        (userCreation.departmentId?.toString() ?? 
-        (_availableDepartments.isNotEmpty ? _availableDepartments.first.id.toString() : ''));
+    _tempSelectedRole = _tempSelectedRole ?? userCreation.role.name;
+    _tempSelectedDepartmentId = _tempSelectedDepartmentId ?? _getSafeDepartmentId(userCreation);
 
     showDialog(
       context: context,
@@ -1320,7 +1360,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
                   
                   // Role Dropdown
                   _buildRoleDropdownNew(
-                    currentRole: _tempSelectedRole,
+                    currentRole: _tempSelectedRole ?? '',
                     onChanged: (value) {
                       if (value != null) {
                         setState(() {
@@ -1334,7 +1374,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
                   
                   // Department Dropdown
                   _buildDepartmentDropdownNew(
-                    currentDepartmentId: _tempSelectedDepartmentId,
+                    currentDepartmentId: _tempSelectedDepartmentId ?? '',
                     onChanged: (value) {
                       if (value != null) {
                         setState(() {
@@ -1439,7 +1479,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
                                   await _approveUserCreation(
                                     userCreation.id, 
                                     index, 
-                                    _tempSelectedRole, 
+                                    _tempSelectedRole ?? '', 
                                     _tempSelectedDepartmentId
                                   );
                                   Navigator.pop(context);
@@ -1487,6 +1527,13 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
     required String currentDepartmentId,
     required Function(String?) onChanged,
   }) {
+    // Ensure the current value exists in available departments
+    String safeCurrentDepartmentId = currentDepartmentId;
+    if (_availableDepartments.isNotEmpty && 
+        !_availableDepartments.any((dept) => dept.id.toString() == currentDepartmentId)) {
+      safeCurrentDepartmentId = _availableDepartments.first.id.toString();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1526,7 +1573,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
             fillColor: Colors.transparent,
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
           ),
-          value: currentDepartmentId,
+          value: safeCurrentDepartmentId,
           items: _availableDepartments.map((department) {
             return DropdownMenuItem(
               value: department.id.toString(),
