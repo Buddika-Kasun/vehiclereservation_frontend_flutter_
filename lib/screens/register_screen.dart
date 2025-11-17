@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:vehiclereservation_frontend_flutter_/models/department_model.dart';
 import '../services/api_service.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -23,6 +24,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscureConfirmPassword = true;
   bool _hasCompanyEmail = false;
   String? _selectedRole;
+  String? _selectedDepartment;
+
+  List<Department> _departments = [];
 
   final List<String> _roles = ['Employee', 'Admin', 'Hr', 'Security', 'Driver'];
 
@@ -65,6 +69,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    if (_selectedDepartment == null) {
+      _showErrorDialog('Please select a department');
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -78,6 +87,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         phone: mobile,
         displayName: displayName,
         role: _selectedRole,
+        departmentId: _selectedDepartment,
       );
       
       _showSuccessDialog(res['message'] ?? 'Registration successful');
@@ -142,6 +152,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void initState() {
     super.initState();
     _checkAppStatus();
+    _loadDepartments();
+  }
+
+  Future<void> _loadDepartments() async {
+    try {
+      final response = await ApiService.getDepartments();
+      
+      if (response['success'] == true) {
+        final List<dynamic> departments = response['data']['departments'] ?? [];
+        setState(() {
+          _departments = departments.map((data) => Department.fromJson(data)).toList();
+        });
+      } else {
+        throw Exception(response['message'] ?? 'Failed to load cost centers');
+      }
+    } catch (e) {
+      print('Error loading cost centers: $e');
+      rethrow;
+    }
   }
 
   Future<void> _checkAppStatus() async {
@@ -292,6 +321,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _buildSignUpForm() {
+
     return SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.only(top: 0, bottom: 0, left: 24, right: 24), // 10px bottom padding
@@ -535,6 +565,45 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       _selectedRole = newValue;
                     });
                   }
+                },
+              ),
+
+              const SizedBox(height: 16),
+
+              // Department Dropdown
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                  labelText: 'Department',
+                  labelStyle: TextStyle(
+                    color: _selectedDepartment != null ? Colors.yellow[600] : Colors.grey[500],
+                  ),
+                  floatingLabelStyle: const TextStyle(color: Colors.yellow),
+                  prefixIcon: const Icon(Icons.admin_panel_settings, color: Colors.yellow),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade600, width: 2),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.yellow, width: 2),
+                  ),
+                  filled: true,
+                  fillColor: Colors.black,
+                ),
+                dropdownColor: Colors.black,
+                icon: const Icon(Icons.arrow_drop_down, color: Colors.yellow),
+                style: const TextStyle(color: Colors.yellow),
+                items: _departments.map((department) {
+                    return DropdownMenuItem(
+                      value: department.id.toString(),
+                      child: Text(department.name, style: const TextStyle(color: Colors.yellow)),
+                    );
+                  }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedDepartment = value;
+                  });
                 },
               ),
 
