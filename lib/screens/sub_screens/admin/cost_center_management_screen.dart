@@ -143,10 +143,11 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
       }
     } catch (e) {
       print('Error deleting cost center: $e');
+      _expandedIndex = null;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to delete cost center: $e')),
       );
-      rethrow;
+      //rethrow;
     }
   }
 
