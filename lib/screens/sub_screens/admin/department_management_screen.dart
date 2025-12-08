@@ -768,6 +768,8 @@ class _DepartmentsManagementScreenState extends State<DepartmentsManagementScree
                   // Department Users Info
                   if (_departmentUsers.isNotEmpty)
                     Container(
+                      width: double.infinity, // Take full width
+                      margin: EdgeInsets.only(top: 8), // Add some top margin
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Colors.green.withOpacity(0.1),
@@ -778,11 +780,13 @@ class _DepartmentsManagementScreenState extends State<DepartmentsManagementScree
                         children: [
                           Icon(Icons.people, size: 16, color: Colors.green),
                           SizedBox(width: 8),
-                          Text(
-                            '${_departmentUsers.length} users available in this department',
-                            style: TextStyle(
-                              color: Colors.green,
-                              fontSize: 12,
+                          Expanded( // Make text take available space
+                            child: Text(
+                              '${_departmentUsers.length} users available in this department',
+                              style: TextStyle(
+                                color: Colors.green,
+                                fontSize: 12,
+                              ),
                             ),
                           ),
                         ],
