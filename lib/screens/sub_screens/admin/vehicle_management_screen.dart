@@ -4,7 +4,7 @@ import 'dart:typed_data';
 //import 'dart:io';
 //import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 import 'package:vehiclereservation_frontend_flutter_/models/vehicleType_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/models/vehicle_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/models/user_model.dart';
@@ -234,7 +234,7 @@ class _VehicleManagementScreenState extends State<VehicleManagementScreen> {
       final bytes = _base64ToImage(qrCodeBase64);
       
       // Save to gallery
-      final result = await ImageGallerySaver.saveImage(
+      final result = await ImageGallerySaverPlus.saveImage(
         bytes,
         name: '${regNo}_qrcode',
         quality: 100,
