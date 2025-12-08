@@ -340,10 +340,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Transform.scale(
                       scale: 0.8,
                       child: Switch(
-                        value: _hasCompanyEmail,
+                        value: !_hasCompanyEmail,
                         onChanged: (bool value) {
                           setState(() {
-                            _hasCompanyEmail = value;
+                            _hasCompanyEmail = !value;
+                            print(_hasCompanyEmail);
                           });
                         },
                         inactiveTrackColor: Colors.transparent,
@@ -364,7 +365,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   labelText: 'Display Name *',
                   labelStyle: const TextStyle(color: Colors.grey),
                   floatingLabelStyle: const TextStyle(color: Colors.yellow),
-                  prefixIcon: const Icon(Icons.person, color: Colors.yellow),
+                  prefixIcon: const Icon(Icons.person, color: Color.fromARGB(255, 247, 178, 30)),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -388,7 +389,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   labelText: 'Username *',
                   labelStyle: const TextStyle(color: Colors.grey),
                   floatingLabelStyle: const TextStyle(color: Colors.yellow),
-                  prefixIcon: const Icon(Icons.account_circle, color: Colors.yellow),
+                  prefixIcon: const Icon(Icons.account_circle, color: Color.fromARGB(255, 247, 178, 30)),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -413,7 +414,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   labelText: 'Mobile Number *',
                   labelStyle: const TextStyle(color: Colors.grey),
                   floatingLabelStyle: const TextStyle(color: Colors.yellow),
-                  prefixIcon: const Icon(Icons.phone_android, color: Colors.yellow),
+                  prefixIcon: const Icon(Icons.phone_android, color: Color.fromARGB(255, 247, 178, 30)),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -429,7 +430,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
 
               // Company Email Field (conditionally shown)
-              if (!_hasCompanyEmail) ...[
+              if (_hasCompanyEmail) ...[
                 const SizedBox(height: 16),
                 TextField(
                   controller: _emailController,
@@ -439,7 +440,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     labelText: 'Company Email',
                     labelStyle: const TextStyle(color: Colors.grey),
                     floatingLabelStyle: const TextStyle(color: Colors.yellow),
-                    prefixIcon: const Icon(Icons.email, color: Colors.yellow),
+                    prefixIcon: const Icon(Icons.email, color: Color.fromARGB(255, 247, 178, 30)),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -465,11 +466,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   labelText: 'Password *',
                   labelStyle: const TextStyle(color: Colors.grey),
                   floatingLabelStyle: const TextStyle(color: Colors.yellow),
-                  prefixIcon: const Icon(Icons.lock, color: Colors.yellow),
+                  prefixIcon: const Icon(Icons.lock, color: Color.fromARGB(255, 247, 178, 30)),
                   suffixIcon: IconButton(
                     icon: Icon(
                       _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                      color: Colors.yellow,
+                      color: Color.fromARGB(211, 255, 235, 59),
                     ),
                     onPressed: () {
                       setState(() {
@@ -501,11 +502,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   labelText: 'Confirm Password *',
                   labelStyle: const TextStyle(color: Colors.grey),
                   floatingLabelStyle: const TextStyle(color: Colors.yellow),
-                  prefixIcon: const Icon(Icons.lock_outline, color: Colors.yellow),
+                  prefixIcon: const Icon(Icons.lock_outline, color: Color.fromARGB(255, 247, 178, 30)),
                   suffixIcon: IconButton(
                     icon: Icon(
                       _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
-                      color: Colors.yellow,
+                      color: Color.fromARGB(211, 255, 235, 59),
                     ),
                     onPressed: () {
                       setState(() {
@@ -537,7 +538,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     color: _selectedRole != null ? Colors.yellow[600] : Colors.grey[500],
                   ),
                   floatingLabelStyle: const TextStyle(color: Colors.yellow),
-                  prefixIcon: const Icon(Icons.admin_panel_settings, color: Colors.yellow),
+                  prefixIcon: const Icon(Icons.admin_panel_settings, color: Color.fromARGB(255, 247, 178, 30)),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -551,7 +552,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   fillColor: Colors.black,
                 ),
                 dropdownColor: Colors.black,
-                icon: const Icon(Icons.arrow_drop_down, color: Colors.yellow),
+                icon: const Icon(Icons.arrow_drop_down, color: Color.fromARGB(211, 255, 235, 59)),
                 style: const TextStyle(color: Colors.yellow),
                 items: _roles.map((String role) {
                   return DropdownMenuItem<String>(
@@ -578,7 +579,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     color: _selectedDepartment != null ? Colors.yellow[600] : Colors.grey[500],
                   ),
                   floatingLabelStyle: const TextStyle(color: Colors.yellow),
-                  prefixIcon: const Icon(Icons.admin_panel_settings, color: Colors.yellow),
+                  prefixIcon: const Icon(Icons.admin_panel_settings, color: Color.fromARGB(255, 247, 178, 30)),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -592,7 +593,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   fillColor: Colors.black,
                 ),
                 dropdownColor: Colors.black,
-                icon: const Icon(Icons.arrow_drop_down, color: Colors.yellow),
+                icon: const Icon(Icons.arrow_drop_down, color: Color.fromARGB(211, 255, 235, 59)),
                 style: const TextStyle(color: Colors.yellow),
                 items: _departments.map((department) {
                     return DropdownMenuItem(
@@ -609,28 +610,54 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               const SizedBox(height: 30),
 
-              // Create Account Button
+              // Create Account Button with Gradient
               SizedBox(
                 height: 50,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _register,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.yellow[600],
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    backgroundColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: EdgeInsets.zero,
                   ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
-                          ),
-                        )
-                      : const Text(
-                          'Create account',
-                          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
+                  child: Ink(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        colors: [
+                          Color(0xFFf7971e), // Orange
+                          Color(0xFFffd200), // Yellow
+                        ],
+                        stops: [0.0, 1.0],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Container(
+                      width: double.infinity,
+                      height: 50,
+                      alignment: Alignment.center,
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                              ),
+                            )
+                          : const Text(
+                              'Create account',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
