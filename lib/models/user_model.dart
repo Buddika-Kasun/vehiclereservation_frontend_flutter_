@@ -26,7 +26,7 @@ class User {
   final int id;
   final String username;
   final String displayname;
-  final String email;
+  final String? email;
   final String phone;
   final UserRole role; // Use enum
   final String? department;
@@ -41,7 +41,7 @@ class User {
     required this.id,
     required this.username,
     required this.displayname,
-    required this.email,
+    this.email,
     required this.phone,
     required this.role,
     this.department,
@@ -58,7 +58,7 @@ class User {
       id: json['id'] as int,
       username: json['username'] as String,
       displayname: json['displayname'] as String,
-      email: json['email'] as String,
+      email: json['email'],
       phone: json['phone'] as String,
       role: UserRole.fromString(json['role'] as String),
       department: json['department']?['name'],
