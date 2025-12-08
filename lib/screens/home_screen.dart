@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/admin/approval_user_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/admin/vehicleType_managemnet_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/assigned_ride_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/rides_approval_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/vehicle_screen.dart';
 import '../models/user_model.dart';
 import '../services/storage_service.dart';
 import '../widgets/side_menu.dart';
@@ -7,10 +11,10 @@ import '../widgets/top_bar.dart';
 import 'login_screen.dart';
 
 // Import all the screens
-import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/dashboard_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/rides_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/dashboard/dashboard_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/ride/rides_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/user_creations_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/approvals_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/trip_approval/approvals_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/admin/company_management_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/admin/department_management_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/admin/cost_center_management_screen.dart';
@@ -116,17 +120,26 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'Home':
         _navigateToDashboard();
         break;
-      case 'Rides':
+      case 'My Vehicles':
+        _navigateToVehicles();
+        break;
       case 'My Rides':
+      case 'All Rides':
         _navigateToRides();
         break;
+      case 'Ride Approvals':
+        _navigateToRideApprovals();
+        break;
+      case 'Assigned Rides':
+        _navigateToAssignedRides();
+        break;
       case 'User Creations':
-      case 'Pending User Creations':
+      //case 'Pending User Creations':
         _navigateToUserCreations();
         break;
-      case 'Approvals':
-      case 'Pending Trip Approvals':
-      case 'Safety Approvals':
+      case 'Trip Approvals':
+      //case 'Pending Trip Approvals':
+      //case 'Safety Approvals':
         _navigateToApprovals();
         break;
     }
@@ -147,7 +160,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _navigateToRides() {
     setState(() {
-      _currentScreen = RidesScreen();
+      _currentScreen = RidesScreen(userId: _user!.id);
+    });
+  }
+
+  void _navigateToRideApprovals() {
+    setState(() {
+      _currentScreen = RidesApprovalScreen();
+    });
+  }
+
+  void _navigateToAssignedRides() {
+    setState(() {
+      _currentScreen = AssignedRideScreen(userId: _user!.id);
+    });
+  }
+
+  void _navigateToVehicles() {
+    setState(() {
+      _currentScreen = VehicleScreen(user: _user!);
     });
   }
 
@@ -160,6 +191,12 @@ class _HomeScreenState extends State<HomeScreen> {
   void _navigateToApprovals() {
     setState(() {
       _currentScreen = ApprovalsScreen();
+    });
+  }
+
+  void _navigateToApprovalUsers() {
+    setState(() {
+      _currentScreen = ApprovalUsersScreen();
     });
   }
 
@@ -182,6 +219,9 @@ class _HomeScreenState extends State<HomeScreen> {
         break;
       case 'Approvals':
         _navigateToAdminApprovalManagement();
+        break;
+      case 'Approval Users':
+        _navigateToApprovalUsers();
         break;
     }
   }
@@ -216,40 +256,228 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+/*
   void _navigateToAdminApprovalManagement() {
     setState(() {
       _currentScreen = ApprovalManagementScreen();
     });
   }
+*/
 
-  Future<void> _showLogoutDialog() async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Log Out'),
-        content: Text('Are you sure you want to log out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('Log Out', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-
-    if (result == true) {
-      await StorageService.clearUserData();
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => LoginScreen()),
+  // Add this method to handle switching between approval screens
+  void _switchToApprovalUsersScreen() {
+    setState(() {
+      _currentScreen = ApprovalUsersScreen(
+        onBackToApprovalConfig: _switchToApprovalManagementScreen,
       );
-    }
+    });
   }
 
+  void _switchToApprovalManagementScreen() {
+    setState(() {
+      _currentScreen = ApprovalManagementScreen(
+        onApprovalUsersPressed: _switchToApprovalUsersScreen,
+      );
+    });
+  }
+
+  // Update your existing method to use the new approach
+  void _navigateToAdminApprovalManagement() {
+    _switchToApprovalManagementScreen();
+  }
+
+  Future<void> _showLogoutDialog() async {
+  final result = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      backgroundColor: Colors.transparent,
+      contentPadding: EdgeInsets.zero,
+      content: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color.fromARGB(197, 255, 65, 65),
+              Color.fromARGB(215, 255, 50, 43),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Icon
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.3),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.logout_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                ),
+              ),
+              
+              SizedBox(height: 8),
+              
+              // Title
+              Text(
+                'Log Out',
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              
+              SizedBox(height: 8),
+              
+              // Message
+              Text(
+                'Are you sure you want to log out?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.white.withOpacity(0.9),
+                  height: 1.5,
+                ),
+              ),
+              
+              SizedBox(height: 20),
+              
+              // Buttons Row
+              Row(
+                children: [
+                  // Cancel Button - Glassmorphism with neon border
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.white.withOpacity(0.05),
+                            Colors.white.withOpacity(0.15),
+                          ],
+                        ),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.2),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.white.withOpacity(0.1),
+                            blurRadius: 10,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: Text(
+                          'Stay',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  SizedBox(width: 16),
+                  
+                  // Logout Button - Glowing red gradient
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            //Color.fromARGB(168, 255, 0, 0),
+                            Color.fromARGB(111, 196, 0, 0),
+                            Color.fromARGB(255, 196, 0, 0),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color.fromARGB(255, 196, 0, 0).withOpacity(0.6),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color(0xFFFF416C).withOpacity(0.6),
+                            blurRadius: 15,
+                            spreadRadius: 2,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            //Icon(Icons.logout, size: 20, color: Colors.white),
+                            SizedBox(width: 6),
+                            Text(
+                              'Log Out',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+
+  if (result == true) {
+    await StorageService.clearUserData();
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => LoginScreen()),
+    );
+  }
+}
   void _showUserProfile() {
     if (_user == null) return;
     
@@ -349,4 +577,5 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
 }
