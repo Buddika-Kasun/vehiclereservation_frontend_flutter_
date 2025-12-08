@@ -18,7 +18,7 @@ class SideMenu extends StatelessWidget {
   }) : super(key: key);
 
   // Define menu items based on user role and authority
-  List<MenuItem> _getMenuItems() {
+  List<MenuItem> _getMenuItems() { 
     if (isAdminConsole) {
       // Admin Console menu items
       return [
@@ -33,57 +33,64 @@ class SideMenu extends StatelessWidget {
 
     final items = <MenuItem>[];
     
+    final hasUserCreationAuthority = AuthorityService.hasUserCreationAuthority(user);
+    final hasTripApprovalAuthority = AuthorityService.hasTripApprovalAuthority(user);
+    
+    items.addAll([
+      MenuItem(Icons.home, 'Home'),
+      //MenuItem(Icons.directions_car, 'My Rides'),
+    ]);
+    
+    if (hasUserCreationAuthority) {
+      items.add(MenuItem(Icons.person_add, 'User Creations'));
+    }
+    
+    if (hasTripApprovalAuthority) {
+      items.add(MenuItem(Icons.verified, 'Trip Approvals'));
+    }
+
     switch (user.role) {
       case UserRole.employee:
-        final hasUserCreationAuthority = AuthorityService.hasUserCreationAuthority(user);
-        final hasTripApprovalAuthority = AuthorityService.hasTripApprovalAuthority(user);
-        
         items.addAll([
-          MenuItem(Icons.home, 'Home'),
           MenuItem(Icons.directions_car, 'My Rides'),
         ]);
-        
-        if (hasUserCreationAuthority) {
-          items.add(MenuItem(Icons.person_add, 'Pending User Creations'));
-        }
-        
-        if (hasTripApprovalAuthority) {
-          items.add(MenuItem(Icons.verified, 'Pending Trip Approvals'));
-        }
-        break;
+      break;
         
       case UserRole.hr:
       case UserRole.admin:
         items.addAll([
-          MenuItem(Icons.home, 'Home'),
-          MenuItem(Icons.directions_car, 'Rides'),
-          MenuItem(Icons.person_add, 'User Creations'),
-          MenuItem(Icons.verified, 'Approvals'),
+          //MenuItem(Icons.home, 'Home'),
+          MenuItem(Icons.directions_car, 'My Rides'),
+          //MenuItem(Icons.person_add, 'User Creations'),
+          //MenuItem(Icons.verified, 'Approvals'),
         ]);
         break;
         
       case UserRole.sysadmin:
         items.addAll([
-          MenuItem(Icons.home, 'Home'),
-          MenuItem(Icons.directions_car, 'Rides'),
-          MenuItem(Icons.person_add, 'User Creations'),
-          MenuItem(Icons.verified, 'Approvals'),
+          //MenuItem(Icons.home, 'Home'),
+          MenuItem(Icons.directions_car, 'All Rides'),
+          //MenuItem(Icons.person_add, 'User Creations'),
+          //MenuItem(Icons.verified, 'All Approvals'),
+          MenuItem(Icons.verified, 'Ride Approvals'),
+          MenuItem(Icons.directions_car, 'Assigned Rides'),
           MenuItem(Icons.admin_panel_settings, 'Admin Console', isSysAdmin: true),
         ]);
         break;
         
       case UserRole.security:
         items.addAll([
-          MenuItem(Icons.home, 'Home'),
-          MenuItem(Icons.directions_car, 'My Rides'),
-          MenuItem(Icons.verified, 'Safety Approvals'),
+          //MenuItem(Icons.home, 'Home'),
+          //MenuItem(Icons.directions_car, 'My Rides'),
+          MenuItem(Icons.verified, 'Ride Approvals'),
         ]);
         break;
         
       case UserRole.driver:
         items.addAll([
-          MenuItem(Icons.home, 'Home'),
-          MenuItem(Icons.directions_car, 'My Rides'),
+          //MenuItem(Icons.home, 'Home'),
+          MenuItem(Icons.directions_car, 'My Vehicles'),
+          MenuItem(Icons.directions_car, 'Assigned Rides'),
         ]);
         break;
     }
@@ -184,26 +191,46 @@ class SideMenu extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: 16),
-                  Text(
-                    user.displayname,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                    ShaderMask(
+                    shaderCallback: (Rect bounds) {
+                      return LinearGradient(
+                        colors: [
+                          Color.fromARGB(213, 240, 240, 240), // Very light gray
+                          Colors.white,
+                        ],
+                      ).createShader(bounds);
+                    },
+                    child: Text(
+                      user.displayname,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  ShaderMask(
+                    shaderCallback: (Rect bounds) {
+                      return LinearGradient(
+                        colors: [
+                          Color(0xFFf7971e), // Orange
+                          Color(0xFFffd200), // Yellow
+                        ],
+                      ).createShader(bounds);
+                    },
+                    child: Text(
+                      _getRoleDisplayName(),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white, // This color will be replaced by gradient
+                      ),
                     ),
                   ),
                   SizedBox(height: 8),
                   Text(
-                    _getRoleDisplayName(),
-                    style: TextStyle(
-                      color: AppColors.secondary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    user.email,
+                    user.email ?? 'No mail',
                     style: TextStyle(
                       color: Colors.white70,
                     ),
@@ -224,7 +251,16 @@ class SideMenu extends StatelessWidget {
           // Menu Items - SAME STYLE FOR BOTH
           Expanded(
             child: Container(
-              color: AppColors.secondary, // Same background color for both
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    Colors.yellow[800]!,  // Dark color at top
+                    Colors.yellow[600]!,    // Pure black at bottom
+                  ],
+                ),
+              ),
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
@@ -253,11 +289,19 @@ class SideMenu extends StatelessWidget {
       margin: EdgeInsets.only(
         left: 8,
         right: 8,
-        top: item.isLogout ? 16 : 0,
+        top: item.isLogout ? 16 : 4,
         bottom: item.isLogout ? 8 : 0,
       ),
       decoration: BoxDecoration(
-        color: item.isLogout ? Colors.red : Colors.transparent,
+        gradient: LinearGradient(
+          colors: item.isLogout 
+          ? [Colors.red[800]!, const Color.fromARGB(205, 244, 67, 54), const Color.fromARGB(110, 244, 67, 54)] 
+          : item.isSysAdmin 
+              ? [const Color.fromARGB(97, 243, 58, 58), const Color.fromARGB(10, 174, 65, 65)]
+              : [const Color.fromARGB(28, 5, 3, 0), Colors.transparent],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
         borderRadius: item.isLogout 
             ? BorderRadius.only(
                 topLeft: Radius.circular(12),
@@ -265,7 +309,13 @@ class SideMenu extends StatelessWidget {
                 bottomLeft: Radius.circular(12),
                 bottomRight: Radius.circular(12),
               )
-            : null,
+            //: null,
+            : BorderRadius.only(
+                topLeft: Radius.circular(12),
+                topRight: Radius.circular(12),
+                bottomLeft: Radius.circular(12),
+                bottomRight: Radius.circular(12),
+              )
       ),
       child: ListTile(
         leading: Icon(
@@ -281,7 +331,11 @@ class SideMenu extends StatelessWidget {
         ),
         trailing: Icon(
           Icons.arrow_forward_ios,
-          color: Colors.grey[600],
+          color: item.isLogout
+          ? Colors.white.withOpacity(0.8)
+          : item.isSysAdmin
+              ? Color.fromARGB(255, 210, 28, 16)
+              : Colors.grey[600],
           size: 16,
         ),
         onTap: () {
@@ -304,7 +358,7 @@ class SideMenu extends StatelessWidget {
     if (item.isLogout) {
       return Colors.white;
     } else if (item.isSysAdmin) {
-      return Colors.red;
+      return Color.fromARGB(255, 210, 28, 16);
     } else {
       return Colors.black;
     }
@@ -314,11 +368,12 @@ class SideMenu extends StatelessWidget {
     if (item.isLogout) {
       return Colors.white;
     } else if (item.isSysAdmin) {
-      return Colors.red;
+      return const Color.fromARGB(255, 210, 28, 16);
     } else {
       return Colors.black;
     }
   }
+
 }
 
 class MenuItem {
