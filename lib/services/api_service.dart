@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:vehiclereservation_frontend_flutter_/models/available_vehicles_response.dart';
+import 'package:vehiclereservation_frontend_flutter_/models/driver_trip_response.dart';
 import 'package:vehiclereservation_frontend_flutter_/models/trip_booking_response.dart';
 import 'package:vehiclereservation_frontend_flutter_/models/trip_list_response.dart';
 import 'package:vehiclereservation_frontend_flutter_/models/trip_request_model.dart';
@@ -10,7 +11,9 @@ import 'package:vehiclereservation_frontend_flutter_/services/storage_service.da
 import '../config/api_config.dart';
 
 class ApiService {
-  static const String baseUrl = ApiConfig.baseUrl;
+  //static const String baseUrl = ApiConfig.baseUrl;
+  static final String baseUrl = ApiConfig.baseUrl;
+  //static String get baseUrl => ApiConfig.baseUrl;
 
   static Future<Map<String, dynamic>> login(
       String username, String password) async {
@@ -416,6 +419,15 @@ class ApiService {
     );
   }
 
+  static Future<Map<String, dynamic>> getUsersByRole(
+      String role,
+  ) async {
+    return await authenticatedApiCall(
+      'user/get-all-by-role/$role',
+      method: 'GET',
+    );
+  }
+
   static Future<Map<String, dynamic>> searchUsers(String query) async {
     return await authenticatedApiCall(
       'user/search?query=$query',
@@ -523,11 +535,22 @@ class ApiService {
   }
 
   // UserCreation API methods
-  static Future<Map<String, dynamic>> getUserCreations() async {
+  static Future<Map<String, dynamic>> getUserCreations({
+    String? status,
+    int page = 1,
+    int limit = 10,
+  }) async {
+    // Prepare body data
+    final Map<String, dynamic> body = {'page': page, 'limit': limit};
+
+    if (status != null && status != 'All') {
+      body['status'] = status.toLowerCase();
+    }
+
     return await authenticatedApiCall(
-      //'user-creations',
-      'user/get-all',
-      method: 'GET',
+      'user/get-all-by-status',
+      method: 'POST',
+      body: body, // This will be sent as body
     );
   }
 
@@ -571,7 +594,7 @@ class ApiService {
 
   static Future<Map<String, dynamic>> getMenuApprovalConfig() async {
     return await authenticatedApiCall(
-      'approval-config/get-menu-approval',
+      'approval-config/get-menu-approvals',
       method: 'GET',
     );
     
@@ -737,7 +760,7 @@ class ApiService {
         body: request,
       );
 
-      print('Pending approvals API response: $response');
+      //print('Pending approvals API response: $response');
 
       if (response['success'] == true) {
         return response;
@@ -782,6 +805,66 @@ class ApiService {
         'rejectionReason': comment,
       },
     );
+  }
+
+  static Future<Map<String, dynamic>> getTripsForMeterReading(
+    Map<String, dynamic> request,
+  ) async {
+    return await ApiService.authenticatedApiCall(
+      'trips/for-meter-reading',
+      method: 'POST',
+      body: request,
+    );
+  }
+
+  static Future<Map<String, dynamic>> getReadTrips(
+    Map<String, dynamic> request,
+  ) async {
+    return await ApiService.authenticatedApiCall(
+      'trips/already-read',
+      method: 'POST',
+      body: request,
+    );
+  }
+
+  static Future<Map<String, dynamic>> recordOdometer(
+    int tripId,
+    double reading,
+    String readingType,
+  ) async {
+    return await ApiService.authenticatedApiCall(
+      'trips/record-odometer/$tripId',
+      method: 'POST',
+      body: {
+        'reading': reading,
+        'readingType': readingType, // 'start' or 'end'
+      },
+    );
+  }
+
+  static Future<DriverTripResponse> getDriverAssignedTrips(
+      DriverTripListRequest request,
+    ) async {
+      try {
+        return await ApiService.authenticatedApiCall(
+          'trips/driver-assigned',
+          method: 'POST',
+          body: request.toJson(),
+        ).then((response) {
+          return DriverTripResponse.fromJson(response);
+        });
+      } catch (e) {
+        print('Error getting driver trips: $e');
+        rethrow;
+      }
+    }
+
+  static Future<Map<String, dynamic>> startTrip(int tripId) async {
+    return await authenticatedApiCall('trips/start/$tripId', method: 'POST');
+  }
+
+  static Future<Map<String, dynamic>> endTrip(int tripId) async {
+    return await authenticatedApiCall('trips/end/$tripId', method: 'POST');
   }
 
 }

@@ -18,7 +18,7 @@ class _RidesScreenState extends State<RidesScreen> {
   bool _loadingMore = false;
   String _errorMessage = '';
   int _page = 1;
-  int _limit = 4;
+  int _limit = 3;
   bool _hasMore = true;
 
   // Filters

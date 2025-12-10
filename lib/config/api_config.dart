@@ -1,14 +1,20 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class ApiConfig {
-  static const String baseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://localhost:3000/api/v1',
-  );
-  
-  static const Map<String, String> headers = {
-    'Content-Type': 'application/json',
-  };
-  
-  // Timeout durations
-  static const Duration searchTimeout = Duration(seconds: 10);
-  static const Duration routeTimeout = Duration(seconds: 15);
+  static bool _initialized = false;
+
+  static Future<void> init() async {
+    if (!_initialized) {
+      await dotenv.load(fileName: ".env");
+      _initialized = true;
+    }
+  }
+
+  static String get baseUrl {
+    if (!_initialized) {
+      throw Exception('ApiConfig not initialized');
+    }
+    final url = dotenv.env['API_URL'] ?? 'http://localhost:3000';
+    return url.endsWith('/api/v1') ? url : '$url/api/v1';
+  }
 }

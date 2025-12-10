@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/utils/constant.dart';
@@ -20,6 +22,7 @@ class _ApprovalUsersScreenState extends State<ApprovalUsersScreen> {
   String _searchQuery = '';
   String _errorMessage = '';
   bool _hasError = false;
+  Timer? _searchTimer;
 
   final TextEditingController _searchController = TextEditingController();
 
@@ -27,6 +30,12 @@ class _ApprovalUsersScreenState extends State<ApprovalUsersScreen> {
   void initState() {
     super.initState();
     _loadApprovalUsers();
+  }
+
+  @override
+  void dispose() {
+    _searchTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadApprovalUsers() async {
@@ -67,33 +76,40 @@ class _ApprovalUsersScreenState extends State<ApprovalUsersScreen> {
     return;
   }
 
+  // Cancel previous timer
+  _searchTimer?.cancel();
+
   setState(() {
     _isSearching = true;
   });
 
-  try {
-    final response = await ApiService.searchUsersApproval(query);
-    if (response['success'] == true) {
-      final usersData = response['data']['users'] as List<dynamic>;
+  // Create new timer with delay
+  _searchTimer = Timer(const Duration(milliseconds: 500), () async {
+    try {
+      final response = await ApiService.searchUsersApproval(query);
+      if (response['success'] == true) {
+        final usersData = response['data']['users'] as List<dynamic>;
+        setState(() {
+          _searchResults = usersData.map((data) => {
+            'id': data['_id']?.toString() ?? data['id']?.toString() ?? '', // Ensure string
+            'displayName': data['displayname'] ?? 'Unknown User',
+            'department': data['departmentName'] ?? 'No department',
+            'role': data['role'] ?? 'User',
+          }).toList();
+          _isSearching = false;
+        });
+      } else {
+        throw Exception(response['message'] ?? 'Failed to search users');
+      }
+    } catch (e) {
+      print('Error searching users: $e');
       setState(() {
-        _searchResults = usersData.map((data) => {
-          'id': data['_id']?.toString() ?? data['id']?.toString() ?? '', // Ensure string
-          'displayName': data['displayname'] ?? 'Unknown User',
-          'department': data['departmentName'] ?? 'No department',
-          'role': data['role'] ?? 'User',
-        }).toList();
+        _searchResults = [];
         _isSearching = false;
       });
-    } else {
-      throw Exception(response['message'] ?? 'Failed to search users');
     }
-  } catch (e) {
-    print('Error searching users: $e');
-    setState(() {
-      _searchResults = [];
-      _isSearching = false;
-    });
-  }
+  });
+
 }
 
   Future<void> _addUserAsApprovalUser(Map<String, dynamic> user) async {

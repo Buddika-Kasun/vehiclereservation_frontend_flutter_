@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/models/approvalConfig_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/admin/approval_user_screen.dart';
@@ -19,6 +21,7 @@ class _ApprovalManagementScreenState extends State<ApprovalManagementScreen> {
   bool _isSubmitting = false;
   bool _hasError = false;
   String _errorMessage = '';
+  Timer? _searchTimer;
 
   @override
   void initState() {
@@ -26,6 +29,12 @@ class _ApprovalManagementScreenState extends State<ApprovalManagementScreen> {
     _loadApprovalConfiguration();
   }
 
+  @override
+  void dispose() {
+    _searchTimer?.cancel();
+    super.dispose();
+  }
+  
   Widget _buildApprovalUsersButton() {
   return Container(
     width: double.infinity,
@@ -196,6 +205,39 @@ class _ApprovalManagementScreenState extends State<ApprovalManagementScreen> {
         return StatefulBuilder(
           builder: (context, setState) {
             
+            Future<void> _performSearch(String query) async {
+              try {
+                final response = await ApiService.searchUsers(query);
+                if (response['success'] == true) {
+                  final usersData = response['data']['users'] as List<dynamic>;
+                  setState(() {
+                    localSearchResults = usersData
+                        .map(
+                          (data) => {
+                            'id': data['_id'] ?? data['id'],
+                            'displayName':
+                                data['displayName'] ??
+                                data['displayname'] ??
+                                'Unknown',
+                          },
+                        )
+                        .toList();
+                    localIsSearching = false;
+                  });
+                } else {
+                  throw Exception(
+                    response['message'] ?? 'Failed to search users',
+                  );
+                }
+              } catch (e) {
+                print('Error searching users: $e');
+                setState(() {
+                  localSearchResults = [];
+                  localIsSearching = false;
+                });
+              }
+            }
+
             // Local search function for the dialog
             Future<void> localSearchUsers(String query) async {
               if (query.isEmpty) {
@@ -206,31 +248,18 @@ class _ApprovalManagementScreenState extends State<ApprovalManagementScreen> {
                 return;
               }
 
+              // Cancel previous timer
+              _searchTimer?.cancel();
+
               setState(() {
                 localIsSearching = true;
               });
 
-              try {
-                final response = await ApiService.searchUsers(query);
-                if (response['success'] == true) {
-                  final usersData = response['data']['users'] as List<dynamic>;
-                  setState(() {
-                    localSearchResults = usersData.map((data) => {
-                      'id': data['_id'] ?? data['id'],
-                      'displayName': data['displayName'] ?? data['displayname'] ?? 'Unknown'
-                    }).toList();
-                    localIsSearching = false;
-                  });
-                } else {
-                  throw Exception(response['message'] ?? 'Failed to search users');
-                }
-              } catch (e) {
-                print('Error searching users: $e');
-                setState(() {
-                  localSearchResults = [];
-                  localIsSearching = false;
-                });
-              }
+              // Create new timer with delay
+              _searchTimer = Timer(const Duration(milliseconds: 500), () async {
+                await _performSearch(query);
+              });
+
             }
 
             return Dialog(

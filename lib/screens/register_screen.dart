@@ -22,7 +22,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _hasError = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
-  bool _hasCompanyEmail = false;
+  bool _hasCompanyEmail = true;
   String? _selectedRole;
   String? _selectedDepartment;
 
@@ -83,7 +83,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         username,
         password,
         confirmPassword,
-        _hasCompanyEmail ? null : email,
+        _hasCompanyEmail ? email : null,
         phone: mobile,
         displayName: displayName,
         role: _selectedRole,

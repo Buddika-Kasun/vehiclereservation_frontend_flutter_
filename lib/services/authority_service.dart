@@ -24,6 +24,9 @@ class AuthorityService {
 
   // Synchronous method for UI use
   static bool hasTripApprovalAuthority(User user) {
+
+    preloadApprovalConfig();
+    
     // If user is sysadmin, they have authority
     if (user.role == UserRole.sysadmin) {
       return true;

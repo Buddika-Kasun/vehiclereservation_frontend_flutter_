@@ -13,45 +13,103 @@ class UserCreationsScreen extends StatefulWidget {
 }
 
 class _UserCreationsScreenState extends State<UserCreationsScreen> {
-  List<UserCreation> _userCreations = [];
-  List<UserCreation> _filteredUserCreations = [];
+  //List<UserCreation> _userCreations = [];
+  //List<UserCreation> _filteredUserCreations = [];
+  List<UserCreation> _allUserCreations = [];
+  List<UserCreation> _displayedUserCreations = [];
+
   List<Department> _availableDepartments = [];
   int? _expandedIndex;
   bool _isLoading = true;
   bool _hasError = false;
   String _errorMessage = '';
   String _selectedFilter = 'Pending'; // 'Pending', 'Approved', 'Rejected', 'All'
-
+  int? _total;
   // Store temporary editable values ONLY for currently expanded item
   String? _tempSelectedRole;
   String? _tempSelectedDepartmentId;
   int? _tempEditingUserId;
+
+  // Add pagination variables
+  int _currentPage = 1;
+  final int _itemsPerPage = 10;
+  bool _hasMoreData = true;
+  bool _isLoadingMore = false;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _loadDepartments();
     _loadUserCreations();
+
+    // Add scroll listener for pagination
+    _scrollController.addListener(_onScroll);
   }
 
-  Future<void> _loadUserCreations() async {
-    try {
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200 &&
+        !_isLoadingMore &&
+        _hasMoreData) {
+      _loadMoreUserCreations();
+    }
+  }
+
+  Future<void> _loadUserCreations({bool loadMore = false}) async {
+    // Reset for new filter
+    if (!loadMore) {
       setState(() {
+        _currentPage = 1;
+        _hasMoreData = true;
+        _allUserCreations = [];
+        _displayedUserCreations = [];
         _isLoading = true;
         _hasError = false;
       });
+    } else {
+      setState(() {
+        _isLoadingMore = true;
+      });
+    }
 
-      _expandedIndex = -1;
-      _clearTempValues(); // Clear temp values when reloading
+    try {
+      final response = await ApiService.getUserCreations(
+        status: _selectedFilter == 'All' ? null : _selectedFilter,
+        page: _currentPage,
+        limit: _itemsPerPage,
+      );
 
-      final response = await ApiService.getUserCreations();
-      
       if (response['success'] == true) {
         final List<dynamic> userCreationsData = response['data']['users'] ?? [];
+        final total = response['data']['total'] ?? 0;
+        final currentPage = response['data']['page'] ?? _currentPage;
+        final totalPages = response['data']['totalPages'] ?? 1;
+
+        final newUserCreations = userCreationsData
+            .map((data) => UserCreation.fromJson(data))
+            .toList();
+
         setState(() {
-          _userCreations = userCreationsData.map((data) => UserCreation.fromJson(data)).toList();
-          _applyFilter();
+          if (loadMore) {
+            _allUserCreations.addAll(newUserCreations);
+            _displayedUserCreations = List.from(_allUserCreations);
+          } else {
+            _allUserCreations = newUserCreations;
+            _displayedUserCreations = newUserCreations;
+          }
+
+          _hasMoreData = currentPage < totalPages;
           _isLoading = false;
+          _isLoadingMore = false;
+          _total = total;
         });
       } else {
         throw Exception(response['message'] ?? 'Failed to load user creations');
@@ -62,27 +120,50 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
         _hasError = true;
         _errorMessage = e.toString();
         _isLoading = false;
+        _isLoadingMore = false;
+        if (!loadMore) {
+          _allUserCreations = [];
+          _displayedUserCreations = [];
+        }
       });
     }
   }
 
+  Future<void> _loadMoreUserCreations() async {
+    if (_isLoadingMore || !_hasMoreData) return;
+
+    setState(() {
+      _currentPage++;
+    });
+
+    await _loadUserCreations(loadMore: true);
+  }
+
   void _applyFilter() {
-    switch (_selectedFilter) {
-      case 'Pending':
-        _filteredUserCreations = _userCreations.where((user) => user.isApproved == 'pending').toList();
-        break;
-      case 'Approved':
-        _filteredUserCreations = _userCreations.where((user) => user.isApproved == 'approved').toList();
-        break;
-      case 'Rejected':
-        _filteredUserCreations = _userCreations.where((user) => user.isApproved == 'rejected').toList();
-        break;
-      case 'All':
-        _filteredUserCreations = _userCreations;
-        break;
-      default:
-        _filteredUserCreations = _userCreations;
-    }
+    setState(() {
+      _expandedIndex = -1;
+      _clearTempValues();
+    });
+
+    // Load new data with filter
+    _loadUserCreations();
+  }
+
+  Widget _buildLoadingMoreWidget() {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 20),
+      child: Center(
+        child: _hasMoreData
+            ? CircularProgressIndicator(color: AppColors.secondary)
+            : Text(
+                'No more users',
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: 14,
+                ),
+              ),
+      ),
+    );
   }
 
   // Clear temporary values when changing filter or collapsing
@@ -101,7 +182,14 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
       );
       
       if (response['success'] == true) {
+
+        setState(() {
+          _expandedIndex = -1;
+          _selectedFilter = 'Approved';
+        });
+
         await _loadUserCreations();
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('User approved successfully')),
         );
@@ -122,6 +210,11 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
       final response = await ApiService.rejectUserCreation(userCreationId);
       
       if (response['success'] == true) {
+        setState(() {
+          _expandedIndex = -1;
+          _selectedFilter = 'Rejected';
+        });
+
         await _loadUserCreations();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('User rejected successfully')),
@@ -339,7 +432,9 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  _filteredUserCreations.length.toString(),
+                  //_filteredUserCreations.length.toString(),
+                  //_displayedUserCreations.length.toString(),
+                  _total.toString(),
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -355,15 +450,32 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
 
         // User Creations List
         Expanded(
-          child: _filteredUserCreations.isEmpty 
-              ? _buildEmptyState()
-              : RefreshIndicator(
-                  onRefresh: _loadUserCreations,
+                child: _displayedUserCreations.isEmpty 
+            ? _buildEmptyState()
+            : NotificationListener<ScrollNotification>(
+                onNotification: (scrollNotification) {
+                  if (scrollNotification is ScrollEndNotification &&
+                      _scrollController.position.extentAfter == 0 &&
+                      !_isLoadingMore &&
+                      _hasMoreData) {
+                    _loadMoreUserCreations();
+                    return true;
+                  }
+                  return false;
+                },
+                child: RefreshIndicator(
+                  onRefresh: () => _loadUserCreations(),
                   child: ListView.builder(
+                    controller: _scrollController,
                     padding: EdgeInsets.symmetric(horizontal: 24),
-                    itemCount: _filteredUserCreations.length,
+                    itemCount: _displayedUserCreations.length + (_isLoadingMore ? 1 : 0),
                     itemBuilder: (context, index) {
-                      final userCreation = _filteredUserCreations[index];
+                      if (index >= _displayedUserCreations.length) {
+                        return _buildLoadingMoreWidget();
+                      }
+
+                      //final userCreation = _filteredUserCreations[index];
+                      final userCreation = _displayedUserCreations[index];
                       final isExpanded = _expandedIndex == index;
                       final shortName = _generateShortName(userCreation.displayname);
                       
@@ -599,7 +711,8 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
                   ),
                 ),
         ),
-      ],
+      )
+      ]
     );
   }
 
@@ -765,14 +878,10 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.people_outline,
-            size: 80,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.people_outline, size: 80, color: Colors.grey[400]),
           SizedBox(height: 16),
           Text(
-            'No User Found',
+            _isLoading ? 'Loading...' : 'No User Found',
             style: TextStyle(
               fontSize: 18,
               color: Colors.grey[400],
@@ -781,13 +890,10 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
           ),
           SizedBox(height: 8),
           Text(
-            _selectedFilter == 'Pending' 
+            _selectedFilter == 'Pending'
                 ? 'There are no pending user requests'
                 : 'No ${_selectedFilter.toLowerCase()} users',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
           ),
         ],
       ),
@@ -994,7 +1100,8 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
   
   void _showRejectConfirmation(int index) {
     bool _isSubmitting = false;
-    final userCreation = _filteredUserCreations[index];
+    //final userCreation = _filteredUserCreations[index];
+    final userCreation = _displayedUserCreations[index];
     final currentStatus = userCreation.isApproved;
     final actionText = 'Reject';
 
@@ -1136,7 +1243,8 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
 
   void _showApproveConfirmation(int index, String role, String departmentId) {
     bool _isSubmitting = false;
-    final userCreation = _filteredUserCreations[index];
+    //final userCreation = _filteredUserCreations[index];
+    final userCreation = _displayedUserCreations[index];
     final departmentName = _getDepartmentName(departmentId);
 
     showDialog(
@@ -1312,7 +1420,8 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
   
   void _showChangeToApproveConfirmation(int index) {
     bool _isSubmitting = false;
-    final userCreation = _filteredUserCreations[index];
+    //final userCreation = _filteredUserCreations[index];
+    final userCreation = _displayedUserCreations[index];
     
     // Use temporary values if available, otherwise use original values
     _tempSelectedRole = _tempSelectedRole ?? userCreation.role.name;

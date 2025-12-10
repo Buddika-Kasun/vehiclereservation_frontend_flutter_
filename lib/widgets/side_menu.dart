@@ -72,7 +72,7 @@ class SideMenu extends StatelessWidget {
           MenuItem(Icons.directions_car, 'All Rides'),
           //MenuItem(Icons.person_add, 'User Creations'),
           //MenuItem(Icons.verified, 'All Approvals'),
-          MenuItem(Icons.verified, 'Ride Approvals'),
+          MenuItem(Icons.verified, 'Meter Reading'),
           MenuItem(Icons.directions_car, 'Assigned Rides'),
           MenuItem(Icons.admin_panel_settings, 'Admin Console', isSysAdmin: true),
         ]);
@@ -82,7 +82,7 @@ class SideMenu extends StatelessWidget {
         items.addAll([
           //MenuItem(Icons.home, 'Home'),
           //MenuItem(Icons.directions_car, 'My Rides'),
-          MenuItem(Icons.verified, 'Ride Approvals'),
+          MenuItem(Icons.verified, 'Meter Reading'),
         ]);
         break;
         

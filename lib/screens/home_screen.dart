@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/admin/approval_user_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/admin/vehicleType_managemnet_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/assigned_ride_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/assign_trip/assigned_ride_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/rides_approval_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/vehicle_screen.dart';
 import '../models/user_model.dart';
@@ -127,7 +127,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'All Rides':
         _navigateToRides();
         break;
-      case 'Ride Approvals':
+      case 'Meter Reading':
         _navigateToRideApprovals();
         break;
       case 'Assigned Rides':

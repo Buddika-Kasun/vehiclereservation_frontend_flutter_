@@ -92,7 +92,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
         throw Exception(response['message'] ?? 'Failed to fetch approvals');
       }
     } catch (e) {
-      print('Error loading approvals: $e');
+      //print('Error loading approvals: $e');
       setState(() {
         _errorMessage = 'Error loading approvals: ${e.toString()}';
         _isLoading = false;

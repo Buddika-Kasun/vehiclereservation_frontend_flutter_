@@ -112,8 +112,9 @@ class _VehicleManagementScreenState extends State<VehicleManagementScreen> {
 
   Future<void> _loadDrivers() async {
     try {
-      final response = await ApiService.getUsers(); // filter with transport department
-      
+      //final response = await ApiService.getUsers(); // filter with transport department
+      final response = await ApiService.getUsersByRole('driver'); 
+
       if (response['success'] == true) {
         final List<dynamic> usersData = response['data']['users'] ?? [];
         setState(() {
