@@ -61,7 +61,9 @@ class User {
       email: json['email'],
       phone: json['phone'] as String,
       role: UserRole.fromString(json['role'] as String),
-      department: json['department']?['name'],
+      department: json['department'] is Map<String, dynamic>
+          ? (json['department']['name'] as String)
+          : null,
       isActive: json['isActive'] as bool,
       isApproved: json['isApproved'],
       profilePicture: json['profilePicture'],
@@ -79,6 +81,7 @@ class User {
       'email': email,
       'phone': phone,
       'role': role.value, // Use .value to get string
+      'department': department,
       'isActive': isActive,
       'isApproved': isApproved,
       'profilePicture': profilePicture,

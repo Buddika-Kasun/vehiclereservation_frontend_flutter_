@@ -30,8 +30,10 @@ class StorageService {
 
   static Future<void> saveUserData({
     required User userData,
+    required Map<String, dynamic> originalJson,
   }) async {
-    await _prefs?.setString('userData', json.encode(userData.toJson()));
+    //await _prefs?.setString('userData', json.encode(userData.toJson()));
+    await _prefs?.setString('userData', json.encode(originalJson));
     await _prefs?.setBool('isLoggedIn', true);
   }
   

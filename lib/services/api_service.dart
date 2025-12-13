@@ -39,7 +39,10 @@ class ApiService {
     final userMap = res['data']['user'] as Map<String, dynamic>;
     final user = User.fromJson(userMap);
     
-    await StorageService.saveUserData(userData: user);
+    await StorageService.saveUserData(
+      userData: user,
+      originalJson: userMap
+    );
 
       return res;
     } else {
@@ -135,7 +138,13 @@ class ApiService {
         accessToken: responseData['data']['accessToken'],
         refreshToken: responseData['data']['refreshToken'] ?? refreshToken, // Use new refresh token if provided, else keep old one
       );
-      await StorageService.saveUserData(userData: responseData['data']['user']);
+
+      final userMap = responseData['data']['user'] as Map<String, dynamic>;
+      final user = User.fromJson(userMap);
+
+      await StorageService.saveUserData(
+        userData: user,
+        originalJson: userMap);
       return responseData;
     } else {
       // If refresh fails, clear user data (force logout)
