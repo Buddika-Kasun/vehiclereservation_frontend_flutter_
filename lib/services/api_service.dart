@@ -390,6 +390,26 @@ class ApiService {
     );
   }
 
+  static Future<Map<String, dynamic>> getDepartmentsForReg([int? companyId]) async {
+    String url = '$baseUrl/department/get-all';
+
+    if (companyId != null) {
+      url += '?companyId=$companyId';
+    }
+
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load departments: ${response.statusCode}');
+    }
+  }
+
+
   static Future<Map<String, dynamic>> createDepartment(Map<String, dynamic> data) async {
     return await authenticatedApiCall(
       'department/create',
@@ -874,6 +894,160 @@ class ApiService {
 
   static Future<Map<String, dynamic>> endTrip(int tripId) async {
     return await authenticatedApiCall('trips/end/$tripId', method: 'POST');
+  }
+
+
+    // Add these methods using your existing authenticatedApiCall method
+  static Future<Map<String, dynamic>> getPendingUsers({
+    int page = 1,
+    int limit = 20,
+  }) async {
+    try {
+      return await authenticatedApiCall(
+        'user/get-all-by-status',
+        method: 'POST',
+        body: {
+          'status': 'pending',
+          'page': page,
+          'limit': limit,
+        },
+      );
+    } catch (e) {
+      print('Error fetching pending users: $e');
+      rethrow;
+    }
+  }
+
+  // Add a new method for getting approval users with pagination if needed
+  static Future<Map<String, dynamic>> getApprovalUsersWithPagination({
+    int page = 1,
+    int limit = 20,
+  }) async {
+    try {
+      return await authenticatedApiCall(
+        'user/get-user-by-approval',
+        method: 'POST',
+        body: {
+          'page': page,
+          'limit': limit,
+        },
+      );
+    } catch (e) {
+      print('Error fetching approval users with pagination: $e');
+      rethrow;
+    }
+  }
+  
+  // Add a method to get user details by ID
+  static Future<Map<String, dynamic>> getUserById(String userId) async {
+    try {
+      return await authenticatedApiCall(
+        'user/get/$userId',
+        method: 'GET',
+      );
+    } catch (e) {
+      print('Error fetching user by ID: $e');
+      rethrow;
+    }
+  }
+  
+  // Add a method to update user approval status (alternative to existing approveUser)
+  static Future<Map<String, dynamic>> updateUserApprovalStatus(
+    String userId,
+    bool isApproved,
+  ) async {
+    try {
+      return await authenticatedApiCall(
+        'user/set-approval/$userId',
+        method: 'PUT',
+        body: {
+          'state': isApproved,
+        },
+      );
+    } catch (e) {
+      print('Error updating user approval status: $e');
+      rethrow;
+    }
+  }
+
+
+
+  // Notification API methods
+  static Future<Map<String, dynamic>> getNotifications({
+    int page = 1,
+    int limit = 20,
+    bool? read,
+  }) async {
+    try {
+      final Map<String, dynamic> body = {'page': page, 'limit': limit};
+
+      if (read != null) {
+        body['read'] = read;
+      }
+
+      return await authenticatedApiCall(
+        'notifications',
+        method: 'POST',
+        body: body,
+      );
+    } catch (e) {
+      print('Error fetching notifications: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> markNotificationAsRead(
+    String notificationId,
+  ) async {
+    try {
+      return await authenticatedApiCall(
+        'notifications/$notificationId/read',
+        method: 'PUT',
+        body: {},
+      );
+    } catch (e) {
+      print('Error marking notification as read: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> markAllNotificationsAsRead() async {
+    try {
+      return await authenticatedApiCall(
+        'notifications/mark-all-read',
+        method: 'PUT',
+        body: {},
+      );
+    } catch (e) {
+      print('Error marking all notifications as read: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> deleteNotification(
+    String notificationId,
+  ) async {
+    try {
+      return await authenticatedApiCall(
+        'notifications/$notificationId',
+        method: 'DELETE',
+      );
+    } catch (e) {
+      print('Error deleting notification: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> getUnreadCount() async {
+    try {
+      return await authenticatedApiCall(
+        'notifications/unread-count',
+        method: 'GET',
+      );
+    } catch (e) {
+      print('Error fetching unread count: $e');
+      rethrow;
+    }
   }
 
 }

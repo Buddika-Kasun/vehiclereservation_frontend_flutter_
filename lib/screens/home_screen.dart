@@ -1,9 +1,12 @@
+// lib/screens/home_screen.dart - UPDATED WITH WEBSOCKET BUT KEEPING PREVIOUS STYLE
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/admin/approval_user_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/admin/vehicleType_managemnet_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/assign_trip/assigned_ride_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/rides_approval_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/vehicle_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/services/ws/global_websocket_manager.dart';
+import 'package:vehiclereservation_frontend_flutter_/services/secure_storage_service.dart';
 import '../models/user_model.dart';
 import '../services/storage_service.dart';
 import '../widgets/side_menu.dart';
@@ -29,10 +32,11 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   User? _user;
+  String? _token;
   bool _isLoading = true;
   bool _redirectToLogin = false;
   bool _showAdminConsole = false;
-  
+
   // Current screen state - Start with Dashboard
   Widget _currentScreen = DashboardScreen();
 
@@ -45,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _checkAuthentication() async {
     try {
       final hasValidSession = await StorageService.hasValidSession;
-      
+
       if (!hasValidSession) {
         setState(() {
           _redirectToLogin = true;
@@ -67,17 +71,19 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadUserData() async {
     try {
       final user = StorageService.userData;
-      
-      if (user == null) {
+      final token = await SecureStorageService().accessToken;
+
+      if (user == null || token == null) {
         setState(() {
           _redirectToLogin = true;
           _isLoading = false;
         });
         return;
       }
-      
+
       setState(() {
         _user = user;
+        _token = token;
         _isLoading = false;
       });
     } catch (e) {
@@ -134,12 +140,12 @@ class _HomeScreenState extends State<HomeScreen> {
         _navigateToAssignedRides();
         break;
       case 'User Creations':
-      //case 'Pending User Creations':
+        //case 'Pending User Creations':
         _navigateToUserCreations();
         break;
       case 'Trip Approvals':
-      //case 'Pending Trip Approvals':
-      //case 'Safety Approvals':
+        //case 'Pending Trip Approvals':
+        //case 'Safety Approvals':
         _navigateToApprovals();
         break;
     }
@@ -156,6 +162,27 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _currentScreen = DashboardScreen();
     });
+  }
+
+  // In your logout function
+  Future<void> logout() async {
+    try {
+      // Clear WebSocket connection
+      final manager = GlobalWebSocketManager();
+      await manager.disconnect();
+    } catch (e) {
+      print('Error disconnecting WebSocket: $e');
+    }
+
+    // Clear storage and navigate to login
+    await StorageService.clearUserData();
+    await SecureStorageService().clearTokens();
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => LoginScreen()),
+      (route) => false,
+    );
   }
 
   void _navigateToRides() {
@@ -256,14 +283,6 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-/*
-  void _navigateToAdminApprovalManagement() {
-    setState(() {
-      _currentScreen = ApprovalManagementScreen();
-    });
-  }
-*/
-
   // Add this method to handle switching between approval screens
   void _switchToApprovalUsersScreen() {
     setState(() {
@@ -287,200 +306,204 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _showLogoutDialog() async {
-  final result = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      backgroundColor: Colors.transparent,
-      contentPadding: EdgeInsets.zero,
-      content: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color.fromARGB(197, 255, 65, 65),
-              Color.fromARGB(215, 255, 50, 43),
-            ],
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.transparent,
+        contentPadding: EdgeInsets.zero,
+        content: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color.fromARGB(197, 255, 65, 65),
+                Color.fromARGB(215, 255, 50, 43),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(20),
           ),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Icon
-              Container(
-                padding: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.3),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.logout_rounded,
-                    color: Colors.white,
-                    size: 28,
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Icon
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.3),
+                    shape: BoxShape.circle,
                   ),
-                ),
-              ),
-              
-              SizedBox(height: 8),
-              
-              // Title
-              Text(
-                'Log Out',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              
-              SizedBox(height: 8),
-              
-              // Message
-              Text(
-                'Are you sure you want to log out?',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.white.withOpacity(0.9),
-                  height: 1.5,
-                ),
-              ),
-              
-              SizedBox(height: 20),
-              
-              // Buttons Row
-              Row(
-                children: [
-                  // Cancel Button - Glassmorphism with neon border
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.white.withOpacity(0.05),
-                            Colors.white.withOpacity(0.15),
-                          ],
-                        ),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.2),
-                          width: 1,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.white.withOpacity(0.1),
-                            blurRadius: 10,
-                            spreadRadius: 1,
-                          ),
-                        ],
-                      ),
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: Text(
-                          'Stay',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                      ),
+                  child: Center(
+                    child: Icon(
+                      Icons.logout_rounded,
+                      color: Colors.white,
+                      size: 28,
                     ),
                   ),
-                  
-                  SizedBox(width: 16),
-                  
-                  // Logout Button - Glowing red gradient
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            //Color.fromARGB(168, 255, 0, 0),
-                            Color.fromARGB(111, 196, 0, 0),
-                            Color.fromARGB(255, 196, 0, 0),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: const Color.fromARGB(255, 196, 0, 0).withOpacity(0.6),
-                          width: 1,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Color(0xFFFF416C).withOpacity(0.6),
-                            blurRadius: 15,
-                            spreadRadius: 2,
-                            offset: Offset(0, 4),
+                ),
+
+                SizedBox(height: 8),
+
+                // Title
+                Text(
+                  'Log Out',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+
+                SizedBox(height: 8),
+
+                // Message
+                Text(
+                  'Are you sure you want to log out?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.white.withOpacity(0.9),
+                    height: 1.5,
+                  ),
+                ),
+
+                SizedBox(height: 20),
+
+                // Buttons Row
+                Row(
+                  children: [
+                    // Cancel Button - Glassmorphism with neon border
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.white.withOpacity(0.05),
+                              Colors.white.withOpacity(0.15),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.2),
+                            width: 1,
                           ),
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            //Icon(Icons.logout, size: 20, color: Colors.white),
-                            SizedBox(width: 6),
-                            Text(
-                              'Log Out',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1,
-                              ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.white.withOpacity(0.1),
+                              blurRadius: 10,
+                              spreadRadius: 1,
                             ),
                           ],
                         ),
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          child: Text(
+                            'Stay',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+
+                    SizedBox(width: 16),
+
+                    // Logout Button - Glowing red gradient
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              //Color.fromARGB(168, 255, 0, 0),
+                              Color.fromARGB(111, 196, 0, 0),
+                              Color.fromARGB(255, 196, 0, 0),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color.fromARGB(
+                              255,
+                              196,
+                              0,
+                              0,
+                            ).withOpacity(0.6),
+                            width: 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0xFFFF416C).withOpacity(0.6),
+                              blurRadius: 15,
+                              spreadRadius: 2,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          onPressed: () => logout(),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              //Icon(Icons.logout, size: 20, color: Colors.white),
+                              SizedBox(width: 6),
+                              Text(
+                                'Log Out',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
-
-  if (result == true) {
-    await StorageService.clearUserData();
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => LoginScreen()),
     );
+
+    if (result == true) {
+      await StorageService.clearUserData();
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => LoginScreen()),
+      );
+    }
   }
-}
+
   void _showUserProfile() {
     if (_user == null) return;
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -514,15 +537,11 @@ class _HomeScreenState extends State<HomeScreen> {
           MaterialPageRoute(builder: (context) => LoginScreen()),
         );
       });
-      return Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (_isLoading) {
-      return Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (_user == null) {
@@ -563,19 +582,16 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         }
       },
-      body: Column(
+      body: Column(    
         children: [
           TopBar(
             user: _user!,
             onMenuTap: () => _scaffoldKey.currentState?.openDrawer(),
+            token: _token!,
           ),
-          
-          Expanded(
-            child: _currentScreen,
-          ),
+          Expanded(child: _currentScreen),
         ],
       ),
     );
   }
-
 }

@@ -28,7 +28,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   List<Department> _departments = [];
 
-  final List<String> _roles = ['Employee', 'Admin', 'Hr', 'Security', 'Driver'];
+  final List<String> _roles = ['Employee', 'Admin', 'HR', 'Security', 'Driver'];
 
   Future<void> _register() async {
     final displayName = _displayNameController.text.trim();
@@ -157,7 +157,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _loadDepartments() async {
     try {
-      final response = await ApiService.getDepartments();
+      final response = await ApiService.getDepartmentsForReg();
       
       if (response['success'] == true) {
         final List<dynamic> departments = response['data']['departments'] ?? [];
