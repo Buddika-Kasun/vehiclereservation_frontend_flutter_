@@ -21,6 +21,7 @@ class ApiConfig {
   }
 
   // WebSocket URL (without namespace)
+  /*
   static String get wsBaseUrl {
     if (!_initialized) {
       throw Exception('ApiConfig not initialized');
@@ -34,6 +35,10 @@ class ApiConfig {
       return wsUrl.replaceFirst('https://', 'wss://');
     }
     return wsUrl;
+  }
+  */
+  static String get wsBaseUrl {
+    return dotenv.env['WS_URL']!;
   }
 
   // WebSocket namespace/path

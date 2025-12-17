@@ -12,6 +12,22 @@ class WebSocketConfig {
     }
   }
 
+  static String get socketIoBaseUrl {
+    return ApiConfig.wsUrl;
+  }
+
+  static Map<String, dynamic> get options {
+    return {
+      'transports': ['websocket'],
+      'path': ApiConfig.wsPath,
+      'reconnection': true,
+      'reconnectionAttempts': 10,
+      'reconnectionDelay': 1000,
+      'timeout': 20000,
+      'autoConnect': false,
+    };
+  }
+
   // WebSocket connection configuration
   static Map<String, dynamic> get connectionOptions {
     return {
@@ -27,6 +43,7 @@ class WebSocketConfig {
   }
 
   // Get WebSocket URL for Socket.IO
+  /*
   static String get socketIoBaseUrl {
     if (!_initialized) {
       throw Exception('WebSocketConfig not initialized');
@@ -54,6 +71,7 @@ class WebSocketConfig {
 
     return cleanUrl;
   }
+  */
 
 // Get WebSocket URL for Socket.IO
   static String get socketIoUrl {

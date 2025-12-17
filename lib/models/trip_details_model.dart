@@ -20,6 +20,7 @@ class TripDetails {
   final Location location;
   final Details details;
   final Conflicts conflicts;
+  final Schedule schedule;
 
   TripDetails({
     required this.id,
@@ -41,6 +42,7 @@ class TripDetails {
     required this.location,
     required this.details,
     required this.conflicts,
+    required this.schedule,
   });
 
   factory TripDetails.fromJson(Map<String, dynamic> json) {
@@ -65,6 +67,7 @@ class TripDetails {
       location: Location.fromJson(json['location'] ?? {}),
       details: Details.fromJson(json['details'] ?? {}),
       conflicts: Conflicts.fromJson(json['details']['conflicts'] ?? {}),
+      schedule: Schedule.fromJson(json['schedule'] ?? {}),
     );
   }
 }
@@ -654,3 +657,59 @@ class RouteSegment {
   }
 }
 
+class Schedule {
+  final bool isScheduled;
+  final bool isInstance;
+  final int? masterTripId;
+  final String? instanceDate;
+  final String? validTillDate;
+  final bool includeWeekends;
+  final int? repeatAfterDays;
+  final int instanceCount;
+  final List<InstanceInfo>?  instanceIds; 
+
+  Schedule({
+    required this.isScheduled,
+    required this.isInstance,
+    this.masterTripId,
+    this.instanceDate,
+    this.validTillDate,
+    required this.includeWeekends,
+    this.repeatAfterDays,
+    required this.instanceCount,
+    this.instanceIds,
+  });
+
+  factory Schedule.fromJson(Map<String, dynamic> json) {
+    return Schedule(
+      isScheduled: json['isScheduled'] ?? false,
+      isInstance: json['isInstance'] ?? false,
+      masterTripId: json['masterTripId'],
+      instanceDate: json['instanceDate'],
+      validTillDate: json['validTillDate'],
+      includeWeekends: json['includeWeekends'] ?? false,
+      repeatAfterDays: json['repeatAfterDays'],
+      instanceCount: json['instanceCount'] ?? 0,
+      instanceIds: json['instanceIds'] != null
+          ? List<InstanceInfo>.from(
+              json['instanceIds'].map((x) => InstanceInfo.fromJson(x)),
+            )
+          : null,
+    );
+  }
+}
+
+// Add new class for instance info
+class InstanceInfo {
+  final int id;
+  final String startDate;
+
+  InstanceInfo({required this.id, required this.startDate});
+
+  factory InstanceInfo.fromJson(Map<String, dynamic> json) {
+    return InstanceInfo(
+      id: json['id'] ?? 0,
+      startDate: json['startDate'] ?? '',
+    );
+  }
+}

@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/models/notification_model.dart';
+import 'package:vehiclereservation_frontend_flutter_/screens/home_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/admin/approval_user_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/services/ws/global_websocket_manager.dart';
 
 class NotificationScreen extends StatefulWidget {
@@ -411,6 +413,215 @@ class _NotificationScreenState extends State<NotificationScreen> {
     _webSocketManager.markAsRead(notificationId.toString());
   }
 
+  void _handleNotificationTap(NotificationModel notification) {
+    // Mark as read if not already read
+    if (!notification.read) {
+      _markAsRead(notification.id);
+    }
+
+    // Get metadata
+    final NotificationMetadata? metadata = notification.metadata;
+
+    switch (notification.type) {
+      // User registration notifications - go to ApprovalUsersScreen
+      case 'USER_REGISTERED':
+      case 'USER_APPROVAL_REQUESTED':
+      case 'USER_APPROVAL_REQUIRED':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HomeScreen(
+              screenName: 'user_creations'
+            )
+          ),
+        );
+        break;
+
+      // TODO: Trip related notifications
+      case 'TRIP_CREATED':
+      case 'TRIP_APPROVED':
+      case 'TRIP_REJECTED':
+      case 'TRIP_CANCELLED':
+        _showComingSoonMessage('Trip Management');
+        break;
+
+      // TODO: Vehicle related notifications
+      case 'VEHICLE_ASSIGNED':
+      case 'VEHICLE_MAINTENANCE':
+      case 'VEHICLE_AVAILABLE':
+        _showComingSoonMessage('Vehicle Management');
+        break;
+
+      // TODO: Booking related notifications
+      case 'BOOKING_CONFIRMED':
+      case 'BOOKING_CANCELLED':
+      case 'BOOKING_REMINDER':
+        _showComingSoonMessage('Booking Management');
+        break;
+
+      // TODO: Payment related notifications
+      case 'PAYMENT_RECEIVED':
+      case 'PAYMENT_DUE':
+      case 'PAYMENT_FAILED':
+        _showComingSoonMessage('Payment Management');
+        break;
+
+      // TODO: Emergency/Safety notifications
+      case 'EMERGENCY_ALERT':
+      case 'SAFETY_NOTICE':
+        _showComingSoonMessage('Emergency Management');
+        break;
+
+      // TODO: System notifications
+      case 'SYSTEM_UPDATE':
+      case 'MAINTENANCE_NOTICE':
+      case 'NEW_FEATURE':
+        _showComingSoonMessage('System Announcements');
+        break;
+
+      // TODO: Driver specific notifications
+      case 'DRIVER_ASSIGNED':
+      case 'DRIVER_ARRIVED':
+      case 'DRIVER_RATING':
+        _showComingSoonMessage('Driver Management');
+        break;
+
+      // Default case for other notifications
+      default:
+        // Show notification details in a dialog
+        _showNotificationDetails(notification);
+        break;
+    }
+  }
+
+  // Show notification details in a dialog
+  void _showNotificationDetails(NotificationModel notification) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(notification.title),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(notification.message, style: TextStyle(fontSize: 16)),
+              SizedBox(height: 16),
+              if (notification.data != null)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Divider(),
+                    Text(
+                      'Notification Data:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      _formatNotificationData(notification.data!),
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              if (notification.metadata != null)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Divider(),
+                    Text(
+                      'Metadata:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      _formatMetadata(notification.metadata!),
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('CLOSE'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Format NotificationData for display
+  String _formatNotificationData(NotificationData data) {
+    final List<String> entries = [];
+
+    if (data.userId != null) entries.add('User ID: ${data.userId}');
+    if (data.username != null) entries.add('Username: ${data.username}');
+    if (data.displayname != null)
+      entries.add('Display Name: ${data.displayname}');
+    if (data.email != null) entries.add('Email: ${data.email}');
+    if (data.phone != null) entries.add('Phone: ${data.phone}');
+    if (data.role != null) entries.add('Role: ${data.role}');
+    if (data.departmentId != null)
+      entries.add('Department ID: ${data.departmentId}');
+    if (data.actionRequired != null)
+      entries.add('Action Required: ${data.actionRequired}');
+    if (data.registrationDate != null)
+      entries.add('Registration Date: ${data.registrationDate}');
+    if (data.message != null) entries.add('Message: ${data.message}');
+    if (data.requiresScreenRefresh != null)
+      entries.add('Refresh Required: ${data.requiresScreenRefresh}');
+
+    return entries.join('\n');
+  }
+
+  // Format NotificationMetadata for display
+  String _formatMetadata(NotificationMetadata metadata) {
+    final List<String> entries = [];
+
+    if (metadata.screen != null) entries.add('Screen: ${metadata.screen}');
+    if (metadata.action != null) entries.add('Action: ${metadata.action}');
+    if (metadata.userId != null) entries.add('User ID: ${metadata.userId}');
+    if (metadata.autoAssign != null)
+      entries.add('Auto Assign: ${metadata.autoAssign}');
+    if (metadata.requiresScreenRefresh != null)
+      entries.add('Refresh Required: ${metadata.requiresScreenRefresh}');
+    if (metadata.isBroadcast != null)
+      entries.add('Is Broadcast: ${metadata.isBroadcast}');
+    if (metadata.refreshRequired != null)
+      entries.add('Refresh Required: ${metadata.refreshRequired}');
+
+    if (metadata.targetRoles != null && metadata.targetRoles!.isNotEmpty) {
+      entries.add('Target Roles: ${metadata.targetRoles!.join(', ')}');
+    }
+
+    return entries.join('\n');
+  }
+
+  // Show "coming soon" message for not-yet-implemented features
+  void _showComingSoonMessage(String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$feature - Coming Soon!'),
+        backgroundColor: Colors.black,
+        duration: Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(
+          label: 'OK',
+          textColor: Colors.yellow[600],
+          onPressed: () {},
+        ),
+      ),
+    );
+  }
+
   Future<void> _refreshNotifications() async {
     setState(() {
       _isLoading = true;
@@ -732,9 +943,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
         color: !notification.read ? Colors.yellow[50] : Colors.white,
         child: InkWell(
           onTap: () {
+            // Mark as read if not already read
             if (!notification.read) {
               _markAsRead(notification.id);
             }
+
+            // Navigate based on notification type
+            _handleNotificationTap(notification);
           },
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -816,4 +1031,5 @@ class _NotificationScreenState extends State<NotificationScreen> {
         return Icons.notifications;
     }
   }
+
 }

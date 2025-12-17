@@ -7,7 +7,7 @@ import 'package:vehiclereservation_frontend_flutter_/config/api_config.dart';
 import 'package:vehiclereservation_frontend_flutter_/config/websocket_config.dart';
 import 'package:vehiclereservation_frontend_flutter_/screens/home_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/screens/splash_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/screens/login_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/screens/auth_screens/login_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/services/secure_storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/services/storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/utils/auth_manager.dart';

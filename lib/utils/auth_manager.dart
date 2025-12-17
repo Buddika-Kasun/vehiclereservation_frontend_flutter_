@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:vehiclereservation_frontend_flutter_/screens/login_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/screens/auth_screens/login_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/services/secure_storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/services/storage_service.dart';
 

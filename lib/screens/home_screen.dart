@@ -1,4 +1,6 @@
-// lib/screens/home_screen.dart - UPDATED WITH WEBSOCKET BUT KEEPING PREVIOUS STYLE
+// File: lib/screens/home_screen.dart
+// Added: screenName parameter to navigate to specific child screens
+
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/admin/approval_user_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/admin/vehicleType_managemnet_screen.dart';
@@ -11,7 +13,7 @@ import '../models/user_model.dart';
 import '../services/storage_service.dart';
 import '../widgets/side_menu.dart';
 import '../widgets/top_bar.dart';
-import 'login_screen.dart';
+import 'auth_screens/login_screen.dart';
 
 // Import all the screens
 import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/dashboard/dashboard_screen.dart';
@@ -25,6 +27,12 @@ import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/admin/v
 import 'package:vehiclereservation_frontend_flutter_/screens/sub_screens/admin/approval_management_screen.dart';
 
 class HomeScreen extends StatefulWidget {
+  final String? screenName; // NEW: Optional screen name to navigate to
+  final Map<String, dynamic>? screenData; // NEW: Optional data for the screen
+
+  const HomeScreen({Key? key, this.screenName, this.screenData})
+    : super(key: key);
+
   @override
   _HomeScreenState createState() => _HomeScreenState();
 }
@@ -44,6 +52,16 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _checkAuthentication();
+  }
+
+  @override
+  void didUpdateWidget(HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Handle navigation when widget is updated with new screenName
+    if (widget.screenName != null &&
+        widget.screenName != oldWidget.screenName) {
+      _navigateToScreen(widget.screenName!, widget.screenData);
+    }
   }
 
   Future<void> _checkAuthentication() async {
@@ -86,6 +104,11 @@ class _HomeScreenState extends State<HomeScreen> {
         _token = token;
         _isLoading = false;
       });
+
+      // Navigate to requested screen after user data is loaded
+      if (widget.screenName != null) {
+        _navigateToScreen(widget.screenName!, widget.screenData);
+      }
     } catch (e) {
       print('Load user data error: $e');
       setState(() {
@@ -93,6 +116,67 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  // NEW: Method to navigate to a specific screen by name
+  void _navigateToScreen(String screenName, Map<String, dynamic>? data) {
+    if (_user == null) return; // Wait for user data to load
+
+    setState(() {
+      switch (screenName) {
+        case 'dashboard':
+          _currentScreen = DashboardScreen();
+          break;
+        case 'my_rides':
+        case 'all_rides':
+          _currentScreen = RidesScreen(userId: data?['userId'] ?? _user!.id);
+          break;
+        case 'my_vehicles':
+          _currentScreen = VehicleScreen(user: data?['user'] ?? _user!);
+          break;
+        case 'assigned_rides':
+          _currentScreen = AssignedRideScreen(
+            userId: data?['userId'] ?? _user!.id,
+          );
+          break;
+        case 'meter_reading':
+          _currentScreen = RidesApprovalScreen();
+          break;
+        case 'user_creations':
+          _currentScreen = UserCreationsScreen();
+          break;
+        case 'trip_approvals':
+          _currentScreen = ApprovalsScreen();
+          break;
+        case 'company_management':
+          _currentScreen = CompanyManagementScreen();
+          break;
+        case 'department_management':
+          _currentScreen = DepartmentsManagementScreen();
+          break;
+        case 'cost_center_management':
+          _currentScreen = CostCenterManagementScreen();
+          break;
+        case 'vehicle_management':
+          _currentScreen = VehicleManagementScreen();
+          break;
+        case 'vehicle_type_management':
+          _currentScreen = VehicleTypeManagementScreen();
+          break;
+        case 'approval_management':
+          _currentScreen = ApprovalManagementScreen(
+            onApprovalUsersPressed: _switchToApprovalUsersScreen,
+          );
+          break;
+        case 'approval_users':
+          _currentScreen = ApprovalUsersScreen(
+            onBackToApprovalConfig: _switchToApprovalManagementScreen,
+          );
+          break;
+        default:
+          _currentScreen = DashboardScreen();
+      }
+    });
   }
 
   void _handleMenuTap(String menuItem) async {
@@ -140,12 +224,9 @@ class _HomeScreenState extends State<HomeScreen> {
         _navigateToAssignedRides();
         break;
       case 'User Creations':
-        //case 'Pending User Creations':
         _navigateToUserCreations();
         break;
       case 'Trip Approvals':
-        //case 'Pending Trip Approvals':
-        //case 'Safety Approvals':
         _navigateToApprovals();
         break;
     }
@@ -330,7 +411,6 @@ class _HomeScreenState extends State<HomeScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Icon
                 Container(
                   padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -345,10 +425,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-
                 SizedBox(height: 8),
-
-                // Title
                 Text(
                   'Log Out',
                   style: TextStyle(
@@ -357,10 +434,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: Colors.white,
                   ),
                 ),
-
                 SizedBox(height: 8),
-
-                // Message
                 Text(
                   'Are you sure you want to log out?',
                   textAlign: TextAlign.center,
@@ -370,13 +444,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     height: 1.5,
                   ),
                 ),
-
                 SizedBox(height: 20),
-
-                // Buttons Row
                 Row(
                   children: [
-                    // Cancel Button - Glassmorphism with neon border
                     Expanded(
                       child: Container(
                         decoration: BoxDecoration(
@@ -421,16 +491,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     ),
-
                     SizedBox(width: 16),
-
-                    // Logout Button - Glowing red gradient
                     Expanded(
                       child: Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              //Color.fromARGB(168, 255, 0, 0),
                               Color.fromARGB(111, 196, 0, 0),
                               Color.fromARGB(255, 196, 0, 0),
                             ],
@@ -467,7 +533,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              //Icon(Icons.logout, size: 20, color: Colors.white),
                               SizedBox(width: 6),
                               Text(
                                 'Log Out',
@@ -582,7 +647,7 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         }
       },
-      body: Column(    
+      body: Column(
         children: [
           TopBar(
             user: _user!,

@@ -836,6 +836,37 @@ class ApiService {
     );
   }
 
+//
+// Add these methods to your ApiService class
+  static Future<Map<String, dynamic>> approveScheduledTrip(
+    int masterTripId,
+    String comment,
+  ) async {
+    try {
+      return await authenticatedApiCall(
+        'trips/approve-scheduled/$masterTripId',
+        method: 'POST',
+        body: {'comment': comment},
+      );
+    } catch (e) {
+      print('Error approving scheduled trip: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> getTripWithInstances(int tripId) async {
+    try {
+      return await authenticatedApiCall(
+        'trips/with-instances/$tripId',
+        method: 'GET',
+      );
+    } catch (e) {
+      print('Error fetching trip with instances: $e');
+      rethrow;
+    }
+  }
+//
+
   static Future<Map<String, dynamic>> getTripsForMeterReading(
     Map<String, dynamic> request,
   ) async {

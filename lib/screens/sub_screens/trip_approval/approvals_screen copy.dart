@@ -155,7 +155,6 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
       MaterialPageRoute(
         builder: (context) => ApprovalDetailsScreen(
           tripId: trip.id,
-          tripData: trip,
         ),
       ),
     );
@@ -321,13 +320,13 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
     );
   }
 
-  // Update your _buildApprovalCard method in ApprovalsScreen
   Widget _buildApprovalCard(ApprovalTrip trip) {
     return Card(
       margin: EdgeInsets.only(bottom: 12),
       color: Colors.grey[900],
       child: InkWell(
         onTap: () {
+          // Navigate to approval details screen
           _navigateToApprovalDetails(trip);
         },
         child: Padding(
@@ -335,80 +334,19 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Row 0: Trip id + Status label + Schedule badge
+              // Row 0: Trip id + Status label
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        'Trip #${trip.id}',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      // NEW: Scheduled trip badge
-                      if (trip.isScheduled)
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.repeat, size: 12, color: Colors.blue),
-                              SizedBox(width: 4),
-                              Text(
-                                'Scheduled',
-                                style: TextStyle(
-                                  color: Colors.blue,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      // NEW: Instance badge
-                      if (trip.isInstance)
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.purple.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.event_note,
-                                size: 12,
-                                color: Colors.purple,
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                'Instance',
-                                style: TextStyle(
-                                  color: Colors.purple,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
+                  Text(
+                    'Trip #${trip.id}',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-
+                  
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     decoration: BoxDecoration(
@@ -426,7 +364,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
                   ),
                 ],
               ),
-
+              
               SizedBox(height: 12),
 
               // Row 1: Requester name and vehicle
@@ -460,8 +398,8 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
               ),
 
               SizedBox(height: 12),
-
-              // Row 2: Date + Time + Instance count
+              
+              // Row 2: Date + Time
               Row(
                 children: [
                   Icon(Icons.calendar_today, color: Colors.grey[400], size: 16),
@@ -474,38 +412,14 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
                   Icon(Icons.access_time, color: Colors.grey[400], size: 16),
                   SizedBox(width: 8),
                   Text(
-                    trip.startTime.substring(0, 5),
+                    trip.startTime.substring(0, 5), // Format to HH:MM
                     style: TextStyle(color: Colors.grey[300], fontSize: 14),
                   ),
-
-                  // NEW: Instance count for scheduled trips
-                  if (trip.isScheduled && trip.instanceCount! > 0)
-                    Padding(
-                      padding: EdgeInsets.only(left: 16),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.format_list_numbered,
-                            color: Colors.blue,
-                            size: 16,
-                          ),
-                          SizedBox(width: 4),
-                          Text(
-                            '${trip.instanceCount} instances',
-                            style: TextStyle(
-                              color: Colors.blue,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                 ],
               ),
-
+              
               SizedBox(height: 12),
-
+              
               // Row 3: Route
               Row(
                 children: [
@@ -534,21 +448,26 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
                   ),
                 ],
               ),
-
+              
               SizedBox(height: 12),
-
+              
               // Row 4: Click for more details
               Container(
                 padding: EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
-                  border: Border(top: BorderSide(color: Colors.grey[700]!)),
+                  border: Border(
+                    top: BorderSide(color: Colors.grey[700]!),
+                  ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       'Click for more details',
-                      style: TextStyle(color: Color(0xFFF9C80E), fontSize: 14),
+                      style: TextStyle(
+                        color: Color(0xFFF9C80E),
+                        fontSize: 14,
+                      ),
                     ),
                     Icon(
                       Icons.arrow_forward_ios,

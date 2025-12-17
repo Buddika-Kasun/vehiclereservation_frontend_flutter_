@@ -56,10 +56,15 @@ class NotificationWebSocketService {
       }
 
       _socket = IO.io(
-        WebSocketConfig.socketIoUrl,
+        //WebSocketConfig.socketIoUrl,
+        WebSocketConfig.socketIoBaseUrl,
         IO.OptionBuilder()
             .setTransports(['websocket'])
-            .setQuery({'token': token, 'userId': userId})
+            .setPath(ApiConfig.wsPath)
+            .setQuery({
+              'token': token, 
+              'userId': userId
+            })
             .enableReconnection()
             .setReconnectionAttempts(_maxReconnectAttempts)
             .setReconnectionDelay(1000)
