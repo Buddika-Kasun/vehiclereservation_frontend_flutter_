@@ -3,19 +3,20 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:vehiclereservation_frontend_flutter_/config/api_config.dart';
-import 'package:vehiclereservation_frontend_flutter_/config/websocket_config.dart';
-import 'package:vehiclereservation_frontend_flutter_/screens/home_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/screens/splash_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/screens/auth_screens/login_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/services/secure_storage_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/services/storage_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/utils/auth_manager.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/api_config.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/websocket_config.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/shared/screens/splash_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/login_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/services/secure_storage_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/services/storage_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/utils/auth_manager.dart';
+import 'package:vehiclereservation_frontend_flutter_/shared/utils/notification_helper.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/services/firebase_notification_service.dart';
 
 // Import the global manager
-import 'services/ws/global_websocket_manager.dart';
-// Import the navigator observer
-import 'utils/websocket_navigator_observer.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/services/ws/global_websocket_manager.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/utils/websocket_navigator_observer.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,6 +43,9 @@ void main() async {
 
   // 4. Initialize SecureStorage
   await SecureStorageService().init();
+
+  // 5. Initialize Firebase Notifications
+  await FirebaseNotificationService().initialize();
 
   runApp(const MyApp());
 }
@@ -161,10 +165,16 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       case 'error':
         _handleWebSocketError(notification);
         break;
+      case 'new_notification':
+        _handleNewNotification(notification);
+        break;
       case 'user_registered':
         _showGlobalNotification(notification);
         break;
       case 'user_approved':
+        _showGlobalNotification(notification);
+        break;
+      case 'user_rejected':
         _showGlobalNotification(notification);
         break;
     }
@@ -190,9 +200,47 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     }
   }
 
+  void _handleNewNotification(Map<String, dynamic> notification) {
+    final data = notification['data'];
+    final context = AuthManager.navigatorKey.currentContext;
+    
+    if (context != null && data != null) {
+      NotificationHelper.showNotificationToast(
+        context,
+        title: data['title'] ?? 'New Notification',
+        body: data['message'] ?? '',
+        icon: Icons.notifications,
+      );
+    }
+  }
+
   void _showGlobalNotification(Map<String, dynamic> notification) {
-    if (kDebugMode) {
-      print('📢 Global notification: ${notification['type']}');
+    final type = notification['type'];
+    final data = notification['data'];
+    final context = AuthManager.navigatorKey.currentContext;
+
+    if (context != null) {
+      String title = 'Notification';
+      String body = '';
+
+      if (type == 'user_registered') {
+        title = 'New User Registered';
+        body = 'A new user has registered and needs approval.';
+      } else if (type == 'user_approved') {
+        title = 'User Approved';
+        body = 'Your account has been approved.';
+      } else if (type == 'user_rejected') {
+        title = 'User Rejected';
+        body = 'Your account request has been rejected.';
+      }
+
+      NotificationHelper.showNotificationToast(
+        context,
+        title: title,
+        body: body,
+        icon: type.contains('user') ? Icons.person : Icons.notifications,
+        backgroundColor: type == 'user_rejected' ? Colors.red[900]! : Colors.black,
+      );
     }
   }
 
@@ -387,3 +435,4 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     }
   }
 }
+
