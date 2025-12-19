@@ -35,6 +35,11 @@ class _TopBarState extends State<TopBar> {
   bool _isConnected = false;
   bool _isInitializing = false;
 
+  // Simple popup variables
+  OverlayEntry? _notificationOverlay;
+  Timer? _notificationTimer;
+  bool _showNotification = false;
+
   @override
   void initState() {
     super.initState();
@@ -43,11 +48,10 @@ class _TopBarState extends State<TopBar> {
       print('🎯 TopBar initialized - User ID: ${widget.user.id}');
     }
 
-    _loadUnreadCount(); // Initial API call
+    _loadUnreadCount();
     _initializeNotificationHandler();
   }
 
-  
   Future<void> _initializeNotificationHandler() async {
     try {
       if (mounted) {
@@ -75,25 +79,29 @@ class _TopBarState extends State<TopBar> {
         final event = message['event']?.toString() ?? '';
         print('📨 Received notification event: $event');
 
-        // Handle specific notification events
+        // Handle notification events
         if (event == 'notification' ||
             event == 'refresh' ||
             event == 'notification_update') {
-          // When any notification-related event comes, refresh unread count via API
+          // Refresh unread count
           _loadUnreadCount();
+
+          // Show simple popup for new notifications
+          if (event == 'notification' || event == 'notification_update') {
+            _showSimpleNotificationPopup();
+          }
         }
       });
-
-      // Initialize WebSocketManager first (if not already initialized)
+      // Initialize WebSocketManager
       _webSocketManager.initialize(
         token: widget.token,
         userId: widget.user.id.toString(),
       );
 
-      // Connect to notifications namespace - this will increment reference count
+      // Connect to notifications namespace
       await _webSocketManager.connectToNamespace('notifications');
 
-      // Initialize notification handler with Socket.IO
+      // Initialize notification handler
       await _notificationHandler.initialize(
         token: widget.token,
         userId: widget.user.id.toString(),
@@ -102,10 +110,8 @@ class _TopBarState extends State<TopBar> {
       // Set up callbacks
       _notificationHandler.onUnreadCountUpdate = (count) {
         if (count == -1) {
-          // -1 means refresh via API
           _loadUnreadCount();
         } else {
-          // Specific count provided
           if (mounted) {
             setState(() {
               _unreadCount = count;
@@ -114,10 +120,9 @@ class _TopBarState extends State<TopBar> {
         }
       };
 
-      _notificationHandler.onNewNotification = (notification) {
-        // Handle new notification if needed
-        print('New notification: $notification');
-        // Refresh unread count when new notification arrives
+      _notificationHandler.onNewNotification = (notificationData) {
+        print('New notification received');
+        _showSimpleNotificationPopup();
         _loadUnreadCount();
       };
 
@@ -136,7 +141,6 @@ class _TopBarState extends State<TopBar> {
         });
       }
 
-      // Print connection status
       if (kDebugMode) {
         print('🔔 Connection status after initialization: $isConnected');
       }
@@ -153,7 +157,6 @@ class _TopBarState extends State<TopBar> {
     }
   }
 
-
   Future<void> _loadUnreadCount() async {
     try {
       final response = await ApiService.getUnreadCount();
@@ -165,7 +168,6 @@ class _TopBarState extends State<TopBar> {
           });
         }
 
-        // Update max count flag in handler
         _notificationHandler.setMaxCount(count > 9);
       }
     } catch (e) {
@@ -175,14 +177,104 @@ class _TopBarState extends State<TopBar> {
     }
   }
 
+  void _showSimpleNotificationPopup() {
+    if (!mounted || _showNotification) return;
+
+    // Cancel any existing timer
+    _notificationTimer?.cancel();
+
+    // Remove existing overlay
+    _removeNotificationPopup();
+
+    // Create new overlay
+    _createSimplePopup();
+
+    // Auto-hide after 3 seconds
+    _notificationTimer = Timer(const Duration(seconds: 5), () {
+      _removeNotificationPopup();
+    });
+  }
+
+  void _createSimplePopup() {
+    final overlayState = Overlay.of(context);
+    if (overlayState == null) return;
+
+    _notificationOverlay = OverlayEntry(
+      builder: (context) => Positioned(
+        top: 10, // Adjust based on your AppBar height
+        left: 16,
+        right: 16,
+        child: _buildSimplePopup(),
+      ),
+    );
+
+    overlayState.insert(_notificationOverlay!);
+    _showNotification = true;
+  }
+
+  Widget _buildSimplePopup() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      margin: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.blue,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 8,
+            spreadRadius: 1,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.notifications, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              const Text(
+                'New Notification',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '($_unreadCount unread)',
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+            ],
+          ),
+          GestureDetector(
+            onTap: _removeNotificationPopup,
+            child: const Icon(Icons.close, color: Colors.white, size: 18),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _removeNotificationPopup() {
+    if (_notificationOverlay != null) {
+      _notificationOverlay!.remove();
+      _notificationOverlay = null;
+    }
+    _showNotification = false;
+    _notificationTimer?.cancel();
+    _notificationTimer = null;
+  }
+
   void _refreshConnection() {
     if (mounted) {
       setState(() {
         _isInitializing = true;
       });
     }
-
-    // Reinitialize handler
     _initializeNotificationHandler();
   }
 
@@ -190,7 +282,6 @@ class _TopBarState extends State<TopBar> {
   void didUpdateWidget(covariant TopBar oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // If user or token changed, reinitialize
     if (widget.user.id != oldWidget.user.id ||
         widget.token != oldWidget.token) {
       if (kDebugMode) {
@@ -200,13 +291,11 @@ class _TopBarState extends State<TopBar> {
     }
   }
 
-  // Update the dispose method in TopBar
   @override
   void dispose() {
-    // Only dispose the notification handler, don't disconnect WebSocket
-    // so it stays alive for other components
+    _notificationTimer?.cancel();
+    _removeNotificationPopup();
     _notificationHandler.dispose();
-    // Remove listeners but keep connection alive
     _webSocketManager.removeConnectionListener('notifications', (_) {});
     _webSocketManager.removeMessageListener('notifications', (_) {});
     super.dispose();
@@ -227,10 +316,8 @@ class _TopBarState extends State<TopBar> {
           title: GestureDetector(
             onTap: () {
               if (widget.onPcwRideTap != null) {
-                // Use the callback to navigate to dashboard
                 widget.onPcwRideTap!();
               } else {
-                // Fallback: try old navigation
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(builder: (context) => HomeScreen()),
                   (Route<dynamic> route) => false,
@@ -271,6 +358,7 @@ class _TopBarState extends State<TopBar> {
                         ),
                   onPressed: _isConnected
                       ? () {
+                          _removeNotificationPopup();
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -279,7 +367,9 @@ class _TopBarState extends State<TopBar> {
                                 token: widget.token,
                               ),
                             ),
-                          );
+                          ).then((_) {
+                            _loadUnreadCount();
+                          });
                         }
                       : null,
                 ),
@@ -344,6 +434,7 @@ class _TopBarState extends State<TopBar> {
             // Avatar
             GestureDetector(
               onTap: () {
+                _removeNotificationPopup();
                 Navigator.push(
                   context,
                   MaterialPageRoute(
