@@ -239,7 +239,8 @@ class _HomeScreenState extends State<HomeScreen> {
           break;
         case 'user_creations':
           _currentScreen = UserCreationsScreen(
-            //token: _token!
+            userId: _user!.id.toString(),
+            token: _token!,
           );
           break;
         case 'trip_approvals':
@@ -421,7 +422,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void _navigateToUserCreations() {
     setState(() {
       _currentScreen = UserCreationsScreen(
-        //token: _token!
+        userId: _user!.id.toString(),
+        token: _token!
       );
     });
   }

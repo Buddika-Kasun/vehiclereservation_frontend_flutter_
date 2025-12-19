@@ -6,13 +6,21 @@ import 'package:vehiclereservation_frontend_flutter_/data/models/user_creation_m
 import 'package:vehiclereservation_frontend_flutter_/data/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/color_generator.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/constant.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/services/ws/global_websocket.dart';
 
 // Import WebSocket structure
 import 'package:vehiclereservation_frontend_flutter_/data/services/ws/websocket_manager.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/ws/handlers/user_handler.dart';
 
 class UserCreationsScreen extends StatefulWidget {
-  const UserCreationsScreen({Key? key}) : super(key: key);
+  final String userId;
+  final String token;
+
+  const UserCreationsScreen({
+      Key? key,
+      required this.userId,
+      required this.token
+    }) : super(key: key);
 
   @override
   _UserCreationsScreenState createState() => _UserCreationsScreenState();
@@ -20,8 +28,8 @@ class UserCreationsScreen extends StatefulWidget {
 
 class _UserCreationsScreenState extends State<UserCreationsScreen> {
   // WebSocket managers
-  final WebSocketManager _webSocketManager = WebSocketManager();
-  final UserHandler _userHandler = UserHandler();
+  WebSocketManager get _webSocketManager => GlobalWebSocket.instance;
+  late UserHandler _userHandler = UserHandler();
 
   List<UserCreation> _allUserCreations = [];
   List<UserCreation> _displayedUserCreations = [];
@@ -80,8 +88,8 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
       }
 
       // Get token and userId from storage (you need to implement this)
-      final token = await _getToken();
-      final userId = await _getUserId();
+      final token = widget.token;
+      final userId = widget.userId;
 
       if (token == null || userId == null) {
         if (mounted) {
@@ -92,22 +100,17 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
         return;
       }
 
-      // Initialize WebSocket manager
-      _webSocketManager.initialize(token: token, userId: userId);
-
       // Initialize user handler
+      _userHandler = UserHandler();
       await _userHandler.initialize(token: token, userId: userId);
 
-      // Connect to users namespace
-      await _webSocketManager.connectToNamespace('/users');
-
-      // Set up user handler callback for refresh events
+      // Set up user handler callback for real-time updates
       _userHandler.onUserUpdate = (update) {
         _handleUserUpdate(update);
       };
 
       // Set up connection listener
-      _webSocketManager.addConnectionListener('/users', (isConnected) {
+      _webSocketManager.addConnectionListener('users', (isConnected) {
         if (kDebugMode) {
           print('🔌 UserCreationsScreen connection: $isConnected');
         }
@@ -120,13 +123,13 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
       });
 
       // Set up message listener for direct messages
-      _webSocketManager.addMessageListener('/users', (message) {
+      _webSocketManager.addMessageListener('users', (message) {
         _handleWebSocketMessage(message);
       });
 
       if (mounted) {
         setState(() {
-          _isConnected = _webSocketManager.isNamespaceConnected('/users');
+          _isConnected = _webSocketManager.isNamespaceConnected('users');
           _isInitializing = false;
         });
       }
@@ -154,32 +157,79 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
     }
 
     // Handle refresh events
-    if (event == 'refresh') {
-      _handleRefreshEvent(data);
+    if (event == 'user_update') {
+      _handleUserUpdate(data);
     }
   }
 
   void _handleUserUpdate(Map<String, dynamic> update) {
-    final event = update['event']?.toString() ?? '';
+    final action = update['action']?.toString() ?? '';
     final data = update['data'] ?? {};
 
     if (kDebugMode) {
-      print('🔄 User update received: $event');
+      print('🔄 User update received: $action');
     }
 
-    // Handle different user events
-    switch (event) {
-      case 'user_create':
-      case 'user_update':
-      case 'user_delete':
-      case 'user_status_change':
+    // Debounce to prevent multiple refreshes
+    _debounceUserRefresh(() {
+      // Check if this update is relevant to current filter
+      final userStatus = data['isApproved']?.toString();
+
+      if (_shouldRefreshForAction(action, userStatus)) {
+        if (kDebugMode) {
+          print('🔄 Refreshing user creations due to: $action');
+        }
+        _loadUserCreations();
+      }
+    });
+  }
+
+  bool _shouldRefreshForAction(String action, String? userStatus) {
+    // Always refresh for these actions
+    if (action == 'user_create' || action == 'refresh') {
+      return true;
+    }
+
+    // Check if the action status matches current filter
+    switch (action) {
       case 'user_approve':
+        return _selectedFilter == 'Approved' || _selectedFilter == 'All';
       case 'user_reject':
-        _debounceRefresh();
-        break;
+        return _selectedFilter == 'Rejected' || _selectedFilter == 'All';
+      case 'user_status_change':
+        if (userStatus == 'approved') {
+          return _selectedFilter == 'Approved' || _selectedFilter == 'All';
+        } else if (userStatus == 'rejected') {
+          return _selectedFilter == 'Rejected' || _selectedFilter == 'All';
+        } else {
+          return _selectedFilter == 'Pending' || _selectedFilter == 'All';
+        }
+      default:
+        return true;
     }
   }
 
+  void _debounceUserRefresh(Function callback) {
+    if (_debounceTimer?.isActive ?? false) {
+      _debounceTimer?.cancel();
+    }
+
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        callback();
+      }
+    });
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200 &&
+        !_isLoadingMore &&
+        _hasMoreData) {
+      _loadMoreUserCreations();
+    }
+  }
+  
   void _handleRefreshEvent(Map<String, dynamic> data) {
     final scope = data['scope']?.toString() ?? 'ALL';
 
@@ -203,15 +253,6 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
         _loadUserCreations();
       }
     });
-  }
-
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent - 200 &&
-        !_isLoadingMore &&
-        _hasMoreData) {
-      _loadMoreUserCreations();
-    }
   }
 
   Future<void> _loadUserCreations({bool loadMore = false}) async {
@@ -485,19 +526,6 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
     _initializeWebSocket();
   }
 
-  // Helper methods to get token and userId (you need to implement these)
-  Future<String?> _getToken() async {
-    // Implement token retrieval from storage
-    // Example: return await SecureStorageService().accessToken;
-    return null;
-  }
-
-  Future<String?> _getUserId() async {
-    // Implement userId retrieval from storage
-    // Example: final user = StorageService.userData; return user?.id.toString();
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -515,14 +543,39 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (_isInitializing)
-            CircularProgressIndicator(color: AppColors.secondary),
-          SizedBox(height: 16),
+          // Circular progress indicator
+          SizedBox(
+            width: 50,
+            height: 50,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.secondary),
+              backgroundColor: Colors.grey[800],
+            ),
+          ),
+
+          SizedBox(height: 20),
+
+          // Loading text
           Text(
             _isInitializing
                 ? 'Connecting to real-time updates...'
                 : 'Loading User Creations...',
-            style: TextStyle(color: Colors.white, fontSize: 16),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+
+          SizedBox(height: 8),
+
+          // Subtitle text
+          Text(
+            _isInitializing
+                ? 'Please wait while we establish the connection'
+                : 'Fetching user requests...',
+            style: TextStyle(color: Colors.grey[400], fontSize: 14),
           ),
         ],
       ),
@@ -611,6 +664,13 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
                 'Approve or reject user registration requests',
                 style: TextStyle(fontSize: 14, color: Colors.grey[300]),
               ),
+              if (_isConnected) ...[
+                SizedBox(height: 4),
+                Text(
+                  'Real-time updates enabled',
+                  style: TextStyle(fontSize: 12, color: Colors.green[300]),
+                ),
+              ]
             ],
           ),
         ),
@@ -1290,7 +1350,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
     final filters = ['Pending', 'Approved', 'Rejected', 'All'];
 
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.fromLTRB(16, 0, 16, 0),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
