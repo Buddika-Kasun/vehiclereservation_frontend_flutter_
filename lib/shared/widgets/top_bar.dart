@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/services/ws/global_websocket.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/ws/websocket_manager.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/notifications/screens/notification_screen.dart';
@@ -29,8 +30,11 @@ class TopBar extends StatefulWidget {
 }
 
 class _TopBarState extends State<TopBar> {
-  final NotificationHandler _notificationHandler = NotificationHandler();
-  final WebSocketManager _webSocketManager = WebSocketManager();
+  //final NotificationHandler _notificationHandler = NotificationHandler();
+  //final WebSocketManager _webSocketManager = WebSocketManager();
+  WebSocketManager get _webSocketManager => GlobalWebSocket.instance;
+  late NotificationHandler _notificationHandler;
+
   int _unreadCount = 0;
   bool _isConnected = false;
   bool _isInitializing = false;
@@ -60,46 +64,39 @@ class _TopBarState extends State<TopBar> {
         });
       }
 
-      // Add connection listener BEFORE connecting
+      // Create handler with global instance
+      _notificationHandler = NotificationHandler();
+
+      // Initialize the Global WebSocket if not already initialized
+      GlobalWebSocket.initialize(
+        token: widget.token,
+        userId: widget.user.id.toString(),
+      );
+
+      // Add connection listener
       _webSocketManager.addConnectionListener('notifications', (isConnected) {
         if (mounted) {
           setState(() {
             _isConnected = isConnected;
-            if (isConnected) {
-              print('✅ WebSocket connection status: Connected');
-            } else {
-              print('❌ WebSocket connection status: Disconnected');
-            }
           });
         }
       });
 
-      // Add message listener to handle notifications
+      // Add message listener
       _webSocketManager.addMessageListener('notifications', (message) {
         final event = message['event']?.toString() ?? '';
         print('📨 Received notification event: $event');
 
-        // Handle notification events
         if (event == 'notification' ||
             event == 'refresh' ||
             event == 'notification_update') {
-          // Refresh unread count
           _loadUnreadCount();
 
-          // Show simple popup for new notifications
           if (event == 'notification' || event == 'notification_update') {
             _showSimpleNotificationPopup();
           }
         }
       });
-      // Initialize WebSocketManager
-      _webSocketManager.initialize(
-        token: widget.token,
-        userId: widget.user.id.toString(),
-      );
-
-      // Connect to notifications namespace
-      await _webSocketManager.connectToNamespace('notifications');
 
       // Initialize notification handler
       await _notificationHandler.initialize(
@@ -121,13 +118,12 @@ class _TopBarState extends State<TopBar> {
       };
 
       _notificationHandler.onNewNotification = (notificationData) {
-        print('New notification received');
         _showSimpleNotificationPopup();
         _loadUnreadCount();
       };
 
-      // Set max count flag
-      _notificationHandler.setMaxCount(_unreadCount > 9);
+      // Connect to notifications namespace (will use reference counting)
+      await _webSocketManager.connectToNamespace('notifications');
 
       // Check initial connection status
       final isConnected = _webSocketManager.isNamespaceConnected(
@@ -140,14 +136,8 @@ class _TopBarState extends State<TopBar> {
           _isInitializing = false;
         });
       }
-
-      if (kDebugMode) {
-        print('🔔 Connection status after initialization: $isConnected');
-      }
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Failed to initialize notification handler: $e');
-      }
+      print('❌ Failed to initialize notification handler: $e');
       if (mounted) {
         setState(() {
           _isConnected = false;
@@ -155,6 +145,15 @@ class _TopBarState extends State<TopBar> {
         });
       }
     }
+  }
+
+  @override
+  void dispose() {
+    // Only dispose handler, don't disconnect WebSocket
+    _notificationHandler.dispose();
+    _webSocketManager.removeConnectionListener('notifications', (_) {});
+    _webSocketManager.removeMessageListener('notifications', (_) {});
+    super.dispose();
   }
 
   Future<void> _loadUnreadCount() async {
@@ -289,16 +288,6 @@ class _TopBarState extends State<TopBar> {
       }
       _initializeNotificationHandler();
     }
-  }
-
-  @override
-  void dispose() {
-    _notificationTimer?.cancel();
-    _removeNotificationPopup();
-    _notificationHandler.dispose();
-    _webSocketManager.removeConnectionListener('notifications', (_) {});
-    _webSocketManager.removeMessageListener('notifications', (_) {});
-    super.dispose();
   }
 
   @override

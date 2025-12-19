@@ -1,10 +1,12 @@
 // lib/data/services/ws/handlers/notification_handler.dart
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/services/ws/global_websocket.dart';
 import '../websocket_manager.dart';
 
 class NotificationHandler {
-  final WebSocketManager _wsManager = WebSocketManager();
+  //final WebSocketManager _wsManager = WebSocketManager();
+  WebSocketManager get _wsManager => GlobalWebSocket.instance;
   Timer? _debounceTimer;
   bool _hasMaxCount = false;
 

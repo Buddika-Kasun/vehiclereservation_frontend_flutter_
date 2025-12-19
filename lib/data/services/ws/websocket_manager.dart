@@ -26,12 +26,10 @@ class WebSocketManager {
   String? _token;
   String? _userId;
 
-
-
   // Track connection usage count
   final Map<String, int> _connectionUsageCount = {};
 
-   // Add this public getter
+  // Add this public getter
   SocketIOClient? getConnection(String namespace) {
     return _connections[namespace];
   }
@@ -40,46 +38,66 @@ class WebSocketManager {
   void listenToRawEvents(String namespace, Function(String, dynamic) handler) {
     final client = _connections[namespace];
     if (client != null) {
-      // We'll need to add a method to SocketIOClient for this
+      // Add raw event listener to SocketIOClient
+      client.listenToAllEvents(handler);
     }
   }
 
   // Connect to a specific namespace with Socket.IO
-  // lib/data/services/ws/websocket_manager.dart
   Future<void> connectToNamespace(String namespace) async {
     if (_token == null || _userId == null) {
       throw Exception('WebSocketManager not initialized');
     }
 
+    // Debug log
     if (kDebugMode) {
-      print('🔗 Connecting to namespace: $namespace');
-      print('   User ID: $_userId');
-      print('   Token length: ${_token?.length}');
+      print('🔗 connectToNamespace called for: $namespace');
+      print('   Current usage count: ${_connectionUsageCount[namespace] ?? 0}');
     }
 
-    // Increment usage count
+    // Increment usage count FIRST
     _connectionUsageCount[namespace] =
         (_connectionUsageCount[namespace] ?? 0) + 1;
 
     if (kDebugMode) {
-      print('   Usage count: ${_connectionUsageCount[namespace]}');
+      print('   New usage count: ${_connectionUsageCount[namespace]}');
     }
 
     // Check if already connected
     if (_connections.containsKey(namespace) &&
         _connections[namespace]!.isConnected) {
       if (kDebugMode) {
-        print('ℹ️ Already connected to namespace: $namespace');
+        print('✅ Already connected to $namespace, skipping new connection');
+        // SocketIOClient doesn't have an id property, so we can't print it
       }
       return;
     }
 
-    // Clean up old connection if exists
-    if (_connections.containsKey(namespace)) {
+    // Clean up old connection if exists but not connected
+    if (_connections.containsKey(namespace) &&
+        !_connections[namespace]!.isConnected) {
       if (kDebugMode) {
-        print('🔄 Cleaning up old connection for: $namespace');
+        print('🔄 Cleaning up old disconnected connection for: $namespace');
       }
       await _disconnectFromNamespace(namespace);
+    }
+
+    // Only create new connection if needed
+    if (!_connections.containsKey(namespace)) {
+      await _createConnection(namespace);
+    }
+  }
+
+  // Create a new connection to a namespace
+  Future<void> _createConnection(String namespace) async {
+    if (_token == null || _userId == null) {
+      throw Exception('WebSocketManager not initialized');
+    }
+
+    if (kDebugMode) {
+      print('🔗 Creating connection to namespace: $namespace');
+      print('   User ID: $_userId');
+      print('   Token length: ${_token?.length}');
     }
 
     // Prepare query parameters
@@ -137,8 +155,6 @@ class WebSocketManager {
     }
   }
 
-
-
   // Initialize with user info
   void initialize({required String token, required String userId}) {
     // Don't reinitialize if already initialized with same credentials
@@ -190,8 +206,6 @@ class WebSocketManager {
   bool hasActiveUsers(String namespace) {
     return (_connectionUsageCount[namespace] ?? 0) > 0;
   }
-
-
 
   void _handleIncomingMessage(String namespace, Map<String, dynamic> message) {
     final event = message['event']?.toString() ?? '';
@@ -280,7 +294,6 @@ class WebSocketManager {
     }
   }
 
-  
   // Cleanup all connections
   Future<void> disconnectAll() async {
     final futures = _connections.values.map((client) => client.disconnect());
@@ -306,6 +319,27 @@ class WebSocketManager {
     }
   }
 
+  // Print connection status for debugging
+  void printConnectionStatus() {
+    if (kDebugMode) {
+      print('📊 ========== WebSocket Connection Status ==========');
+      print('   Initialized: $_isInitialized');
+      print('   Token: ${_token?.substring(_token!.length - 10)}...');
+      print('   User ID: $_userId');
+      print('   Active connections: ${_connections.length}');
+
+      _connections.forEach((namespace, client) {
+        print('   $namespace: Connected=${client.isConnected}');
+      });
+
+      print('   Usage counts:');
+      _connectionUsageCount.forEach((namespace, count) {
+        print('     $namespace: $count users');
+      });
+
+      print('===================================================');
+    }
+  }
+
   static WebSocketManager get instance => _instance;
-  
 }

@@ -1,5 +1,6 @@
 // File: lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/services/ws/global_websocket.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/approval_user_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicleType_managemnet_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicle_screen.dart';
@@ -43,10 +44,14 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  final WebSocketManager _webSocketManager = WebSocketManager();
-  final NotificationHandler _notificationHandler = NotificationHandler();
-  final TripHandler _tripHandler = TripHandler();
-  final UserHandler _userHandler = UserHandler();
+  //final WebSocketManager _webSocketManager = WebSocketManager();
+  //final NotificationHandler _notificationHandler = NotificationHandler();
+  //final TripHandler _tripHandler = TripHandler();
+  //final UserHandler _userHandler = UserHandler();
+  WebSocketManager get _webSocketManager => GlobalWebSocket.instance;
+  late NotificationHandler _notificationHandler;
+  late TripHandler _tripHandler;
+  late UserHandler _userHandler;
 
   User? _user;
   String? _token;
@@ -58,7 +63,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _currentScreen = DashboardScreen();
 
   // Add a flag to track if WebSocket is already initialized
-  bool _isWebSocketInitialized = false;
+  bool _handlersInitialized = false;
+  //bool _handlersInitialized = false;
 
   @override
   void initState() {
@@ -73,6 +79,50 @@ class _HomeScreenState extends State<HomeScreen> {
     if (widget.screenName != null &&
         widget.screenName != oldWidget.screenName) {
       _navigateToScreen(widget.screenName!, widget.screenData);
+    }
+  }
+
+  Future<void> _initializeWebSocketHandlers() async {
+    if (_user == null || _token == null) return;
+    
+    try {
+      // Initialize Global WebSocket once
+      GlobalWebSocket.initialize(
+        token: _token!,
+        userId: _user!.id.toString(),
+      );
+      
+      // Create handlers with global instance
+      _notificationHandler = NotificationHandler();
+      _tripHandler = TripHandler();
+      _userHandler = UserHandler();
+      
+      // Initialize handlers
+      await _notificationHandler.initialize(
+        token: _token!,
+        userId: _user!.id.toString(),
+      );
+      
+      await _tripHandler.initialize(
+        token: _token!,
+        userId: _user!.id.toString(),
+      );
+      
+      await _userHandler.initialize(
+        token: _token!,
+        userId: _user!.id.toString(),
+      );
+      
+      // Connect to notifications namespace (will use reference counting)
+      await _webSocketManager.connectToNamespace('notifications');
+      
+      // Connect to other namespaces if needed
+      await _webSocketManager.connectToNamespace('trips');
+      await _webSocketManager.connectToNamespace('users');
+      
+      _handlersInitialized = true;
+    } catch (e) {
+      print('Error initializing WebSocket handlers: $e');
     }
   }
 
@@ -118,9 +168,9 @@ class _HomeScreenState extends State<HomeScreen> {
       });
 
       // Initialize WebSocket handlers only once
-      if (!_isWebSocketInitialized) {
+      if (!_handlersInitialized) {
         await _initializeWebSocketHandlers();
-        _isWebSocketInitialized = true;
+        _handlersInitialized = true;
       }
 
       // Navigate to requested screen after user data is loaded
@@ -136,41 +186,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _initializeWebSocketHandlers() async {
-    if (_user == null || _token == null) return;
-
-    try {
-      // Initialize notification handler for TopBar
-      await _notificationHandler.initialize(
-        token: _token!,
-        userId: _user!.id.toString(),
-      );
-
-      // Set up WebSocket manager for all namespaces
-      _webSocketManager.initialize(
-        token: _token!,
-        userId: _user!.id.toString(),
-      );
-
-      // Set up trip handler for trip screens
-      await _tripHandler.initialize(
-        token: _token!,
-        userId: _user!.id.toString(),
-      );
-
-      // Set up user handler for user management screens
-      await _userHandler.initialize(
-        token: _token!,
-        userId: _user!.id.toString(),
-      );
-
-      // Connect to notifications namespace immediately (for TopBar)
-      await _webSocketManager.connectToNamespace('notifications');
-    } catch (e) {
-      print('Error initializing WebSocket handlers: $e');
-    }
-  }
-
+  
   void navigateToDashboard() {
     if (mounted) {
       setState(() {
@@ -356,7 +372,7 @@ class _HomeScreenState extends State<HomeScreen> {
       await _tripHandler.dispose();
       await _userHandler.dispose();
       await _webSocketManager.disconnectAll();
-      _isWebSocketInitialized = false;
+      _handlersInitialized = false;
     } catch (e) {
       print('Error disconnecting WebSocket: $e');
     }
@@ -727,17 +743,17 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+    
   @override
   void dispose() {
-    // Only dispose if this is the main HomeScreen (not a duplicate)
-    if (ModalRoute.of(context)?.isCurrent ?? false) {
+    // Only dispose handlers, don't disconnect WebSocket
+    if (_handlersInitialized) {
       _notificationHandler.dispose();
       _tripHandler.dispose();
       _userHandler.dispose();
-      _webSocketManager.disconnectAll();
     }
     super.dispose();
-  }
+  }  
 
   @override
   Widget build(BuildContext context) {
