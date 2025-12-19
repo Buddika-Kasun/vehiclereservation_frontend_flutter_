@@ -1,22 +1,24 @@
-// lib/main.dart - UPDATED (Remove the extra parameter)
+// lib/main.dart - UPDATED for new WebSocket structure
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:vehiclereservation_frontend_flutter_/core/api_config.dart';
-import 'package:vehiclereservation_frontend_flutter_/core/websocket_config.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/config/api_config.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/config/websocket_config.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/shared/screens/splash_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/login_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/secure_storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/auth_manager.dart';
-import 'package:vehiclereservation_frontend_flutter_/shared/utils/notification_helper.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/firebase_notification_service.dart';
 
-// Import the global manager
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/global_websocket_manager.dart';
-import 'package:vehiclereservation_frontend_flutter_/core/utils/websocket_navigator_observer.dart';
+// Import new WebSocket structure
+import 'package:vehiclereservation_frontend_flutter_/data/services/ws/websocket_manager.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/services/ws/handlers/notification_handler.dart';
+
+// Import notification observer if you have it
+// import 'package:vehiclereservation_frontend_flutter_/core/utils/websocket_navigator_observer.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,15 +28,11 @@ void main() async {
 
   if (kDebugMode) {
     print('🌍 Environment loaded');
-    print(
-      '   API Base URL: ${dotenv.get('API_BASE_URL', fallback: 'Not set')}',
-    );
-    print(
-      '   WebSocket URL: ${dotenv.get('WS_BASE_URL', fallback: 'Not set')}',
-    );
+    print('   API URL: ${dotenv.get('API_URL', fallback: 'Not set')}');
+    print('   WebSocket URL: ${dotenv.get('WS_URL', fallback: 'Not set')}');
   }
 
-  // 2. Initialize ApiConfig
+  // 2. Initialize configurations
   await ApiConfig.init();
   await WebSocketConfig.init();
 
@@ -58,30 +56,30 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
-  final GlobalWebSocketManager _webSocketManager = GlobalWebSocketManager();
-  final WebSocketNavigatorObserver _navigatorObserver =
-      WebSocketNavigatorObserver(); // FIXED: No parameter needed
+  // Use the new WebSocket manager
+  final WebSocketManager _webSocketManager = WebSocketManager();
 
-  StreamSubscription<bool>? _connectionSubscription;
-  StreamSubscription<int>? _unreadSubscription;
-  StreamSubscription<Map<String, dynamic>>? _notificationSubscription;
+  // Notification handler for global notifications
+  final NotificationHandler _notificationHandler = NotificationHandler();
 
-  // Connection state tracking
-  bool _isWebSocketInitialized = false;
+  // Stream subscriptions
+  StreamSubscription? _notificationSubscription;
+
+  // User state tracking
   String? _currentUserId;
+  String? _currentToken;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _setupWebSocketListeners();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _cleanupWebSocketListeners();
-    _webSocketManager.disconnect();
+    _cleanupSubscriptions();
+    _cleanupWebSocket();
     super.dispose();
   }
 
@@ -97,155 +95,23 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         _reconnectWebSocketIfNeeded();
         break;
       case AppLifecycleState.paused:
-        // App went to background - keep WebSocket alive but stop pings
+        // App went to background
         if (kDebugMode) {
-          print('📱 App backgrounded - WebSocket will stay alive');
+          print('📱 App backgrounded');
         }
         break;
       case AppLifecycleState.inactive:
       case AppLifecycleState.detached:
-        // Clean up if needed
-        break;
       case AppLifecycleState.hidden:
-        // Handle hidden state
+        // Handle other states if needed
         break;
     }
   }
 
-  void _setupWebSocketListeners() {
-    // Listen for connection status
-    _connectionSubscription = _webSocketManager.connectionStatusStream.listen((
-      isConnected,
-    ) {
-      if (kDebugMode) {
-        print('🌐 Main App - WebSocket connection: $isConnected');
-      }
-
-      if (!isConnected && _isWebSocketInitialized) {
-        // Try to reconnect if we were previously connected
-        _scheduleReconnect();
-      }
-    });
-
-    // Listen for unread count
-    _unreadSubscription = _webSocketManager.unreadCountStream.listen((count) {
-      if (kDebugMode) {
-        print('📊 Main App - Unread count: $count');
-      }
-    });
-
-    // Listen for global notifications
-    _notificationSubscription = _webSocketManager.notificationStream.listen((
-      notification,
-    ) {
-      _handleGlobalNotification(notification);
-    });
-  }
-
-  void _cleanupWebSocketListeners() {
-    _connectionSubscription?.cancel();
-    _unreadSubscription?.cancel();
-    _notificationSubscription?.cancel();
-  }
-
-  void _handleGlobalNotification(Map<String, dynamic> notification) {
-    final type = notification['type'];
-
-    if (kDebugMode) {
-      print('🔔 Main App received notification: $type');
-    }
-
-    switch (type) {
-      case 'connected':
-        _handleWebSocketConnected(notification);
-        break;
-      case 'disconnected':
-        _handleWebSocketDisconnected(notification);
-        break;
-      case 'error':
-        _handleWebSocketError(notification);
-        break;
-      case 'new_notification':
-        _handleNewNotification(notification);
-        break;
-      case 'user_registered':
-        _showGlobalNotification(notification);
-        break;
-      case 'user_approved':
-        _showGlobalNotification(notification);
-        break;
-      case 'user_rejected':
-        _showGlobalNotification(notification);
-        break;
-    }
-  }
-
-  void _handleWebSocketConnected(Map<String, dynamic> data) {
-    _isWebSocketInitialized = true;
-    if (kDebugMode) {
-      print('✅ WebSocket connected in main app');
-      print('   Socket ID: ${data['socketId']}');
-    }
-  }
-
-  void _handleWebSocketDisconnected(Map<String, dynamic> data) {
-    if (kDebugMode) {
-      print('❌ WebSocket disconnected in main app');
-    }
-  }
-
-  void _handleWebSocketError(Map<String, dynamic> data) {
-    if (kDebugMode) {
-      print('⚠️ WebSocket error in main app: ${data['data']}');
-    }
-  }
-
-  void _handleNewNotification(Map<String, dynamic> notification) {
-    final data = notification['data'];
-    final context = AuthManager.navigatorKey.currentContext;
-    
-    if (context != null && data != null) {
-      NotificationHelper.showNotificationToast(
-        context,
-        title: data['title'] ?? 'New Notification',
-        body: data['message'] ?? '',
-        icon: Icons.notifications,
-      );
-    }
-  }
-
-  void _showGlobalNotification(Map<String, dynamic> notification) {
-    final type = notification['type'];
-    final data = notification['data'];
-    final context = AuthManager.navigatorKey.currentContext;
-
-    if (context != null) {
-      String title = 'Notification';
-      String body = '';
-
-      if (type == 'user_registered') {
-        title = 'New User Registered';
-        body = 'A new user has registered and needs approval.';
-      } else if (type == 'user_approved') {
-        title = 'User Approved';
-        body = 'Your account has been approved.';
-      } else if (type == 'user_rejected') {
-        title = 'User Rejected';
-        body = 'Your account request has been rejected.';
-      }
-
-      NotificationHelper.showNotificationToast(
-        context,
-        title: title,
-        body: body,
-        icon: type.contains('user') ? Icons.person : Icons.notifications,
-        backgroundColor: type == 'user_rejected' ? Colors.red[900]! : Colors.black,
-      );
-    }
-  }
+  // In your main.dart, update the WebSocket initialization:
 
   Future<void> _initializeWebSocketForUser(String token, String userId) async {
-    if (_isWebSocketInitialized && _currentUserId == userId) {
+    if (_currentUserId == userId && _currentToken == token) {
       if (kDebugMode) {
         print('🔄 WebSocket already initialized for user: $userId');
       }
@@ -254,42 +120,48 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
     try {
       if (kDebugMode) {
-        print('🚀 Initializing WebSocket for user: $userId');
+        print('🚀 Initializing Socket.IO for user: $userId');
       }
 
-      await _webSocketManager.initialize(token, userId);
+      // Initialize WebSocket manager
+      _webSocketManager.initialize(token: token, userId: userId);
+
+      // Initialize notification handler
+      await _notificationHandler.initialize(token: token, userId: userId);
+
+      // Connect to notifications namespace for global notifications
+      await _webSocketManager.connectToNamespace('notifications');
+
       _currentUserId = userId;
-      _isWebSocketInitialized = true;
+      _currentToken = token;
 
       if (kDebugMode) {
-        print('✅ WebSocket initialized successfully for user: $userId');
+        print('✅ Socket.IO initialized successfully for user: $userId');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Failed to initialize WebSocket: $e');
+        print('❌ Failed to initialize Socket.IO: $e');
       }
-      _isWebSocketInitialized = false;
       _currentUserId = null;
+      _currentToken = null;
 
       // Schedule retry
       _scheduleReconnect();
     }
   }
-
+  
   Future<void> _reconnectWebSocketIfNeeded() async {
-    if (_currentUserId == null) {
+    if (_currentUserId == null || _currentToken == null) {
       return;
     }
 
     try {
-      final token = await SecureStorageService().accessToken;
-      if (token != null) {
-        if (!_webSocketManager.isConnected) {
-          if (kDebugMode) {
-            print('🔄 Attempting to reconnect WebSocket...');
-          }
-          await _initializeWebSocketForUser(token, _currentUserId!);
+      // Check if notifications namespace is connected
+      if (!_webSocketManager.isNamespaceConnected('notifications')) {
+        if (kDebugMode) {
+          print('🔄 Reconnecting to notifications namespace...');
         }
+        await _webSocketManager.connectToNamespace('notifications');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -299,8 +171,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
   void _scheduleReconnect() {
-    // Don't schedule multiple reconnects
-    if (!_isWebSocketInitialized || _currentUserId == null) {
+    if (_currentUserId == null || _currentToken == null) {
       return;
     }
 
@@ -309,12 +180,28 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     });
   }
 
+  void _cleanupSubscriptions() {
+    _notificationSubscription?.cancel();
+  }
+
+  Future<void> _cleanupWebSocket() async {
+    try {
+      await _notificationHandler.dispose();
+      await _webSocketManager.disconnectAll();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error cleaning up WebSocket: $e');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'PCW RIDE',
       navigatorKey: AuthManager.navigatorKey,
-      navigatorObservers: [_navigatorObserver],
+      // If you have navigator observers, add them here
+      // navigatorObservers: [_navigatorObserver],
       theme: ThemeData(
         primarySwatch: Colors.blue,
         useMaterial3: true,
@@ -335,12 +222,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           actionTextColor: Colors.yellow[600],
         ),
       ),
-      // darkTheme: ThemeData.dark().copyWith(
-      //   appBarTheme: const AppBarTheme(
-      //     backgroundColor: Colors.black,
-      //     elevation: 4,
-      //   ),
-      // ),
+      debugShowCheckedModeBanner: false,
       home: FutureBuilder<Map<String, dynamic>>(
         future: _checkAndInitializeSession(),
         builder: (context, snapshot) {
@@ -381,7 +263,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           return const LoginScreen();
         },
       ),
-      debugShowCheckedModeBanner: false,
       builder: (context, child) {
         return GestureDetector(
           onTap: () {
@@ -435,4 +316,3 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     }
   }
 }
-

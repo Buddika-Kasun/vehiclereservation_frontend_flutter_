@@ -9,7 +9,7 @@ import 'package:vehiclereservation_frontend_flutter_/data/models/dashboard_stats
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/secure_storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/storage_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/core/api_config.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/config/api_config.dart';
 
 class ApiService {
   //static const String baseUrl = ApiConfig.baseUrl;

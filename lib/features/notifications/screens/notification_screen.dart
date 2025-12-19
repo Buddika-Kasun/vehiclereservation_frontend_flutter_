@@ -4,9 +4,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/notification_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/users/admin/approval_user_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/global_websocket_manager.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/notification_websocket_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/services/api_service.dart';
+
+// Import new WebSocket structure
+import 'package:vehiclereservation_frontend_flutter_/data/services/ws/websocket_manager.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/services/ws/handlers/notification_handler.dart';
 
 class NotificationScreen extends StatefulWidget {
   final String userId;
@@ -23,24 +25,15 @@ class NotificationScreen extends StatefulWidget {
 }
 
 class _NotificationScreenState extends State<NotificationScreen> {
-  final GlobalWebSocketManager _webSocketManager = GlobalWebSocketManager();
-
-  // Unique listener IDs
-  final String _connectionListenerId;
-  final String _unreadListenerId;
-  final String _notificationListenerId;
-
-  _NotificationScreenState()
-    : _connectionListenerId = UniqueKey().toString(),
-      _unreadListenerId = UniqueKey().toString(),
-      _notificationListenerId = UniqueKey().toString();
+  final WebSocketManager _webSocketManager = WebSocketManager();
+  final NotificationHandler _notificationHandler = NotificationHandler();
 
   final List<NotificationModel> _notifications = [];
   bool _isLoading = true;
   bool _hasError = false;
   int _unreadCount = 0;
   bool _isConnected = false;
-  bool _hasRequestedInitialData = false;
+  bool _isInitializing = false;
 
   @override
   void initState() {
@@ -50,76 +43,86 @@ class _NotificationScreenState extends State<NotificationScreen> {
       print('📱 NotificationScreen initialized for user: ${widget.userId}');
     }
 
-    _setupListeners();
+    _loadInitialData();
     _initializeWebSocket();
-  }
-
-  void _setupListeners() {
-    // Connection status listener
-    _webSocketManager.addConnectionListener(_connectionListenerId, (
-      isConnected,
-    ) {
-      if (kDebugMode) {
-        print('🔌 NotificationScreen connection: $isConnected');
-      }
-      if (mounted) {
-        setState(() {
-          _isConnected = isConnected;
-        });
-
-        if (isConnected && !_hasRequestedInitialData) {
-          _requestInitialNotifications();
-          _hasRequestedInitialData = true;
-        }
-      }
-    });
-
-    // Unread count listener
-    _webSocketManager.addUnreadListener(_unreadListenerId, (count) {
-      if (kDebugMode) {
-        print('📊 NotificationScreen unread: $count');
-      }
-      if (mounted) {
-        setState(() {
-          _unreadCount = count;
-        });
-      }
-    });
-
-    // Notification listener
-    _webSocketManager.addNotificationListener(_notificationListenerId, (
-      notification,
-    ) {
-      if (kDebugMode) {
-        print('📨 NotificationScreen received message');
-        print('📨 Type: ${notification['type']}');
-        print('📨 Data keys: ${notification['data']?.keys}');
-      }
-      _handleWebSocketMessage(notification);
-    });
   }
 
   Future<void> _initializeWebSocket() async {
     try {
-      if (kDebugMode) {
-        print('🔄 NotificationScreen initializing WebSocket...');
+      if (mounted) {
+        setState(() {
+          _isInitializing = true;
+        });
       }
 
-      if (!_webSocketManager.isInitializedForUser(widget.userId)) {
-        await _webSocketManager.initialize(widget.token, widget.userId);
-      }
+      // Initialize WebSocket manager
+      _webSocketManager.initialize(token: widget.token, userId: widget.userId);
+
+      // Initialize notification handler
+      await _notificationHandler.initialize(
+        token: widget.token,
+        userId: widget.userId,
+      );
+
+      // Connect to notifications namespace
+      await _webSocketManager.connectToNamespace('notifications');
+
+      // Set up notification handler callbacks
+      _notificationHandler.onUnreadCountUpdate = (count) {
+        if (mounted) {
+          if (count == -1) {
+            // Refresh unread count via API
+            _loadUnreadCount();
+          } else {
+            // Update with specific count
+            setState(() {
+              _unreadCount = count;
+            });
+          }
+        }
+      };
+
+      _notificationHandler.onNewNotification = (notification) {
+        if (mounted) {
+          // Show snackbar for new notification
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'New notification: ${notification['title'] ?? 'Notification'}',
+              ),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+          // Refresh notifications list
+          _loadNotifications();
+        }
+      };
+
+      // Set up connection listener
+      _webSocketManager.addConnectionListener('notifications', (isConnected) {
+        if (kDebugMode) {
+          print('🔌 NotificationScreen connection: $isConnected');
+        }
+        if (mounted) {
+          setState(() {
+            _isConnected = isConnected;
+            _isInitializing = false;
+          });
+        }
+      });
+
+      // Set up message listener
+      _webSocketManager.addMessageListener('notifications', (message) {
+        _handleWebSocketMessage(message);
+      });
 
       if (mounted) {
         setState(() {
-          _isConnected = _webSocketManager.isConnected;
-          _unreadCount = _webSocketManager.unreadCount;
-          _isLoading = false;
+          _isConnected = _webSocketManager.isNamespaceConnected(
+            'notifications',
+          );
+          _isInitializing = false;
         });
-
-        if (_isConnected && !_hasRequestedInitialData) {
-          _requestInitialNotifications();
-          _hasRequestedInitialData = true;
-        }
       }
     } catch (e) {
       if (kDebugMode) {
@@ -127,251 +130,134 @@ class _NotificationScreenState extends State<NotificationScreen> {
       }
       if (mounted) {
         setState(() {
-          _isLoading = false;
           _hasError = true;
           _isConnected = false;
+          _isInitializing = false;
         });
       }
     }
-  }
-
-  void _requestInitialNotifications() {
-    if (!_webSocketManager.isConnected) {
-      if (kDebugMode) {
-        print('⚠️ Not connected, cannot request initial notifications');
-      }
-      return;
-    }
-
-    if (kDebugMode) {
-      print('📥 Requesting initial notifications and unread count...');
-    }
-
-    _webSocketManager.getInitialNotifications();
-    _webSocketManager.getUnreadCount();
   }
 
   void _handleWebSocketMessage(Map<String, dynamic> message) {
     if (!mounted) return;
 
-    final String eventType = message['type'] ?? '';
-    final dynamic eventData = message['data'];
+    final event = message['event']?.toString() ?? '';
+    final data = message['data'];
 
     if (kDebugMode) {
-      print('🔔 Processing event type: $eventType');
+      print('📨 NotificationScreen received event: $event');
     }
 
-    switch (eventType) {
-      case 'initial-notifications':
-        _handleInitialNotifications(eventData);
+    // Handle different events
+    switch (event) {
+      case 'notification_update':
+        _handleNotificationUpdate(data);
         break;
-      case 'unread-count':
-        _handleUnreadCount(eventData);
-        break;
-      case 'new_notification':
-        _handleNewNotification(eventData);
-        break;
-      case 'notification_read':
-        _handleNotificationRead(eventData);
-        break;
-      case 'notification_deleted':
-        _handleNotificationDeleted(eventData);
-        break;
-      case 'all_read':
-        _handleAllRead();
-        break;
-      case 'all_cleared':
-        _handleAllCleared();
+      case 'refresh':
+        _handleRefreshEvent(data);
         break;
       case 'connected':
-        if (kDebugMode) {
-          print('✅ Connected to notification server');
-        }
-        _requestInitialNotifications();
+        _handleConnected(data);
         break;
-      case 'error':
-        if (kDebugMode) {
-          print('❌ WebSocket error: $eventData');
-        }
+      case 'disconnected':
+        _handleDisconnected(data);
         break;
-      default:
-        if (kDebugMode) {
-          print('⚠️ Unknown event type: $eventType');
-        }
     }
   }
 
-  void _handleInitialNotifications(dynamic data) {
+  void _handleNotificationUpdate(Map<String, dynamic> data) {
+    final action = data['action']?.toString() ?? '';
+    final notificationData = data['data'];
+
     if (kDebugMode) {
-      print('📋 Processing initial notifications in UI');
-      print('📋 Data type: ${data.runtimeType}');
-      print('📋 Data: $data');
+      print('📨 Notification update action: $action');
     }
 
-    try {
-      if (data is Map<String, dynamic>) {
-        // The data should have 'notifications' array and 'unreadCount'
-        if (kDebugMode) {
-          print('📋 Data keys: ${data.keys}');
-        }
+    // Refresh notifications when updates come
+    _loadNotifications();
+    _loadUnreadCount();
+  }
 
-        final response = InitialNotificationsResponse.fromJson(data);
+  void _handleRefreshEvent(Map<String, dynamic> data) {
+    if (kDebugMode) {
+      print('🔄 Refresh event received, reloading notifications...');
+    }
+    _loadNotifications();
+    _loadUnreadCount();
+  }
 
-        if (kDebugMode) {
-          print('✅ Parsed ${response.notifications.length} notifications');
-          print('📊 Unread count: ${response.unreadCount}');
-        }
+  void _handleConnected(dynamic data) {
+    if (mounted) {
+      setState(() {
+        _isConnected = true;
+      });
+    }
+  }
 
-        setState(() {
-          _notifications.clear();
-          _notifications.addAll(response.notifications);
-          _unreadCount = response.unreadCount;
-          _isLoading = false;
-          _hasError = false;
-        });
+  void _handleDisconnected(dynamic data) {
+    if (mounted) {
+      setState(() {
+        _isConnected = false;
+      });
+    }
+  }
 
-        if (kDebugMode) {
-          print('✅ UI updated with ${_notifications.length} notifications');
-        }
-      } else if (data is List) {
-        // If it comes as a list directly
-        if (kDebugMode) {
-          print('📋 Data is a list with ${data.length} items');
-        }
-
-        final notifications = data
-            .map(
-              (item) =>
-                  NotificationModel.fromJson(item as Map<String, dynamic>),
-            )
-            .toList();
-
-        setState(() {
-          _notifications.clear();
-          _notifications.addAll(notifications);
-          _isLoading = false;
-          _hasError = false;
-        });
-      } else {
-        if (kDebugMode) {
-          print('⚠️ Unexpected data format: ${data.runtimeType}');
-        }
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    } catch (e, stackTrace) {
-      if (kDebugMode) {
-        print('❌ Error parsing initial notifications: $e');
-        print('❌ Stack trace: $stackTrace');
-      }
+  Future<void> _loadInitialData() async {
+    await _loadNotifications();
+    await _loadUnreadCount();
+    if (mounted) {
       setState(() {
         _isLoading = false;
-        _hasError = true;
       });
     }
   }
 
-  void _handleUnreadCount(dynamic data) {
-    if (data is Map<String, dynamic>) {
-      final count = data['count'] ?? 0;
+  Future<void> _loadNotifications() async {
+    try {
+      final response = await ApiService.getNotifications();
+      if (response['success'] == true && response['data'] != null) {
+        final notificationsData =
+            response['data']['notifications'] as List<dynamic>? ?? [];
+        final notifications = notificationsData
+            .map((item) => NotificationModel.fromJson(item))
+            .toList();
+
+        if (mounted) {
+          setState(() {
+            _notifications.clear();
+            _notifications.addAll(notifications);
+            _hasError = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error loading notifications: $e');
+      }
       if (mounted) {
         setState(() {
-          _unreadCount = count;
+          _hasError = true;
         });
       }
+    }
+  }
+
+  Future<void> _loadUnreadCount() async {
+    try {
+      final response = await ApiService.getUnreadCount();
+      if (response['success'] == true && response['data'] != null) {
+        final count = response['data']['count'] ?? 0;
+        if (mounted) {
+          setState(() {
+            _unreadCount = count;
+          });
+        }
+      }
+    } catch (e) {
       if (kDebugMode) {
-        print('📊 Updated unread count: $count');
+        print('❌ Error loading unread count: $e');
       }
     }
-  }
-
-  void _handleNewNotification(dynamic data) {
-    if (data is Map<String, dynamic>) {
-      try {
-        final notification = NotificationModel.fromJson(
-          data,
-        ).copyWith(isNew: true);
-
-        setState(() {
-          _notifications.insert(0, notification);
-          if (!notification.read) {
-            _unreadCount++;
-          }
-        });
-
-        if (!notification.isPending) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('📢 ${notification.title}'),
-              backgroundColor: Colors.black,
-              behavior: SnackBarBehavior.floating,
-              action: SnackBarAction(
-                label: 'VIEW',
-                textColor: Colors.yellow[600],
-                onPressed: () {},
-              ),
-            ),
-          );
-        }
-      } catch (e) {
-        if (kDebugMode) {
-          print('❌ Error handling new notification: $e');
-        }
-      }
-    }
-  }
-
-  void _handleNotificationRead(dynamic data) {
-    if (data is Map<String, dynamic>) {
-      final notificationId = data['notificationId'] ?? data['id'];
-
-      setState(() {
-        final index = _notifications.indexWhere(
-          (n) => n.id.toString() == notificationId.toString(),
-        );
-        if (index != -1 && !_notifications[index].read) {
-          _notifications[index] = _notifications[index].copyWith(read: true);
-          if (_unreadCount > 0) {
-            _unreadCount--;
-          }
-        }
-      });
-    }
-  }
-
-  void _handleNotificationDeleted(dynamic data) {
-    if (data is Map<String, dynamic>) {
-      final notificationId = data['notificationId'] ?? data['id'];
-
-      setState(() {
-        final index = _notifications.indexWhere(
-          (n) => n.id.toString() == notificationId.toString(),
-        );
-        if (index != -1) {
-          if (!_notifications[index].read && _unreadCount > 0) {
-            _unreadCount--;
-          }
-          _notifications.removeAt(index);
-        }
-      });
-    }
-  }
-
-  void _handleAllRead() {
-    setState(() {
-      for (int i = 0; i < _notifications.length; i++) {
-        _notifications[i] = _notifications[i].copyWith(read: true);
-      }
-      _unreadCount = 0;
-    });
-  }
-
-  void _handleAllCleared() {
-    setState(() {
-      _notifications.clear();
-      _unreadCount = 0;
-    });
   }
 
   void _clearAllNotifications() {
@@ -388,9 +274,19 @@ class _NotificationScreenState extends State<NotificationScreen> {
             child: Text('Cancel', style: TextStyle(color: Colors.grey[700])),
           ),
           TextButton(
-            onPressed: () {
-              _webSocketManager.clearAllNotifications();
-              Navigator.pop(context);
+            onPressed: () async {
+              try {
+                await ApiService.deleteNotification(
+                  'all',
+                ); // Assuming 'all' clears all
+                _loadNotifications();
+                _loadUnreadCount();
+                Navigator.pop(context);
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Failed to clear notifications: $e')),
+                );
+              }
             },
             child: Text(
               'Clear',
@@ -402,16 +298,40 @@ class _NotificationScreenState extends State<NotificationScreen> {
     );
   }
 
-  void _markAllAsRead() {
-    _webSocketManager.markAllAsRead();
+  void _markAllAsRead() async {
+    try {
+      await ApiService.markAllNotificationsAsRead();
+      _loadNotifications();
+      _loadUnreadCount();
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to mark all as read: $e')));
+    }
   }
 
-  void _deleteNotification(int notificationId) {
-    _webSocketManager.deleteNotification(notificationId.toString());
+  void _deleteNotification(int notificationId) async {
+    try {
+      await ApiService.deleteNotification(notificationId.toString());
+      _loadNotifications();
+      _loadUnreadCount();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete notification: $e')),
+      );
+    }
   }
 
-  void _markAsRead(int notificationId) {
-    _webSocketManager.markAsRead(notificationId.toString());
+  void _markAsRead(int notificationId) async {
+    try {
+      await ApiService.markNotificationAsRead(notificationId.toString());
+      _loadNotifications();
+      _loadUnreadCount();
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to mark as read: $e')));
+    }
   }
 
   void _handleNotificationTap(NotificationModel notification) {
@@ -424,67 +344,31 @@ class _NotificationScreenState extends State<NotificationScreen> {
     final NotificationMetadata? metadata = notification.metadata;
 
     switch (notification.type) {
-      // User registration notifications - go to ApprovalUsersScreen
+      // User registration notifications - go to user creations screen
       case 'USER_REGISTERED':
-      case 'USER_APPROVAL_REQUESTED':
-      case 'USER_APPROVAL_REQUIRED':
+      case 'USER_APPROVED':
+      case 'USER_REJECTED':
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => HomeScreen(
-              screenName: 'user_creations'
-            )
+            builder: (context) => HomeScreen(screenName: 'user_creations'),
           ),
         );
         break;
 
-      // TODO: Trip related notifications
+      // Trip related notifications
       case 'TRIP_CREATED':
       case 'TRIP_APPROVED':
       case 'TRIP_REJECTED':
       case 'TRIP_CANCELLED':
-        _showComingSoonMessage('Trip Management');
+      case 'TRIP_COMPLETED':
+        _showTripNotificationDialog(notification);
         break;
 
-      // TODO: Vehicle related notifications
+      // Vehicle related notifications
       case 'VEHICLE_ASSIGNED':
-      case 'VEHICLE_MAINTENANCE':
-      case 'VEHICLE_AVAILABLE':
-        _showComingSoonMessage('Vehicle Management');
-        break;
-
-      // TODO: Booking related notifications
-      case 'BOOKING_CONFIRMED':
-      case 'BOOKING_CANCELLED':
-      case 'BOOKING_REMINDER':
-        _showComingSoonMessage('Booking Management');
-        break;
-
-      // TODO: Payment related notifications
-      case 'PAYMENT_RECEIVED':
-      case 'PAYMENT_DUE':
-      case 'PAYMENT_FAILED':
-        _showComingSoonMessage('Payment Management');
-        break;
-
-      // TODO: Emergency/Safety notifications
-      case 'EMERGENCY_ALERT':
-      case 'SAFETY_NOTICE':
-        _showComingSoonMessage('Emergency Management');
-        break;
-
-      // TODO: System notifications
-      case 'SYSTEM_UPDATE':
-      case 'MAINTENANCE_NOTICE':
-      case 'NEW_FEATURE':
-        _showComingSoonMessage('System Announcements');
-        break;
-
-      // TODO: Driver specific notifications
-      case 'DRIVER_ASSIGNED':
-      case 'DRIVER_ARRIVED':
-      case 'DRIVER_RATING':
-        _showComingSoonMessage('Driver Management');
+      case 'VEHICLE_UNASSIGNED':
+        _showVehicleNotificationDialog(notification);
         break;
 
       // Default case for other notifications
@@ -493,6 +377,81 @@ class _NotificationScreenState extends State<NotificationScreen> {
         _showNotificationDetails(notification);
         break;
     }
+  }
+
+  void _showTripNotificationDialog(NotificationModel notification) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(notification.title),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(notification.message),
+            SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                // Navigate to trips screen
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => HomeScreen(
+                      screenName: 'my_rides',
+                      screenData: {'userId': widget.userId},
+                    ),
+                  ),
+                );
+              },
+              child: Text('View Trips'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showVehicleNotificationDialog(NotificationModel notification) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(notification.title),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(notification.message),
+            SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                // Navigate to vehicles screen
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => HomeScreen(screenName: 'my_vehicles'),
+                  ),
+                );
+              },
+              child: Text('View Vehicles'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   // Show notification details in a dialog
@@ -606,47 +565,33 @@ class _NotificationScreenState extends State<NotificationScreen> {
     return entries.join('\n');
   }
 
-  // Show "coming soon" message for not-yet-implemented features
-  void _showComingSoonMessage(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature - Coming Soon!'),
-        backgroundColor: Colors.black,
-        duration: Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        action: SnackBarAction(
-          label: 'OK',
-          textColor: Colors.yellow[600],
-          onPressed: () {},
-        ),
-      ),
-    );
-  }
-
   Future<void> _refreshNotifications() async {
     setState(() {
       _isLoading = true;
-      _hasRequestedInitialData = false;
       _notifications.clear();
     });
 
-    _requestInitialNotifications();
+    await _loadNotifications();
+    await _loadUnreadCount();
 
-    // Give it a moment to receive data
-    await Future.delayed(Duration(seconds: 2));
-
-    if (mounted && _isLoading) {
+    if (mounted) {
       setState(() {
         _isLoading = false;
       });
     }
   }
 
+  void _reconnectWebSocket() {
+    setState(() {
+      _isInitializing = true;
+    });
+    _initializeWebSocket();
+  }
+
   @override
   void dispose() {
-    _webSocketManager.removeConnectionListener(_connectionListenerId);
-    _webSocketManager.removeUnreadListener(_unreadListenerId);
-    _webSocketManager.removeNotificationListener(_notificationListenerId);
+    _notificationHandler.dispose();
+    _webSocketManager.disconnectFromNamespace('notifications');
     super.dispose();
   }
 
@@ -657,7 +602,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       body: Column(
         children: [
           _buildTopBar(),
-          if (_isLoading)
+          if (_isLoading || _isInitializing)
             _buildLoadingState()
           else if (_hasError)
             _buildErrorState()
@@ -731,6 +676,14 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: _isConnected ? Colors.green : Colors.red,
+                        boxShadow: [
+                          BoxShadow(
+                            color: (_isConnected ? Colors.green : Colors.red)
+                                .withOpacity(0.3),
+                            blurRadius: 4,
+                            spreadRadius: 1,
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -771,9 +724,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
             CircularProgressIndicator(color: Colors.black),
             const SizedBox(height: 16),
             Text(
-              _isConnected
-                  ? 'Loading notifications...'
-                  : 'Connecting to server...',
+              _isInitializing
+                  ? 'Connecting to notifications...'
+                  : 'Loading notifications...',
               style: TextStyle(fontSize: 16, color: Colors.grey[700]),
             ),
           ],
@@ -794,9 +747,14 @@ class _NotificationScreenState extends State<NotificationScreen> {
               'Connection Failed',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
+            const SizedBox(height: 8),
+            Text(
+              'Unable to connect to notifications',
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: _refreshNotifications,
+              onPressed: _reconnectWebSocket,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.black,
                 foregroundColor: Colors.yellow[600],
@@ -943,15 +901,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         color: !notification.read ? Colors.yellow[50] : Colors.white,
         child: InkWell(
-          onTap: () {
-            // Mark as read if not already read
-            if (!notification.read) {
-              _markAsRead(notification.id);
-            }
-
-            // Navigate based on notification type
-            _handleNotificationTap(notification);
-          },
+          onTap: () => _handleNotificationTap(notification),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -990,9 +940,36 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         style: TextStyle(color: Colors.grey[600], fontSize: 14),
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        _formatTime(notification.createdAt),
-                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            _formatTime(notification.createdAt),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                          if (!notification.read)
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                'NEW',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ],
                   ),
@@ -1025,13 +1002,19 @@ class _NotificationScreenState extends State<NotificationScreen> {
     switch (type) {
       case 'USER_REGISTERED':
       case 'USER_APPROVED':
+      case 'USER_REJECTED':
         return Icons.person_add;
       case 'TRIP_CREATED':
+      case 'TRIP_APPROVED':
+      case 'TRIP_REJECTED':
+      case 'TRIP_CANCELLED':
+      case 'TRIP_COMPLETED':
         return Icons.directions_car;
+      case 'VEHICLE_ASSIGNED':
+      case 'VEHICLE_UNASSIGNED':
+        return Icons.directions_car_filled;
       default:
         return Icons.notifications;
     }
   }
-
 }
-

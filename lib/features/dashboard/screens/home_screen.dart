@@ -1,13 +1,10 @@
 // File: lib/screens/home_screen.dart
-// Added: screenName parameter to navigate to specific child screens
-
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/approval_user_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicleType_managemnet_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicle_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/approval/rides_approval_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/assigned/assigned_rides_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/global_websocket_manager.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/ride/trip_details_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/secure_storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/storage_service.dart';
@@ -25,10 +22,17 @@ import 'package:vehiclereservation_frontend_flutter_/features/users/admin/depart
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/cost_center_management_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicle_management_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/approval_management_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/notifications/screens/notification_screen.dart';
+
+// Import new WebSocket structure
+import 'package:vehiclereservation_frontend_flutter_/data/services/ws/websocket_manager.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/services/ws/handlers/notification_handler.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/services/ws/handlers/trip_handler.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/services/ws/handlers/user_handler.dart';
 
 class HomeScreen extends StatefulWidget {
-  final String? screenName; // NEW: Optional screen name to navigate to
-  final Map<String, dynamic>? screenData; // NEW: Optional data for the screen
+  final String? screenName; // Optional screen name to navigate to
+  final Map<String, dynamic>? screenData; // Optional data for the screen
 
   const HomeScreen({Key? key, this.screenName, this.screenData})
     : super(key: key);
@@ -39,6 +43,11 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final WebSocketManager _webSocketManager = WebSocketManager();
+  final NotificationHandler _notificationHandler = NotificationHandler();
+  final TripHandler _tripHandler = TripHandler();
+  final UserHandler _userHandler = UserHandler();
+
   User? _user;
   String? _token;
   bool _isLoading = true;
@@ -105,6 +114,9 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoading = false;
       });
 
+      // Initialize WebSocket handlers
+      await _initializeWebSocketHandlers();
+
       // Navigate to requested screen after user data is loaded
       if (widget.screenName != null) {
         _navigateToScreen(widget.screenName!, widget.screenData);
@@ -115,6 +127,41 @@ class _HomeScreenState extends State<HomeScreen> {
         _redirectToLogin = true;
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _initializeWebSocketHandlers() async {
+    if (_user == null || _token == null) return;
+
+    try {
+      // Initialize notification handler for TopBar
+      await _notificationHandler.initialize(
+        token: _token!,
+        userId: _user!.id.toString(),
+      );
+
+      // Set up WebSocket manager for all namespaces
+      _webSocketManager.initialize(
+        token: _token!,
+        userId: _user!.id.toString(),
+      );
+
+      // Set up trip handler for trip screens
+      await _tripHandler.initialize(
+        token: _token!,
+        userId: _user!.id.toString(),
+      );
+
+      // Set up user handler for user management screens
+      await _userHandler.initialize(
+        token: _token!,
+        userId: _user!.id.toString(),
+      );
+
+      // Connect to notifications namespace immediately (for TopBar)
+      await _webSocketManager.connectToNamespace('notifications');
+    } catch (e) {
+      print('Error initializing WebSocket handlers: $e');
     }
   }
 
@@ -129,46 +176,84 @@ class _HomeScreenState extends State<HomeScreen> {
           break;
         case 'my_rides':
         case 'all_rides':
-          _currentScreen = RidesScreen(userId: data?['userId'] ?? _user!.id);
+          _currentScreen = AssignedRidesScreen(
+            userId: data?['userId'] ?? _user!.id,
+            //token: _token!,
+          );
+          break;
+        case 'trip_details':
+          if (data != null && data['tripId'] != null) {
+            _currentScreen = TripDetailsScreen(
+              tripId: data['tripId'],
+              //token: _token!,
+            );
+          } else {
+            _currentScreen = DashboardScreen();
+          }
           break;
         case 'my_vehicles':
           _currentScreen = VehicleScreen(user: data?['user'] ?? _user!);
           break;
         case 'assigned_rides':
-          _currentScreen = AssignedRidesScreen(userId: _user!.id);
+          _currentScreen = AssignedRidesScreen(
+            userId: _user!.id,
+            //token: _token!,
+          );
           break;
         case 'meter_reading':
           _currentScreen = RidesApprovalScreen();
           break;
         case 'user_creations':
-          _currentScreen = UserCreationsScreen();
+          _currentScreen = UserCreationsScreen(
+            //token: _token!
+          );
           break;
         case 'trip_approvals':
-          _currentScreen = ApprovalsScreen();
+          _currentScreen = ApprovalsScreen(
+            //token: _token!
+          );
           break;
         case 'company_management':
-          _currentScreen = CompanyManagementScreen();
+          _currentScreen = CompanyManagementScreen(
+            //token: _token!
+          );
           break;
         case 'department_management':
-          _currentScreen = DepartmentsManagementScreen();
+          _currentScreen = DepartmentsManagementScreen(
+            //token: _token!
+          );
           break;
         case 'cost_center_management':
-          _currentScreen = CostCenterManagementScreen();
+          _currentScreen = CostCenterManagementScreen(
+            //token: _token!
+          );
           break;
         case 'vehicle_management':
-          _currentScreen = VehicleManagementScreen();
+          _currentScreen = VehicleManagementScreen(
+            //token: _token!
+          );
           break;
         case 'vehicle_type_management':
-          _currentScreen = VehicleTypeManagementScreen();
+          _currentScreen = VehicleTypeManagementScreen(
+            //token: _token!
+          );
           break;
         case 'approval_management':
           _currentScreen = ApprovalManagementScreen(
+            //token: _token!,
             onApprovalUsersPressed: _switchToApprovalUsersScreen,
           );
           break;
         case 'approval_users':
           _currentScreen = ApprovalUsersScreen(
+            //token: _token!,
             onBackToApprovalConfig: _switchToApprovalManagementScreen,
+          );
+          break;
+        case 'notifications':
+          _currentScreen = NotificationScreen(
+            userId: _user!.id.toString(),
+            token: _token!,
           );
           break;
         default:
@@ -227,6 +312,9 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'Trip Approvals':
         _navigateToApprovals();
         break;
+      case 'Notifications':
+        _navigateToNotifications();
+        break;
     }
   }
 
@@ -243,12 +331,13 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // In your logout function
   Future<void> logout() async {
     try {
-      // Clear WebSocket connection
-      final manager = GlobalWebSocketManager();
-      await manager.disconnect();
+      // Clean up WebSocket connections
+      await _notificationHandler.dispose();
+      await _tripHandler.dispose();
+      await _userHandler.dispose();
+      await _webSocketManager.disconnectAll();
     } catch (e) {
       print('Error disconnecting WebSocket: $e');
     }
@@ -266,7 +355,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _navigateToRides() {
     setState(() {
-      _currentScreen = RidesScreen(userId: _user!.id);
+      _currentScreen = AssignedRidesScreen(
+        userId: _user!.id, 
+        //token: _token!
+      );
     });
   }
 
@@ -278,7 +370,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _navigateToAssignedRides() {
     setState(() {
-      _currentScreen = AssignedRidesScreen(userId: _user!.id);
+      _currentScreen = AssignedRidesScreen(
+        userId: _user!.id, 
+        //token: _token!
+        );
     });
   }
 
@@ -290,19 +385,35 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _navigateToUserCreations() {
     setState(() {
-      _currentScreen = UserCreationsScreen();
+      _currentScreen = UserCreationsScreen(
+        //token: _token!
+      );
     });
   }
 
   void _navigateToApprovals() {
     setState(() {
-      _currentScreen = ApprovalsScreen();
+      _currentScreen = ApprovalsScreen(
+        //token: _token!
+      );
+    });
+  }
+
+  void _navigateToNotifications() {
+    setState(() {
+      _currentScreen = NotificationScreen(
+        userId: _user!.id.toString(),
+        token: _token!,
+      );
     });
   }
 
   void _navigateToApprovalUsers() {
     setState(() {
-      _currentScreen = ApprovalUsersScreen();
+      _currentScreen = ApprovalUsersScreen(
+        //token: _token!,
+        onBackToApprovalConfig: _switchToApprovalManagementScreen,
+      );
     });
   }
 
@@ -334,38 +445,48 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _navigateToCompanyManagement() {
     setState(() {
-      _currentScreen = CompanyManagementScreen();
+      _currentScreen = CompanyManagementScreen(
+        //token: _token!
+      );
     });
   }
 
   void _navigateToDepartmentManagement() {
     setState(() {
-      _currentScreen = DepartmentsManagementScreen();
+      _currentScreen = DepartmentsManagementScreen(
+        //token: _token!
+      );
     });
   }
 
   void _navigateToCostCenterManagement() {
     setState(() {
-      _currentScreen = CostCenterManagementScreen();
+      _currentScreen = CostCenterManagementScreen(
+        //token: _token!
+      );
     });
   }
 
   void _navigateToVehicleManagement() {
     setState(() {
-      _currentScreen = VehicleManagementScreen();
+      _currentScreen = VehicleManagementScreen(
+        //token: _token!
+      );
     });
   }
 
   void _navigateToVehicleTypeManagement() {
     setState(() {
-      _currentScreen = VehicleTypeManagementScreen();
+      _currentScreen = VehicleTypeManagementScreen(
+        //token: _token!
+      );
     });
   }
 
-  // Add this method to handle switching between approval screens
   void _switchToApprovalUsersScreen() {
     setState(() {
       _currentScreen = ApprovalUsersScreen(
+        //token: _token!,
         onBackToApprovalConfig: _switchToApprovalManagementScreen,
       );
     });
@@ -374,12 +495,12 @@ class _HomeScreenState extends State<HomeScreen> {
   void _switchToApprovalManagementScreen() {
     setState(() {
       _currentScreen = ApprovalManagementScreen(
+        //token: _token!,
         onApprovalUsersPressed: _switchToApprovalUsersScreen,
       );
     });
   }
 
-  // Update your existing method to use the new approach
   void _navigateToAdminApprovalManagement() {
     _switchToApprovalManagementScreen();
   }
@@ -556,11 +677,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (result == true) {
-      await StorageService.clearUserData();
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => LoginScreen()),
-      );
+      await logout();
     }
   }
 
@@ -589,6 +706,16 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    // Clean up WebSocket connections when screen is disposed
+    _notificationHandler.dispose();
+    _tripHandler.dispose();
+    _userHandler.dispose();
+    _webSocketManager.disconnectAll();
+    super.dispose();
   }
 
   @override
@@ -658,4 +785,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-

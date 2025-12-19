@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:vehiclereservation_frontend_flutter_/shared/mixins/realtime_screen_mixin.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/approval/approval_details_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/secure_storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/storage_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/namespace_websocket_manager.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/approval_model.dart';
 
 class ApprovalsScreen extends StatefulWidget {
@@ -14,9 +12,9 @@ class ApprovalsScreen extends StatefulWidget {
   _ApprovalsScreenState createState() => _ApprovalsScreenState();
 }
 
-class _ApprovalsScreenState extends State<ApprovalsScreen> with RealtimeScreenMixin {
+class _ApprovalsScreenState extends State<ApprovalsScreen> {
   @override
-  String get namespace => 'trips';
+  String get namespace => '/trips';
   List<ApprovalTrip> _trips = [];
   bool _isLoading = true;
   bool _loadingMore = false;

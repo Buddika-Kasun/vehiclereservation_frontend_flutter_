@@ -1,94 +1,197 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:vehiclereservation_frontend_flutter_/shared/mixins/realtime_screen_mixin.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/ride/trip_details_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/models/approval_trip_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/api_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/secure_storage_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/storage_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/namespace_websocket_manager.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/models/trip_list_response.dart';
+import 'package:flutter/foundation.dart';
 
-class RidesScreen extends StatefulWidget {
-  final int userId;
+// Import new WebSocket structure
+import 'package:vehiclereservation_frontend_flutter_/data/services/ws/websocket_manager.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/services/ws/handlers/trip_handler.dart';
 
-  const RidesScreen({Key? key, required this.userId}) : super(key: key);
+class RidesApprovalScreen extends StatefulWidget {
+  const RidesApprovalScreen({super.key});
 
   @override
-  _RidesScreenState createState() => _RidesScreenState();
+  State<RidesApprovalScreen> createState() => _RidesApprovalScreenState();
 }
 
-class _RidesScreenState extends State<RidesScreen> with RealtimeScreenMixin {
-  @override
-  String get namespace => 'trips';
-  List<TripCard> _trips = [];
+class _RidesApprovalScreenState extends State<RidesApprovalScreen> {
+  // WebSocket managers
+  final WebSocketManager _webSocketManager = WebSocketManager();
+  final TripHandler _tripHandler = TripHandler();
+
+  List<ApprovalTrip> _allTrips = [];
   bool _isLoading = true;
   bool _loadingMore = false;
   String _errorMessage = '';
   int _page = 1;
-  int _limit = 3;
+  int _limit = 4;
   bool _hasMore = true;
 
   // Filters
-  TimeFilter _timeFilter = TimeFilter.today; // today, week, month, all
-  TripStatus? _statusFilter;
+  String _timeFilter = 'today'; // today, week, month, all
+  bool _showReadTrips = false;
 
   final ScrollController _scrollController = ScrollController();
+
+  // WebSocket connection state
+  bool _isConnected = false;
+  bool _isInitializing = false;
+  Timer? _debounceTimer;
 
   @override
   void initState() {
     super.initState();
-    _loadUserTrips(reset: true);
-
-    // Setup scroll listener for infinite scroll
+    _loadTrips(reset: true);
     _scrollController.addListener(_scrollListener);
-  }
-
-
-
-  @override
-  void handleScreenRefresh(Map<String, dynamic> data) {
-    // Handle realtime trip list updates
-    final scope = data['scope'] ?? 'ALL';
-    if (scope == 'TRIPS' || scope == 'ALL' || scope == 'MY_RIDES') {
-      _refreshRides();
-    }
+    _initializeWebSocket();
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _debounceTimer?.cancel();
+    _cleanupWebSocket();
     super.dispose();
   }
 
-  void _navigateToTripDetails(trip) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => TripDetailsScreen(
-          tripId: trip.id,
-        ),
-      ),
-    );
-    
-    // Check if we need to refresh the list
-    if (result == true) {
-      _refreshRides(); // Refresh the list
+  Future<void> _initializeWebSocket() async {
+    try {
+      if (mounted) {
+        setState(() {
+          _isInitializing = true;
+        });
+      }
+
+      // Get token and userId from storage (you need to implement this)
+      final token = await _getToken();
+      final userId = await _getUserId();
+
+      if (token == null || userId == null) {
+        if (mounted) {
+          setState(() {
+            _isInitializing = false;
+          });
+        }
+        return;
+      }
+
+      // Initialize WebSocket manager
+      _webSocketManager.initialize(token: token, userId: userId);
+
+      // Initialize trip handler
+      await _tripHandler.initialize(token: token, userId: userId);
+
+      // Connect to trips namespace
+      await _webSocketManager.connectToNamespace('trips');
+
+      // Set up trip handler callback for refresh events
+      _tripHandler.onTripUpdate = (update) {
+        _handleTripUpdate(update);
+      };
+
+      // Set up connection listener
+      _webSocketManager.addConnectionListener('trips', (isConnected) {
+        if (kDebugMode) {
+          print('🔌 RidesApprovalScreen connection: $isConnected');
+        }
+        if (mounted) {
+          setState(() {
+            _isConnected = isConnected;
+            _isInitializing = false;
+          });
+        }
+      });
+
+      // Set up message listener for direct messages
+      _webSocketManager.addMessageListener('trips', (message) {
+        _handleWebSocketMessage(message);
+      });
+
+      if (mounted) {
+        setState(() {
+          _isConnected = _webSocketManager.isNamespaceConnected('trips');
+          _isInitializing = false;
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ RidesApprovalScreen WebSocket error: $e');
+      }
+      if (mounted) {
+        setState(() {
+          _isConnected = false;
+          _isInitializing = false;
+        });
+      }
     }
   }
 
-  void _refreshRides() {
-    _loadUserTrips(reset: true);
+  void _handleWebSocketMessage(Map<String, dynamic> message) {
+    if (!mounted) return;
+
+    final event = message['event']?.toString() ?? '';
+    final data = message['data'];
+
+    if (kDebugMode) {
+      print('📨 RidesApprovalScreen received event: $event');
+    }
+
+    // Handle refresh events
+    if (event == 'refresh') {
+      _handleRefreshEvent(data);
+    }
+  }
+
+  void _handleTripUpdate(Map<String, dynamic> update) {
+    final type = update['type']?.toString() ?? '';
+    final scope = update['scope']?.toString() ?? '';
+
+    if (kDebugMode) {
+      print('🔄 Trip update received: $type, scope: $scope');
+    }
+
+    // Only refresh if scope is relevant to meter reading
+    if (scope == 'TRIPS' || scope == 'ALL' || scope == 'METER_READING') {
+      _debounceRefresh();
+    }
+  }
+
+  void _handleRefreshEvent(Map<String, dynamic> data) {
+    final scope = data['scope']?.toString() ?? 'ALL';
+
+    if (kDebugMode) {
+      print('🔄 Refresh event received, scope: $scope');
+    }
+
+    // Only refresh if scope is relevant to meter reading
+    if (scope == 'TRIPS' || scope == 'ALL' || scope == 'METER_READING') {
+      _debounceRefresh();
+    }
+  }
+
+  void _debounceRefresh() {
+    if (_debounceTimer?.isActive ?? false) {
+      _debounceTimer?.cancel();
+    }
+
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        _refreshTrips();
+      }
+    });
   }
 
   void _scrollListener() {
-    if (_scrollController.position.pixels == 
-        _scrollController.position.maxScrollExtent) {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 100) {
       if (_hasMore && !_loadingMore) {
         _loadMoreTrips();
       }
     }
   }
 
-  Future<void> _loadUserTrips({bool reset = false}) async {
+  Future<void> _loadTrips({bool reset = false}) async {
     try {
       if (reset) {
         setState(() {
@@ -99,31 +202,41 @@ class _RidesScreenState extends State<RidesScreen> with RealtimeScreenMixin {
       } else {
         setState(() => _loadingMore = true);
       }
-      
-      final request = TripListRequest(
-        timeFilter: _timeFilter,
-        statusFilter: _statusFilter,
-        page: _page,
-        limit: _limit,
-      );
-      
-      final response = await ApiService.getUserTrips(request);
-      
-      if (reset) {
-        setState(() {
-          _trips = response.trips;
-          _hasMore = response.hasMore;
-          _isLoading = false;
-        });
+
+      final request = {
+        'timeFilter': _timeFilter,
+        'page': _page,
+        'limit': _limit,
+      };
+
+      final response = await ApiService.getTripsForMeterReading(request);
+
+      if (response['success'] == true && response['data'] != null) {
+        final data = response['data'];
+
+        if (reset) {
+          setState(() {
+            _allTrips = (data['trips'] as List<dynamic>)
+                .map((trip) => ApprovalTrip.fromJson(trip))
+                .toList();
+            _hasMore = data['hasMore'] ?? false;
+            _isLoading = false;
+          });
+        } else {
+          setState(() {
+            final newTrips = (data['trips'] as List<dynamic>)
+                .map((trip) => ApprovalTrip.fromJson(trip))
+                .toList();
+            _allTrips.addAll(newTrips);
+            _hasMore = data['hasMore'] ?? false;
+            _loadingMore = false;
+          });
+        }
+
+        setState(() => _errorMessage = '');
       } else {
-        setState(() {
-          _trips.addAll(response.trips);
-          _hasMore = response.hasMore;
-          _loadingMore = false;
-        });
+        throw Exception(response['message'] ?? 'Failed to fetch trips');
       }
-      
-      setState(() => _errorMessage = '');
     } catch (e) {
       print('Error loading trips: $e');
       setState(() {
@@ -136,122 +249,783 @@ class _RidesScreenState extends State<RidesScreen> with RealtimeScreenMixin {
 
   Future<void> _loadMoreTrips() async {
     if (!_hasMore || _loadingMore) return;
-    
-    setState(() {
-      _page++;
-    });
-    
-    await _loadUserTrips(reset: false);
+
+    setState(() => _page++);
+    await _loadTrips(reset: false);
   }
 
   void _refreshTrips() {
-    _loadUserTrips(reset: true);
+    if (kDebugMode) {
+      print('🔄 Refreshing trips via WebSocket...');
+    }
+    _loadTrips(reset: true);
   }
 
-  void _setTimeFilter(TimeFilter filter) {
+  void _setTimeFilter(String filter) {
     setState(() {
       _timeFilter = filter;
-      _statusFilter = null; // Reset status filter when time filter changes
+      _showReadTrips = false; // Reset to unread when filter changes
     });
-    _loadUserTrips(reset: true);
+    _loadTrips(reset: true);
   }
 
-  void _setStatusFilter(TripStatus? status) {
-    setState(() {
-      _statusFilter = status;
-    });
-    _loadUserTrips(reset: true);
+  // Show/hide read trips toggle only for today filter
+  void _toggleShowReadTrips() {
+    setState(() => _showReadTrips = !_showReadTrips);
   }
 
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending': return Colors.orange;
-      case 'approved': return Colors.green;
-      case 'ongoing': return Colors.blue;
-      case 'completed': return Colors.grey[700]!;
-      case 'canceled': return Colors.red;
-      case 'rejected': return Colors.red[300]!;
-      default: return Colors.grey;
+  // Filter trips based on current filter and showReadTrips state
+  List<ApprovalTrip> get _filteredTrips {
+    if (_timeFilter == 'today') {
+      // For Today tab: Separate Need Reading vs Already Read
+      return _allTrips.where((trip) {
+        if (_showReadTrips) {
+          // Show already read today trips
+          return trip.hasStartReading || trip.hasEndReading;
+        } else {
+          // Show trips that need reading today
+          return trip.readingTypeNeeded != null;
+        }
+      }).toList();
+    } else {
+      // For Week/Month/All tabs: Show ALL trips mixed
+      return _allTrips;
     }
+  }
+
+  Future<void> _showOdometerDialog(
+    ApprovalTrip trip,
+    String readingType,
+  ) async {
+    final readingController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Colors.grey[900],
+          title: Text(
+            'Record ${readingType == 'start' ? 'Start' : 'End'} Odometer',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: readingController,
+              style: TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Odometer Reading',
+                labelStyle: TextStyle(color: Colors.grey[400]),
+                border: OutlineInputBorder(),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Color(0xFFF9C80E)),
+                ),
+              ),
+              keyboardType: TextInputType.number,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter odometer reading';
+                }
+                if (double.tryParse(value) == null) {
+                  return 'Please enter a valid number';
+                }
+                return null;
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel', style: TextStyle(color: Colors.grey[400])),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (formKey.currentState!.validate()) {
+                  final reading = double.parse(readingController.text);
+                  try {
+                    final response = await ApiService.recordOdometer(
+                      trip.id,
+                      reading,
+                      readingType,
+                    );
+
+                    if (response['success'] == true) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Odometer recorded successfully'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                      _refreshTrips();
+                      Navigator.pop(context);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            response['message'] ?? 'Failed to record odometer',
+                          ),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFFF9C80E),
+              ),
+              child: Text('OK', style: TextStyle(color: Colors.black)),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   String _formatDate(DateTime date) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(Duration(days: 1));
-    
-    if (date.year == today.year && 
-        date.month == today.month && 
+
+    if (date.year == today.year &&
+        date.month == today.month &&
         date.day == today.day) {
       return 'Today';
-    } else if (date.year == yesterday.year && 
-               date.month == yesterday.month && 
-               date.day == yesterday.day) {
+    } else if (date.year == yesterday.year &&
+        date.month == yesterday.month &&
+        date.day == yesterday.day) {
       return 'Yesterday';
     } else {
       return '${date.day}/${date.month}/${date.year}';
     }
   }
 
+  Widget _buildTripCard(ApprovalTrip trip) {
+    final bool needsReading = trip.readingTypeNeeded != null;
+    final bool hasDriver =
+        trip.driver?.name != null && trip.driver!.name != 'Not Assigned';
+    final bool hasPhone =
+        trip.driver?.phone != null && trip.driver!.phone!.isNotEmpty;
+
+    return Card(
+      margin: EdgeInsets.only(bottom: 12),
+      color: Colors.grey[900],
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Row 1: Trip ID and Status
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Trip #${trip.id}',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (needsReading)
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: trip.readingTypeNeeded == 'start'
+                          ? const Color.fromARGB(
+                              255,
+                              49,
+                              229,
+                              55,
+                            ).withOpacity(0.2)
+                          : Colors.red.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'NEEDS ${trip.readingTypeNeeded!.toUpperCase()} READING',
+                      style: TextStyle(
+                        color: trip.readingTypeNeeded == 'start'
+                            ? Color.fromARGB(255, 49, 229, 55)
+                            : Colors.red,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  )
+                else if (trip.isFullyRead)
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.yellow.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          size: 12,
+                          color: Colors.yellow,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          'COMPLETED',
+                          style: TextStyle(
+                            color: Colors.yellow,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else if (trip.hasStartReading || trip.hasEndReading)
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.pending, size: 12, color: Colors.blue),
+                        SizedBox(width: 4),
+                        Text(
+                          'PARTIALLY READ',
+                          style: TextStyle(
+                            color: Colors.blue,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+
+            SizedBox(height: 12),
+
+            // Row 2: Vehicle Info
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  trip.vehicle?.model ?? 'No Vehicle',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[800],
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    trip.vehicle?.registrationNumber ?? '',
+                    style: TextStyle(
+                      color: Colors.grey[300],
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            SizedBox(height: 12),
+
+            // Row 3: Driver Info with Call Button
+            if (hasDriver)
+              Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.person, size: 16, color: Colors.grey[400]),
+                          SizedBox(width: 8),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                trip.driver!.name,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              if (hasPhone)
+                                Text(
+                                  trip.driver!.phone!,
+                                  style: TextStyle(
+                                    color: Colors.grey[400],
+                                    fontSize: 12,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      if (hasPhone)
+                        IconButton(
+                          onPressed: () => _callDriver(trip.driver!.phone!),
+                          icon: Icon(Icons.phone, color: Colors.green),
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.green.withOpacity(0.1),
+                            padding: EdgeInsets.all(8),
+                          ),
+                        ),
+                    ],
+                  ),
+                  SizedBox(height: 12),
+                ],
+              ),
+
+            // Row 4: Connected Trip IDs (small size)
+            if (trip.conflictingTripIds != null &&
+                trip.conflictingTripIds!.isNotEmpty)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.link, size: 12, color: Colors.grey[400]),
+                      SizedBox(width: 4),
+                      Text(
+                        'Connected:',
+                        style: TextStyle(color: Colors.grey[400], fontSize: 11),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 4),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 2,
+                    children: trip.conflictingTripIds!.map((id) {
+                      return Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[800],
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                        child: Text(
+                          '#$id',
+                          style: TextStyle(
+                            color: Colors.grey[300],
+                            fontSize: 12,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  SizedBox(height: 12),
+                ],
+              ),
+
+            // Row 5: Date and Time
+            Row(
+              children: [
+                Icon(Icons.calendar_today, color: Colors.grey[400], size: 16),
+                SizedBox(width: 8),
+                Text(
+                  _formatDate(trip.startDate),
+                  style: TextStyle(color: Colors.grey[300], fontSize: 14),
+                ),
+                SizedBox(width: 16),
+                Icon(Icons.access_time, color: Colors.grey[400], size: 16),
+                SizedBox(width: 8),
+                Text(
+                  trip.startTime,
+                  style: TextStyle(color: Colors.grey[300], fontSize: 14),
+                ),
+              ],
+            ),
+
+            SizedBox(height: 12),
+
+            // Row 6: Meter Reading Button (only for trips that need reading)
+            if (needsReading)
+              ElevatedButton(
+                onPressed: () =>
+                    _showOdometerDialog(trip, trip.readingTypeNeeded!),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: trip.needsStartReading
+                      ? Colors.green
+                      : Colors.red,
+                  minimumSize: Size(double.infinity, 40),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Text(
+                  trip.needsStartReading
+                      ? 'Record Start Reading'
+                      : 'Record End Reading',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+
+            // Row 7: Reading Status (for trips that have some reading)
+            if (trip.hasStartReading)
+              Column(
+                children: [
+                  Divider(color: Colors.grey[700]),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Start Reading Column
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.play_arrow,
+                                  size: 12,
+                                  color: Colors.green,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Start:',
+                                  style: TextStyle(
+                                    color: Colors.grey[400],
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 2),
+                            Padding(
+                              padding: EdgeInsets.fromLTRB(18, 2, 0, 0),
+                              child: Text(
+                                trip.odometerReading?.startReading
+                                        ?.toStringAsFixed(0) ??
+                                    'Not recorded',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            if (trip.odometerReading?.startRecordedBy != null)
+                              Padding(
+                                padding: EdgeInsets.fromLTRB(2, 2, 0, 0),
+                                child: Text(
+                                  'by: ${trip.odometerReading!.startRecordedBy}',
+                                  style: TextStyle(
+                                    color: Colors.grey[500],
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+
+                      if (trip.hasEndReading)
+                        // Vertical divider
+                        Container(
+                          width: 1,
+                          height: 40,
+                          color: Colors.grey[700]!.withOpacity(0.5),
+                          margin: EdgeInsets.symmetric(horizontal: 8),
+                        ),
+
+                      if (trip.hasEndReading)
+                        // End Reading Column
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.stop, size: 12, color: Colors.red),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'End:',
+                                    style: TextStyle(
+                                      color: Colors.grey[400],
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 2),
+                              Padding(
+                                padding: EdgeInsets.fromLTRB(18, 2, 0, 0),
+                                child: Text(
+                                  trip.odometerReading?.endReading
+                                          ?.toStringAsFixed(0) ??
+                                      'Not recorded',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              if (trip.odometerReading?.endRecordedBy != null)
+                                Padding(
+                                  padding: EdgeInsets.fromLTRB(2, 2, 0, 0),
+                                  child: Text(
+                                    'by: ${trip.odometerReading!.endRecordedBy}',
+                                    style: TextStyle(
+                                      color: Colors.grey[500],
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+
+                  // Optional: Show total distance if both readings exist
+                  if (trip.odometerReading?.startReading != null &&
+                      trip.odometerReading?.endReading != null)
+                    Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.linear_scale,
+                            size: 12,
+                            color: Color(0xFFF9C80E),
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            'Total: ${(trip.odometerReading!.endReading! - trip.odometerReading!.startReading!).toStringAsFixed(0)} km',
+                            style: TextStyle(
+                              color: Color(0xFFF9C80E),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Add this method for calling driver
+  void _callDriver(String phoneNumber) {
+    // Use url_launcher package for calling
+    // final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
+    // if (await canLaunchUrl(phoneUri)) {
+    //   await launchUrl(phoneUri);
+    // } else {
+    //   ScaffoldMessenger.of(context).showSnackBar(
+    //     SnackBar(
+    //       content: Text('Cannot make call to $phoneNumber'),
+    //       backgroundColor: Colors.red,
+    //     ),
+    //   );
+    // }
+
+    // For now, just show a snackbar
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Calling driver: $phoneNumber'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  void _cleanupWebSocket() async {
+    try {
+      await _tripHandler.dispose();
+      await _webSocketManager.disconnectFromNamespace('trips');
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error cleaning up WebSocket: $e');
+      }
+    }
+  }
+
+  void _reconnectWebSocket() {
+    setState(() {
+      _isInitializing = true;
+    });
+    _initializeWebSocket();
+  }
+
+  // Helper methods to get token and userId (you need to implement these)
+  Future<String?> _getToken() async {
+    // Implement token retrieval from storage
+    // Example: return await SecureStorageService().accessToken;
+    return null;
+  }
+
+  Future<String?> _getUserId() async {
+    // Implement userId retrieval from storage
+    // Example: final user = StorageService.userData; return user?.id.toString();
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        title: Row(
+          children: [
+            Text(
+              'Meter Reading',
+              style: TextStyle(color: Colors.white, fontSize: 20),
+            ),
+            SizedBox(width: 8),
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _isConnected ? Colors.green : Colors.red,
+                boxShadow: [
+                  BoxShadow(
+                    color: (_isConnected ? Colors.green : Colors.red)
+                        .withOpacity(0.3),
+                    blurRadius: 4,
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          if (_isInitializing)
+            Padding(
+              padding: EdgeInsets.only(right: 16),
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.yellow[600],
+                ),
+              ),
+            ),
+          IconButton(
+            onPressed: _refreshTrips,
+            icon: Icon(Icons.refresh, color: Colors.white),
+          ),
+        ],
+      ),
       body: Stack(
         children: [
           Column(
             children: [
-              // Header
-              _buildHeader(),
-              
               // Time filter buttons
               _buildTimeFilterRow(),
-              
-              // Status filter dropdown
-              _buildStatusFilterRow(),
-              
+
+              // Toggle Button for Today filter only
+              if (_timeFilter == 'today')
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  color: Colors.black,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () =>
+                              setState(() => _showReadTrips = false),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: !_showReadTrips
+                                ? Color(0xFFF9C80E)
+                                : Colors.grey[800],
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: Text(
+                            'Need Reading',
+                            style: TextStyle(
+                              color: !_showReadTrips
+                                  ? Colors.black
+                                  : Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () =>
+                              setState(() => _showReadTrips = true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _showReadTrips
+                                ? Color(0xFFF9C80E)
+                                : Colors.grey[800],
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: Text(
+                            'Already Read',
+                            style: TextStyle(
+                              color: _showReadTrips
+                                  ? Colors.black
+                                  : Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
               // Content
-              Expanded(
-                child: _buildContent(),
-              ),
+              Expanded(child: _buildContent()),
             ],
           ),
-          
-          if (_isLoading && _trips.isEmpty) _buildLoadingOverlay(),
+
+          if (_isLoading && _allTrips.isEmpty) _buildLoadingOverlay(),
         ],
       ),
     );
   }
 
-  Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(24, 0, 24, 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Rides',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-        ],
-      )
-    );
-        
-  }
-
   Widget _buildTimeFilterRow() {
     final filters = [
-      {'label': 'Today', 'value': TimeFilter.today},
-      {'label': 'Week', 'value': TimeFilter.week},
-      {'label': 'Month', 'value': TimeFilter.month},
-      {'label': 'All', 'value': TimeFilter.all},
+      {'label': 'Today', 'value': 'today'},
+      {'label': 'Week', 'value': 'week'},
+      {'label': 'Month', 'value': 'month'},
+      {'label': 'All', 'value': 'all'},
     ];
-    
+
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       color: Colors.black,
@@ -260,7 +1034,7 @@ class _RidesScreenState extends State<RidesScreen> with RealtimeScreenMixin {
         children: filters.map((filter) {
           final isSelected = _timeFilter == filter['value'];
           return GestureDetector(
-            onTap: () => _setTimeFilter(filter['value'] as TimeFilter),
+            onTap: () => _setTimeFilter(filter['value'] as String),
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
@@ -281,66 +1055,11 @@ class _RidesScreenState extends State<RidesScreen> with RealtimeScreenMixin {
     );
   }
 
-  Widget _buildStatusFilterRow() {
-    final statuses = [
-      {'label': 'All Status', 'value': null},
-      {'label': 'Pending', 'value': TripStatus.pending},
-      {'label': 'Approved', 'value': TripStatus.approved},
-      {'label': 'Ongoing', 'value': TripStatus.ongoing},
-      {'label': 'Completed', 'value': TripStatus.completed},
-      {'label': 'Canceled', 'value': TripStatus.canceled},
-      {'label': 'Rejected', 'value': TripStatus.rejected},
-    ];
-    
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: Colors.black,
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.grey[900],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<TripStatus?>(
-                  value: _statusFilter,
-                  isExpanded: true,
-                  icon: Icon(Icons.arrow_drop_down, color: Colors.white),
-                  dropdownColor: Colors.grey[900],
-                  style: TextStyle(color: Colors.white),
-                  items: statuses.map((status) {
-                    return DropdownMenuItem<TripStatus?>(
-                      value: status['value'] as TripStatus?,
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12),
-                        child: Text(
-                          status['label'] as String,
-                          style: TextStyle(fontSize: 14),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (value) => _setStatusFilter(value),
-                  hint: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Text('Filter by status', style: TextStyle(color: Colors.grey)),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildContent() {
-    if (_isLoading && _trips.isEmpty) {
+    if (_isLoading && _allTrips.isEmpty) {
       return Container(); // Loading overlay will show
     }
-    
+
     if (_errorMessage.isNotEmpty) {
       return Center(
         child: Padding(
@@ -369,16 +1088,28 @@ class _RidesScreenState extends State<RidesScreen> with RealtimeScreenMixin {
         ),
       );
     }
-    
-    if (_trips.isEmpty) {
+
+    final filteredTrips = _filteredTrips;
+
+    if (filteredTrips.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.directions_car, size: 60, color: Colors.grey[600]),
+            Icon(
+              _timeFilter == 'today' && _showReadTrips
+                  ? Icons.check_circle_outline
+                  : Icons.speed,
+              size: 60,
+              color: Colors.grey[600],
+            ),
             SizedBox(height: 16),
             Text(
-              'No trips found',
+              _timeFilter == 'today'
+                  ? (_showReadTrips
+                        ? 'No read trips for today'
+                        : 'No trips need reading today')
+                  : 'No trips found',
               style: TextStyle(color: Colors.grey[400], fontSize: 16),
             ),
             SizedBox(height: 8),
@@ -390,14 +1121,14 @@ class _RidesScreenState extends State<RidesScreen> with RealtimeScreenMixin {
         ),
       );
     }
-    
+
     return ListView.builder(
       controller: _scrollController,
       padding: EdgeInsets.all(16),
-      itemCount: _trips.length + (_hasMore ? 1 : 0),
+      itemCount: filteredTrips.length + (_hasMore ? 1 : 0),
       itemBuilder: (context, index) {
-        if (index < _trips.length) {
-          return _buildTripCard(_trips[index]);
+        if (index < filteredTrips.length) {
+          return _buildTripCard(filteredTrips[index]);
         } else {
           return _buildLoadMoreIndicator();
         }
@@ -405,188 +1136,14 @@ class _RidesScreenState extends State<RidesScreen> with RealtimeScreenMixin {
     );
   }
 
-  Widget _buildTripCard(TripCard trip) {
-    return Card(
-      margin: EdgeInsets.only(bottom: 12),
-      color: Colors.grey[900],
-      child: InkWell(
-        onTap: () {
-          _navigateToTripDetails(trip);
-        },
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Row 0: Trip id + Type label + Status label
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                     'Trip #' + trip.id.toString(),
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  // Type label
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: trip.tripTypeColor.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: trip.tripTypeColor, width: 1),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: trip.tripTypeColor,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        SizedBox(width: 6),
-                        Text(
-                          trip.tripTypeLabel,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(width: 4),
-                        // Type tooltip
-                        Tooltip(
-                          message: trip.tripTypeFullText,
-                          child: Icon(Icons.info_outline, color: Colors.grey, size: 16),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  //SizedBox(width: 12),
-
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _getStatusColor(trip.status).withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      trip.status.toUpperCase(),
-                      style: TextStyle(
-                        color: _getStatusColor(trip.status),
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              
-              SizedBox(height: 12),
-
-              // Row 1: Vehicle model
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    trip.vehicleModel,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[800],
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      trip.vehicleRegNo,
-                      style: TextStyle(
-                        color: Colors.grey[300],
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              SizedBox(height: 12),
-              
-              // Row 3: Date + Time
-              Row(
-                children: [
-                  Icon(Icons.calendar_today, color: Colors.grey[400], size: 16),
-                  SizedBox(width: 8),
-                  Text(
-                    _formatDate(trip.date),
-                    style: TextStyle(color: Colors.grey[300], fontSize: 14),
-                  ),
-                  SizedBox(width: 16),
-                  Icon(Icons.access_time, color: Colors.grey[400], size: 16),
-                  SizedBox(width: 8),
-                  Text(
-                    trip.time,
-                    style: TextStyle(color: Colors.grey[300], fontSize: 14),
-                  ),
-                ],
-              ),
-              
-              SizedBox(height: 12),
-              
-              // Row 4: Click for more details
-              Container(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  border: Border(
-                    top: BorderSide(color: Colors.grey[700]!),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Click for more details',
-                      style: TextStyle(
-                        color: Color(0xFFF9C80E),
-                        fontSize: 14,
-                      ),
-                    ),
-                    Icon(
-                      Icons.arrow_forward_ios,
-                      color: Color(0xFFF9C80E),
-                      size: 16,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildLoadMoreIndicator() {
     if (!_loadingMore) {
       return SizedBox.shrink();
     }
-    
+
     return Container(
       padding: EdgeInsets.all(16),
-      child: Center(
-        child: CircularProgressIndicator(
-          color: Color(0xFFF9C80E),
-        ),
-      ),
+      child: Center(child: CircularProgressIndicator(color: Color(0xFFF9C80E))),
     );
   }
 
@@ -609,7 +1166,11 @@ class _RidesScreenState extends State<RidesScreen> with RealtimeScreenMixin {
                 SizedBox(height: 16),
                 Text(
                   'Loading trips...',
-                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -618,5 +1179,4 @@ class _RidesScreenState extends State<RidesScreen> with RealtimeScreenMixin {
       ),
     );
   }
-
 }

@@ -1,16 +1,20 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:vehiclereservation_frontend_flutter_/shared/mixins/realtime_screen_mixin.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/trip_details_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/secure_storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/storage_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/namespace_websocket_manager.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/foundation.dart';
+
+// Import new WebSocket structure
+import 'package:vehiclereservation_frontend_flutter_/data/services/ws/websocket_manager.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/services/ws/handlers/trip_handler.dart';
 
 class TripDetailsScreen extends StatefulWidget {
   final int tripId;
@@ -26,9 +30,11 @@ class TripDetailsScreen extends StatefulWidget {
   _TripDetailsScreenState createState() => _TripDetailsScreenState();
 }
 
-class _TripDetailsScreenState extends State<TripDetailsScreen> with RealtimeScreenMixin {
-  @override
-  String get namespace => 'trips';
+class _TripDetailsScreenState extends State<TripDetailsScreen> {
+  // WebSocket managers
+  final WebSocketManager _webSocketManager = WebSocketManager();
+  final TripHandler _tripHandler = TripHandler();
+  
   TripDetails? _tripDetails;
   bool _isLoading = true;
   String _errorMessage = '';
@@ -39,6 +45,11 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> with RealtimeScre
   List<Polyline> _routeSegments = [];
   LatLngBounds? _mapBounds;
 
+  // WebSocket connection state
+  bool _isConnected = false;
+  bool _isInitializing = false;
+  Timer? _debounceTimer;
+
   @override
   void initState() {
     super.initState();
@@ -46,25 +57,148 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> with RealtimeScre
     _initializeWebSocket();
   }
 
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _cleanupWebSocket();
+    super.dispose();
+  }
+
   Future<void> _initializeWebSocket() async {
     try {
-      final token = await SecureStorageService().accessToken;
-      final user = StorageService.userData;
-      if (token != null && user != null) {
-        await NamespaceWebSocketManager().initializeNamespace(namespace, token, user.id.toString());
+      if (mounted) {
+        setState(() {
+          _isInitializing = true;
+        });
+      }
+
+      // Get token and userId from storage
+      final token = await _getToken();
+      final userId = await _getUserId();
+
+      if (token == null || userId == null) {
+        if (mounted) {
+          setState(() {
+            _isInitializing = false;
+          });
+        }
+        return;
+      }
+
+      // Initialize WebSocket manager
+      _webSocketManager.initialize(token: token, userId: userId);
+
+      // Initialize trip handler
+      await _tripHandler.initialize(token: token, userId: userId);
+
+      // Connect to trips namespace
+      await _webSocketManager.connectToNamespace('/trips');
+
+      // Set up trip handler callback for refresh events
+      _tripHandler.onTripUpdate = (update) {
+        _handleTripUpdate(update);
+      };
+
+      // Set up connection listener
+      _webSocketManager.addConnectionListener('/trips', (isConnected) {
+        if (kDebugMode) {
+          print('🔌 TripDetailsScreen connection: $isConnected');
+        }
+        if (mounted) {
+          setState(() {
+            _isConnected = isConnected;
+            _isInitializing = false;
+          });
+        }
+      });
+
+      // Set up message listener for direct messages
+      _webSocketManager.addMessageListener('/trips', (message) {
+        _handleWebSocketMessage(message);
+      });
+
+      if (mounted) {
+        setState(() {
+          _isConnected = _webSocketManager.isNamespaceConnected('/trips');
+          _isInitializing = false;
+        });
       }
     } catch (e) {
-      print('Trip Details WebSocket initialization error: $e');
+      if (kDebugMode) {
+        print('❌ TripDetailsScreen WebSocket error: $e');
+      }
+      if (mounted) {
+        setState(() {
+          _isConnected = false;
+          _isInitializing = false;
+        });
+      }
     }
   }
 
-  @override
-  void handleScreenRefresh(Map<String, dynamic> data) {
-    // Handle realtime trip status updates and assignments
-    final eventType = data['type'];
-    if (eventType == 'trip-status-changed' || eventType == 'trip-assigned') {
-      _loadTripDetails();
+  void _handleWebSocketMessage(Map<String, dynamic> message) {
+    if (!mounted) return;
+
+    final event = message['event']?.toString() ?? '';
+    final data = message['data'];
+
+    if (kDebugMode) {
+      print('📨 TripDetailsScreen received event: $event');
     }
+
+    // Handle refresh events
+    if (event == 'refresh') {
+      _handleRefreshEvent(data);
+    }
+  }
+
+  void _handleTripUpdate(Map<String, dynamic> update) {
+    final type = update['type']?.toString() ?? '';
+    final scope = update['scope']?.toString() ?? '';
+    final tripId = update['tripId'];
+
+    if (kDebugMode) {
+      print('🔄 Trip update received: $type, scope: $scope, tripId: $tripId');
+    }
+
+    // Check if this update is for the current trip
+    if (tripId != null && tripId == widget.tripId) {
+      _debounceRefresh();
+    }
+    // Also refresh for general trip updates that might affect this screen
+    else if (scope == 'TRIPS' || scope == 'ALL') {
+      _debounceRefresh();
+    }
+  }
+
+  void _handleRefreshEvent(Map<String, dynamic> data) {
+    final scope = data['scope']?.toString() ?? 'ALL';
+    final tripId = data['tripId'];
+
+    if (kDebugMode) {
+      print('🔄 Refresh event received, scope: $scope, tripId: $tripId');
+    }
+
+    // Check if this update is for the current trip
+    if (tripId != null && tripId == widget.tripId) {
+      _debounceRefresh();
+    }
+    // Also refresh for general trip updates
+    else if (scope == 'TRIPS' || scope == 'ALL') {
+      _debounceRefresh();
+    }
+  }
+
+  void _debounceRefresh() {
+    if (_debounceTimer?.isActive ?? false) {
+      _debounceTimer?.cancel();
+    }
+
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        _loadTripDetails();
+      }
+    });
   }
 
   Future<void> _loadTripDetails() async {
@@ -268,112 +402,94 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> with RealtimeScre
   }
 
   Marker _createMarkerWithAddress(LatLng point, IconData icon, Color color, String address) {
-  return Marker(
-    point: point,
-    width: 70, // Increased width for tooltip
-    height: 80, // Increased height for tooltip
-    child: GestureDetector(
-      onTap: () {
-        if (_isNotificationShowing) return;
-        // This will show at fixed position from top with fixed height
-        // Set flag to true
-        setState(() {
-          _isNotificationShowing = true;
-        });
+    return Marker(
+      point: point,
+      width: 70, // Increased width for tooltip
+      height: 80, // Increased height for tooltip
+      child: GestureDetector(
+        onTap: () {
+          if (_isNotificationShowing) return;
+          // This will show at fixed position from top with fixed height
+          // Set flag to true
+          setState(() {
+            _isNotificationShowing = true;
+          });
 
-        final screenHeight = MediaQuery.of(context).size.height;
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Container(
-              height: 60, // FIXED HEIGHT
-              child: SingleChildScrollView(
+          final screenHeight = MediaQuery.of(context).size.height;
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Container(
+                height: 60, // FIXED HEIGHT
+                child: SingleChildScrollView(
+                  child: Text(
+                    address,
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ),
+              backgroundColor: const Color.fromARGB(242, 66, 66, 66),
+              duration: Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+              margin: EdgeInsets.only(
+                bottom: screenHeight - 170, // Fixed 150px from top
+                left: 2,
+                right: 2,
+              ),
+            ),
+          ).closed.then((reason) {
+            // When snackbar is closed, reset the flag
+            if (mounted) {
+              setState(() {
+                _isNotificationShowing = false;
+              });
+            }
+          });
+        },
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Address tooltip
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.4),
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: 180),
                 child: Text(
-                  address,
-                  style: TextStyle(color: Colors.white),
+                  _getShortAddress(address),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                 ),
               ),
             ),
-            backgroundColor: const Color.fromARGB(242, 66, 66, 66),
-            duration: Duration(seconds: 3),
-            behavior: SnackBarBehavior.floating,
-            margin: EdgeInsets.only(
-              bottom: screenHeight - 170, // Fixed 150px from top
-              left: 2,
-              right: 2,
-            ),
-          ),
-        ).closed.then((reason) {
-          // When snackbar is closed, reset the flag
-          if (mounted) {
-            setState(() {
-              _isNotificationShowing = false;
-            });
-          }
-        });
-      },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Address tooltip
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.4),
-                  blurRadius: 4,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: 180),
-              child: Text(
-                _getShortAddress(address),
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-          SizedBox(height: 4),
-          // Marker icon
-          /*
-          Container(
-            padding: EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 4,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            child: 
-            */
-
+            SizedBox(height: 4),
+            // Marker icon
             Icon(
               icon,
               color: color,
               size: 24,
             ),
-          //),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   String _getShortAddress(String fullAddress) {
     // Extract the first meaningful part of the address
@@ -470,6 +586,48 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> with RealtimeScre
     );
   }
 
+  void _cleanupWebSocket() async {
+    try {
+      await _tripHandler.dispose();
+      await _webSocketManager.disconnectFromNamespace('/trips');
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error cleaning up WebSocket: $e');
+      }
+    }
+  }
+
+  void _reconnectWebSocket() {
+    setState(() {
+      _isInitializing = true;
+    });
+    _initializeWebSocket();
+  }
+
+  // Helper methods to get token and userId
+  Future<String?> _getToken() async {
+    try {
+      return await SecureStorageService().accessToken;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error getting token: $e');
+      }
+      return null;
+    }
+  }
+
+  Future<String?> _getUserId() async {
+    try {
+      final user = StorageService.userData;
+      return user?.id.toString();
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error getting user ID: $e');
+      }
+      return null;
+    }
+  }
+
   Widget _buildHeader() {
     return Container(
       height: 80,
@@ -503,15 +661,36 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> with RealtimeScre
           ),
           SizedBox(width: 16),
           Expanded(
-            child: Text(
-              widget.fromConflictNavigation 
-                  ? "Conflict Trip #${_tripDetails?.id ?? widget.tripId}"
-                  : "Trip #${_tripDetails?.id ?? widget.tripId}",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-              ),
+            child: Row(
+              children: [
+                Text(
+                  widget.fromConflictNavigation 
+                      ? "Conflict Trip #${_tripDetails?.id ?? widget.tripId}"
+                      : "Trip #${_tripDetails?.id ?? widget.tripId}",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                SizedBox(width: 8),
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _isConnected ? Colors.green : Colors.red,
+                    boxShadow: [
+                      BoxShadow(
+                        color: (_isConnected ? Colors.green : Colors.red)
+                            .withOpacity(0.3),
+                        blurRadius: 4,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
           if (_tripDetails?.status != null)
@@ -676,7 +855,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> with RealtimeScre
     }
 
     return Container(
-      //margin: EdgeInsets.all(16),
       padding: EdgeInsets.fromLTRB(12, 8, 12, 12),
       decoration: BoxDecoration(
         color: Colors.red.withOpacity(0.1),
@@ -688,8 +866,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> with RealtimeScre
         children: [
           Row(
             children: [
-              //Icon(Icons.warning_amber_rounded, color: Colors.red),
-              //SizedBox(width: 8),
               Text(
                 'Connected Trips :',
                 style: TextStyle(
@@ -700,24 +876,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> with RealtimeScre
               ),
             ],
           ),
-          //SizedBox(height: 2),
-          /*
-          Text(
-            _tripDetails?.conflicts.reason ?? 'Potential schedule overlap',
-            style: TextStyle(color: Colors.grey[300]),
-          ),
-          SizedBox(height: 12),
-          */
           if (_tripDetails?.conflicts.trips.isNotEmpty == true)
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                /*
-                Text(
-                  'Conflicting Trips:',
-                  style: TextStyle(color: Colors.grey[300], fontWeight: FontWeight.w500),
-                ),
-                */
                 SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
@@ -775,62 +937,27 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> with RealtimeScre
             ),
           ),
           SizedBox(height: 16),
-          //if (_tripDetails?.details.route.metrics != null)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildMetricCard(
-                  Icons.edit_road,
-                  //'Distance',
-                  '${_tripDetails!.details.route.metrics.distance} km',
-                  '${_tripDetails!.details.route.metrics.estimatedDuration} min',
-                ),
-                /*
-                _buildMetricCard(
-                  Icons.timer,
-                  'Duration',
-                  '${_tripDetails!.details.route.metrics.estimatedDuration} min',
-                ),
-                */
-                _buildMetricCard(
-                  Icons.calendar_month,
-                  //'Date',
-                  _tripDetails != null
-                      ? '${_tripDetails!.startDate} '
-                      : 'N/A',
-                  _tripDetails != null
-                    ? DateFormat('hh:mm a').format(
-                        DateFormat('HH:mm').parse(_tripDetails!.startTime),
-                      )
-                    : 'N/A',
-                ),
-              ],
-            ),
-
-          /*
-          SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _buildMetricCard(
+                Icons.edit_road,
+                '${_tripDetails!.details.route.metrics.distance} km',
+                '${_tripDetails!.details.route.metrics.estimatedDuration} min',
+              ),
+              _buildMetricCard(
                 Icons.calendar_month,
-                'Date',
                 _tripDetails != null
                     ? '${_tripDetails!.startDate} '
                     : 'N/A',
-              ),
-              _buildMetricCard(
-                Icons.timer_outlined,
-                'Time',
                 _tripDetails != null
-                    ? DateFormat('hh:mm a').format(
-                        DateFormat('HH:mm').parse(_tripDetails!.startTime),
-                      )
-                    : 'N/A',
+                  ? DateFormat('hh:mm a').format(
+                      DateFormat('HH:mm').parse(_tripDetails!.startTime),
+                    )
+                  : 'N/A',
               ),
             ],
           ),
-          */
           
           SizedBox(height: 16),
           Row(
@@ -849,11 +976,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> with RealtimeScre
             ],
           ),
           SizedBox(height: 16),
-          //_buildInfoRow('Date', _tripDetails?.startDate ?? 'N/A'),
-          //_buildInfoRow('Time', _tripDetails?.startTime.substring(0, 5) ?? 'N/A'),
-          //_buildInfoRow('Time', DateFormat('hh:mm a')
-          //  .format(DateFormat('HH:mm').parse(_tripDetails!.startTime))),
-          //_buildInfoRow('Passengers', '${_tripDetails?.passengerCount ?? 0}'),
           _buildInfoRow('Requested At', DateFormat('yyyy-MM-dd hh:mm a')
             .format(_tripDetails!.createdAt.toLocal())),
           _buildInfoRow('Request', ''),
@@ -977,7 +1099,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> with RealtimeScre
             ),
           ),
         ],
-      ),
+      )
     );
   }
 
@@ -1274,25 +1396,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> with RealtimeScre
             'End',
             _tripDetails?.location.endAddress ?? 'N/A',
           ),
-          /*
-          SizedBox(height: 12),
-          if (_tripDetails?.details.route.metrics != null)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildMetricCard(
-                  Icons.edit_road,
-                  'Distance',
-                  '${_tripDetails!.details.route.metrics.distance} km',
-                ),
-                _buildMetricCard(
-                  Icons.timer,
-                  'Duration',
-                  '${_tripDetails!.details.route.metrics.estimatedDuration} min',
-                ),
-              ],
-            ),
-            */
         ],
       ),
     );
@@ -1673,7 +1776,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> with RealtimeScre
           child: SingleChildScrollView(
             child: Column(
               children: [
-                //_buildConflictAlert(),
                 _buildMapSection(),
                 _buildTripInfoSection(),
                 _buildVehicleSection(),
@@ -1690,18 +1792,26 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> with RealtimeScre
   }
 
   Widget _buildLoadingState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(color: Color(0xFFF9C80E)),
-          SizedBox(height: 16),
-          Text(
-            'Loading...',
-            style: TextStyle(color: Colors.white, fontSize: 16),
+    return Column(
+      children: [
+        _buildHeader(),
+        Expanded(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (_isInitializing)
+                  CircularProgressIndicator(color: Color(0xFFF9C80E)),
+                SizedBox(height: 16),
+                Text(
+                  _isInitializing ? 'Connecting to real-time updates...' : 'Loading trip details...',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ],
+            ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -1768,5 +1878,4 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> with RealtimeScre
       ],
     );
   }
-
 }

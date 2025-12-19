@@ -3,14 +3,10 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:vehiclereservation_frontend_flutter_/shared/mixins/realtime_screen_mixin.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/schedule_passenger_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/nominatim_search_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/osrm_route_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/secure_storage_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/storage_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/namespace_websocket_manager.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/geocode_helper.dart';
 import 'dart:math' as math;
 
@@ -19,9 +15,9 @@ class CreateTripScreen extends StatefulWidget {
   State<CreateTripScreen> createState() => _CreateTripScreenState();
 }
 
-class _CreateTripScreenState extends State<CreateTripScreen> with RealtimeScreenMixin {
+class _CreateTripScreenState extends State<CreateTripScreen> {
   @override
-  String get namespace => 'trips';
+  String get namespace => '/trips';
   final MapController mapController = MapController();
 
   List<RouteStop> stops = [
@@ -46,29 +42,6 @@ class _CreateTripScreenState extends State<CreateTripScreen> with RealtimeScreen
   void initState() {
     super.initState();
     _getCurrentLocation();
-    _initializeWebSocket();
-  }
-
-  Future<void> _initializeWebSocket() async {
-    try {
-      final token = await SecureStorageService().accessToken;
-      final user = StorageService.userData;
-      if (token != null && user != null) {
-        await NamespaceWebSocketManager().initializeNamespace(namespace, token, user.id.toString());
-      }
-    } catch (e) {
-      print('Create Trip WebSocket initialization error: $e');
-    }
-  }
-
-  @override
-  void handleScreenRefresh(Map<String, dynamic> data) {
-    // Handle realtime trip creation updates, vehicle availability
-    final eventType = data['type'];
-    if (eventType == 'vehicle-availability-changed') {
-      // Refresh vehicle availability
-      setState(() {});
-    }
   }
 
   @override

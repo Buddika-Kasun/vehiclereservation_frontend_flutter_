@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/department_model.dart';
@@ -5,7 +6,10 @@ import 'package:vehiclereservation_frontend_flutter_/data/models/user_creation_m
 import 'package:vehiclereservation_frontend_flutter_/data/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/color_generator.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/constant.dart';
-import 'package:vehiclereservation_frontend_flutter_/shared/mixins/realtime_screen_mixin.dart';
+
+// Import WebSocket structure
+import 'package:vehiclereservation_frontend_flutter_/data/services/ws/websocket_manager.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/services/ws/handlers/user_handler.dart';
 
 class UserCreationsScreen extends StatefulWidget {
   const UserCreationsScreen({Key? key}) : super(key: key);
@@ -14,19 +18,11 @@ class UserCreationsScreen extends StatefulWidget {
   _UserCreationsScreenState createState() => _UserCreationsScreenState();
 }
 
-class _UserCreationsScreenState extends State<UserCreationsScreen> with RealtimeScreenMixin {
-  @override
-  String get namespace => 'users';
+class _UserCreationsScreenState extends State<UserCreationsScreen> {
+  // WebSocket managers
+  final WebSocketManager _webSocketManager = WebSocketManager();
+  final UserHandler _userHandler = UserHandler();
 
-  @override
-  void handleScreenRefresh(Map<String, dynamic> data) {
-    if (kDebugMode) {
-      print('🔄 UserCreationsScreen refreshing data...');
-    }
-    _loadUserCreations();
-  }
-  //List<UserCreation> _userCreations = [];
-  //List<UserCreation> _filteredUserCreations = [];
   List<UserCreation> _allUserCreations = [];
   List<UserCreation> _displayedUserCreations = [];
 
@@ -35,7 +31,8 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
   bool _isLoading = true;
   bool _hasError = false;
   String _errorMessage = '';
-  String _selectedFilter = 'Pending'; // 'Pending', 'Approved', 'Rejected', 'All'
+  String _selectedFilter =
+      'Pending'; // 'Pending', 'Approved', 'Rejected', 'All'
   int? _total;
   // Store temporary editable values ONLY for currently expanded item
   String? _tempSelectedRole;
@@ -49,11 +46,17 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
   bool _isLoadingMore = false;
   final ScrollController _scrollController = ScrollController();
 
+  // WebSocket connection state
+  bool _isConnected = false;
+  bool _isInitializing = false;
+  Timer? _debounceTimer;
+
   @override
   void initState() {
     super.initState();
     _loadDepartments();
     _loadUserCreations();
+    _initializeWebSocket();
 
     // Add scroll listener for pagination
     _scrollController.addListener(_onScroll);
@@ -63,7 +66,143 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _debounceTimer?.cancel();
+    _cleanupWebSocket();
     super.dispose();
+  }
+
+  Future<void> _initializeWebSocket() async {
+    try {
+      if (mounted) {
+        setState(() {
+          _isInitializing = true;
+        });
+      }
+
+      // Get token and userId from storage (you need to implement this)
+      final token = await _getToken();
+      final userId = await _getUserId();
+
+      if (token == null || userId == null) {
+        if (mounted) {
+          setState(() {
+            _isInitializing = false;
+          });
+        }
+        return;
+      }
+
+      // Initialize WebSocket manager
+      _webSocketManager.initialize(token: token, userId: userId);
+
+      // Initialize user handler
+      await _userHandler.initialize(token: token, userId: userId);
+
+      // Connect to users namespace
+      await _webSocketManager.connectToNamespace('/users');
+
+      // Set up user handler callback for refresh events
+      _userHandler.onUserUpdate = (update) {
+        _handleUserUpdate(update);
+      };
+
+      // Set up connection listener
+      _webSocketManager.addConnectionListener('/users', (isConnected) {
+        if (kDebugMode) {
+          print('🔌 UserCreationsScreen connection: $isConnected');
+        }
+        if (mounted) {
+          setState(() {
+            _isConnected = isConnected;
+            _isInitializing = false;
+          });
+        }
+      });
+
+      // Set up message listener for direct messages
+      _webSocketManager.addMessageListener('/users', (message) {
+        _handleWebSocketMessage(message);
+      });
+
+      if (mounted) {
+        setState(() {
+          _isConnected = _webSocketManager.isNamespaceConnected('/users');
+          _isInitializing = false;
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ UserCreationsScreen WebSocket error: $e');
+      }
+      if (mounted) {
+        setState(() {
+          _isConnected = false;
+          _isInitializing = false;
+        });
+      }
+    }
+  }
+
+  void _handleWebSocketMessage(Map<String, dynamic> message) {
+    if (!mounted) return;
+
+    final event = message['event']?.toString() ?? '';
+    final data = message['data'];
+
+    if (kDebugMode) {
+      print('📨 UserCreationsScreen received event: $event');
+    }
+
+    // Handle refresh events
+    if (event == 'refresh') {
+      _handleRefreshEvent(data);
+    }
+  }
+
+  void _handleUserUpdate(Map<String, dynamic> update) {
+    final event = update['event']?.toString() ?? '';
+    final data = update['data'] ?? {};
+
+    if (kDebugMode) {
+      print('🔄 User update received: $event');
+    }
+
+    // Handle different user events
+    switch (event) {
+      case 'user_create':
+      case 'user_update':
+      case 'user_delete':
+      case 'user_status_change':
+      case 'user_approve':
+      case 'user_reject':
+        _debounceRefresh();
+        break;
+    }
+  }
+
+  void _handleRefreshEvent(Map<String, dynamic> data) {
+    final scope = data['scope']?.toString() ?? 'ALL';
+
+    if (kDebugMode) {
+      print('🔄 Refresh event received, scope: $scope');
+    }
+
+    // Only refresh if scope is relevant to user creations
+    if (scope == 'USERS' || scope == 'ALL') {
+      _debounceRefresh();
+    }
+  }
+
+  void _debounceRefresh() {
+    if (_debounceTimer?.isActive ?? false) {
+      _debounceTimer?.cancel();
+    }
+
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        _loadUserCreations();
+      }
+    });
   }
 
   void _onScroll() {
@@ -169,10 +308,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
             ? CircularProgressIndicator(color: AppColors.secondary)
             : Text(
                 'No more users',
-                style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: Colors.grey[400], fontSize: 14),
               ),
       ),
     );
@@ -185,16 +321,20 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
     _tempEditingUserId = null;
   }
 
-  Future<void> _approveUserCreation(int userCreationId, int index, String role, String? departmentId) async {
+  Future<void> _approveUserCreation(
+    int userCreationId,
+    int index,
+    String role,
+    String? departmentId,
+  ) async {
     try {
       final response = await ApiService.approveUserCreationWithDetails(
         userCreationId,
         role: role,
         departmentId: departmentId,
       );
-      
-      if (response['success'] == true) {
 
+      if (response['success'] == true) {
         setState(() {
           _expandedIndex = -1;
           _selectedFilter = 'Approved';
@@ -202,17 +342,17 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
 
         await _loadUserCreations();
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('User approved successfully')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('User approved successfully')));
       } else {
         throw Exception(response['message'] ?? 'Failed to approve user');
       }
     } catch (e) {
       print('Error approving user: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to approve user: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to approve user: $e')));
       rethrow;
     }
   }
@@ -220,7 +360,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
   Future<void> _rejectUserCreation(int userCreationId, int index) async {
     try {
       final response = await ApiService.rejectUserCreation(userCreationId);
-      
+
       if (response['success'] == true) {
         setState(() {
           _expandedIndex = -1;
@@ -228,17 +368,17 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
         });
 
         await _loadUserCreations();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('User rejected successfully')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('User rejected successfully')));
       } else {
         throw Exception(response['message'] ?? 'Failed to reject user');
       }
     } catch (e) {
       print('Error rejecting user: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to reject user: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to reject user: $e')));
       rethrow;
     }
   }
@@ -255,11 +395,14 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
   Future<void> _loadDepartments() async {
     try {
       final response = await ApiService.getDepartments();
-      
+
       if (response['success'] == true) {
-        final List<dynamic> departmentsData = response['data']['departments'] ?? [];
+        final List<dynamic> departmentsData =
+            response['data']['departments'] ?? [];
         setState(() {
-          _availableDepartments = departmentsData.map((data) => Department.fromJson(data)).toList();
+          _availableDepartments = departmentsData
+              .map((data) => Department.fromJson(data))
+              .toList();
         });
       } else {
         throw Exception(response['message'] ?? 'Failed to load departments');
@@ -281,8 +424,8 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
       final department = _availableDepartments.firstWhere(
         (dept) => dept.id.toString() == departmentId,
         orElse: () => Department(
-          id: 0, 
-          name: 'Unknown', 
+          id: 0,
+          name: 'Unknown',
           isActive: true,
           employees: 0,
           headId: null,
@@ -300,19 +443,21 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
   // Get safe department ID - ensures the value exists in available departments
   String _getSafeDepartmentId(UserCreation userCreation) {
     if (_availableDepartments.isEmpty) return '';
-    
+
     // First try to use the user's department if it exists
     if (userCreation.departmentId != null) {
       final userDeptId = userCreation.departmentId.toString();
-      if (_availableDepartments.any((dept) => dept.id.toString() == userDeptId)) {
+      if (_availableDepartments.any(
+        (dept) => dept.id.toString() == userDeptId,
+      )) {
         return userDeptId;
       }
     }
-    
+
     // Otherwise use the first available department
     return _availableDepartments.first.id.toString();
   }
-  
+
   String _generateShortName(String displayName) {
     if (displayName.isEmpty) return 'U';
     final words = displayName.split(' ');
@@ -322,6 +467,37 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
     return displayName[0].toUpperCase();
   }
 
+  void _cleanupWebSocket() async {
+    try {
+      await _userHandler.dispose();
+      await _webSocketManager.disconnectFromNamespace('/users');
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error cleaning up WebSocket: $e');
+      }
+    }
+  }
+
+  void _reconnectWebSocket() {
+    setState(() {
+      _isInitializing = true;
+    });
+    _initializeWebSocket();
+  }
+
+  // Helper methods to get token and userId (you need to implement these)
+  Future<String?> _getToken() async {
+    // Implement token retrieval from storage
+    // Example: return await SecureStorageService().accessToken;
+    return null;
+  }
+
+  Future<String?> _getUserId() async {
+    // Implement userId retrieval from storage
+    // Example: final user = StorageService.userData; return user?.id.toString();
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -329,8 +505,8 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
       body: _isLoading
           ? _buildLoading()
           : _hasError
-              ? _buildErrorWidget()
-              : _buildMainContent(),
+          ? _buildErrorWidget()
+          : _buildMainContent(),
     );
   }
 
@@ -339,10 +515,13 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircularProgressIndicator(color: Colors.white),
+          if (_isInitializing)
+            CircularProgressIndicator(color: AppColors.secondary),
           SizedBox(height: 16),
           Text(
-            'Loading User Creations...',
+            _isInitializing
+                ? 'Connecting to real-time updates...'
+                : 'Loading User Creations...',
             style: TextStyle(color: Colors.white, fontSize: 16),
           ),
         ],
@@ -398,21 +577,39 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'User Creations',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+              Row(
+                children: [
+                  Text(
+                    'User Creations',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _isConnected ? Colors.green : Colors.red,
+                      boxShadow: [
+                        BoxShadow(
+                          color: (_isConnected ? Colors.green : Colors.red)
+                              .withOpacity(0.3),
+                          blurRadius: 4,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
               SizedBox(height: 4),
               Text(
                 'Approve or reject user registration requests',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[300],
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey[300]),
               ),
             ],
           ),
@@ -422,7 +619,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
         _buildFilterButtons(),
 
         SizedBox(height: 8),
-        
+
         // Available Section Header
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 24),
@@ -444,8 +641,6 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  //_filteredUserCreations.length.toString(),
-                  //_displayedUserCreations.length.toString(),
                   _total.toString(),
                   style: TextStyle(
                     fontSize: 12,
@@ -462,269 +657,326 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
 
         // User Creations List
         Expanded(
-                child: _displayedUserCreations.isEmpty 
-            ? _buildEmptyState()
-            : NotificationListener<ScrollNotification>(
-                onNotification: (scrollNotification) {
-                  if (scrollNotification is ScrollEndNotification &&
-                      _scrollController.position.extentAfter == 0 &&
-                      !_isLoadingMore &&
-                      _hasMoreData) {
-                    _loadMoreUserCreations();
-                    return true;
-                  }
-                  return false;
-                },
-                child: RefreshIndicator(
-                  onRefresh: () => _loadUserCreations(),
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    padding: EdgeInsets.symmetric(horizontal: 24),
-                    itemCount: _displayedUserCreations.length + (_isLoadingMore ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (index >= _displayedUserCreations.length) {
-                        return _buildLoadingMoreWidget();
-                      }
+          child: _displayedUserCreations.isEmpty
+              ? _buildEmptyState()
+              : NotificationListener<ScrollNotification>(
+                  onNotification: (scrollNotification) {
+                    if (scrollNotification is ScrollEndNotification &&
+                        _scrollController.position.extentAfter == 0 &&
+                        !_isLoadingMore &&
+                        _hasMoreData) {
+                      _loadMoreUserCreations();
+                      return true;
+                    }
+                    return false;
+                  },
+                  child: RefreshIndicator(
+                    onRefresh: () => _loadUserCreations(),
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      padding: EdgeInsets.symmetric(horizontal: 24),
+                      itemCount:
+                          _displayedUserCreations.length +
+                          (_isLoadingMore ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (index >= _displayedUserCreations.length) {
+                          return _buildLoadingMoreWidget();
+                        }
 
-                      //final userCreation = _filteredUserCreations[index];
-                      final userCreation = _displayedUserCreations[index];
-                      final isExpanded = _expandedIndex == index;
-                      final shortName = _generateShortName(userCreation.displayname);
-                      
-                      // Get current values - use temp values ONLY if this is the currently expanded item
-                      final bool isCurrentlyEditing = _tempEditingUserId == userCreation.id;
-                      final currentRole = isCurrentlyEditing && _tempSelectedRole != null 
-                          ? _tempSelectedRole! 
-                          : userCreation.role.name;
-                      final currentDepartmentId = isCurrentlyEditing && _tempSelectedDepartmentId != null
-                          ? _tempSelectedDepartmentId!
-                          : _getSafeDepartmentId(userCreation);
-                      final canApprove = _canApprove(currentDepartmentId);
-                      
-                      return Container(
-                        margin: EdgeInsets.only(bottom: 12),
-                        child: Material(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          elevation: 2,
-                          child: InkWell(
+                        final userCreation = _displayedUserCreations[index];
+                        final isExpanded = _expandedIndex == index;
+                        final shortName = _generateShortName(
+                          userCreation.displayname,
+                        );
+
+                        // Get current values - use temp values ONLY if this is the currently expanded item
+                        final bool isCurrentlyEditing =
+                            _tempEditingUserId == userCreation.id;
+                        final currentRole =
+                            isCurrentlyEditing && _tempSelectedRole != null
+                            ? _tempSelectedRole!
+                            : userCreation.role.name;
+                        final currentDepartmentId =
+                            isCurrentlyEditing &&
+                                _tempSelectedDepartmentId != null
+                            ? _tempSelectedDepartmentId!
+                            : _getSafeDepartmentId(userCreation);
+                        final canApprove = _canApprove(currentDepartmentId);
+
+                        return Container(
+                          margin: EdgeInsets.only(bottom: 12),
+                          child: Material(
+                            color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
-                            onTap: () {
-                              setState(() {
-                                if (isExpanded) {
-                                  // Collapsing - clear temp values
-                                  _expandedIndex = null;
-                                  _clearTempValues();
-                                } else {
-                                  // Expanding - set this as currently editing item
-                                  _expandedIndex = index;
-                                  _tempEditingUserId = userCreation.id;
-                                  // Initialize temp values with original values
-                                  _tempSelectedRole = userCreation.role.name;
-                                  _tempSelectedDepartmentId = _getSafeDepartmentId(userCreation);
-                                }
-                              });
-                            },
-                            child: AnimatedContainer(
-                              duration: Duration(milliseconds: 300),
-                              curve: Curves.easeInOut,
-                              padding: EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: ColorGenerator.getRandomColor(userCreation.displayname).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                                border: isExpanded 
-                                    ? Border.all(color: ColorGenerator.getRandomColor(userCreation.displayname).withOpacity(0.2), width: 2)
-                                    : null,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Header Row
-                                  Row(
-                                    children: [
-                                      // User Icon
-                                      Container(
-                                        width: 40,
-                                        height: 40,
-                                        decoration: BoxDecoration(
-                                          color: ColorGenerator.getRandomColor(userCreation.displayname),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            shortName,
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
+                            elevation: 2,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: () {
+                                setState(() {
+                                  if (isExpanded) {
+                                    // Collapsing - clear temp values
+                                    _expandedIndex = null;
+                                    _clearTempValues();
+                                  } else {
+                                    // Expanding - set this as currently editing item
+                                    _expandedIndex = index;
+                                    _tempEditingUserId = userCreation.id;
+                                    // Initialize temp values with original values
+                                    _tempSelectedRole = userCreation.role.name;
+                                    _tempSelectedDepartmentId =
+                                        _getSafeDepartmentId(userCreation);
+                                  }
+                                });
+                              },
+                              child: AnimatedContainer(
+                                duration: Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                                padding: EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: ColorGenerator.getRandomColor(
+                                    userCreation.displayname,
+                                  ).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: isExpanded
+                                      ? Border.all(
+                                          color: ColorGenerator.getRandomColor(
+                                            userCreation.displayname,
+                                          ).withOpacity(0.2),
+                                          width: 2,
+                                        )
+                                      : null,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Header Row
+                                    Row(
+                                      children: [
+                                        // User Icon
+                                        Container(
+                                          width: 40,
+                                          height: 40,
+                                          decoration: BoxDecoration(
+                                            color:
+                                                ColorGenerator.getRandomColor(
+                                                  userCreation.displayname,
+                                                ),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
                                             ),
                                           ),
-                                        ),
-                                      ),
-                                      SizedBox(width: 12),
-                                      
-                                      // User Info
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              userCreation.displayname,
+                                          child: Center(
+                                            child: Text(
+                                              shortName,
                                               style: TextStyle(
+                                                color: Colors.white,
                                                 fontSize: 16,
                                                 fontWeight: FontWeight.bold,
-                                                color: Colors.black,
                                               ),
                                             ),
-                                            SizedBox(height: 2),
-                                            Text(
-                                              userCreation.email,
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w900,
-                                                color: Colors.grey[700],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      
-                                      // Status Badge
-                                      _buildStatusBadge(userCreation.isApproved),
-                                      
-                                      // Expand/Collapse Arrow
-                                      Transform.rotate(
-                                        angle: isExpanded ? -1.5708 : 1.5708,
-                                        child: Icon(
-                                          Icons.arrow_forward_ios,
-                                          size: 16,
-                                          color: Colors.grey[600],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  
-                                  // Expanded Details
-                                  if (isExpanded) ...[
-                                    SizedBox(height: 16),
-                                    Divider(height: 1, color: Colors.grey[300]),
-                                    SizedBox(height: 16),
-                                    
-                                    // Contact Info
-                                    _buildInfoRow(Icons.phone, userCreation.phone),
-                                    _buildInfoRow(Icons.email, userCreation.email),
-                                    
-                                    SizedBox(height: 16),
-                                    
-                                    // Editable Role and Department (only for pending)
-                                    if (userCreation.isApproved == 'pending') ...[
-                                      // Role Dropdown
-                                      _buildEditableDropdown(
-                                        icon: Icons.person,
-                                        label: 'User Role',
-                                        value: currentRole,
-                                        items: _availableRoles,
-                                        onChanged: (value) {
-                                          if (value != null) {
-                                            setState(() {
-                                              _tempSelectedRole = value;
-                                            });
-                                          }
-                                        },
-                                      ),
-                                      
-                                      SizedBox(height: 12),
-                                      
-                                      // Department Dropdown
-                                      _buildDepartmentDropdown(
-                                        currentDepartmentId: currentDepartmentId,
-                                        onChanged: (value) {
-                                          if (value != null) {
-                                            setState(() {
-                                              _tempSelectedDepartmentId = value;
-                                            });
-                                          }
-                                        },
-                                      ),
-                                      
-                                      // Warning message if department is not selected
-                                      if (!canApprove) ...[
-                                        SizedBox(height: 8),
-                                        Container(
-                                          padding: EdgeInsets.all(8),
-                                          decoration: BoxDecoration(
-                                            color: Colors.orange[50],
-                                            borderRadius: BorderRadius.circular(8),
-                                            border: Border.all(color: Colors.orange),
                                           ),
-                                          child: Row(
+                                        ),
+                                        SizedBox(width: 12),
+
+                                        // User Info
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
-                                              Icon(Icons.warning, color: Colors.orange, size: 16),
-                                              SizedBox(width: 8),
-                                              Expanded(
-                                                child: Text(
-                                                  'Please select a department before approval',
-                                                  style: TextStyle(
-                                                    color: Colors.orange[800],
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
+                                              Text(
+                                                userCreation.displayname,
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.black,
+                                                ),
+                                              ),
+                                              SizedBox(height: 2),
+                                              Text(
+                                                userCreation.email,
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: Colors.grey[700],
                                                 ),
                                               ),
                                             ],
                                           ),
                                         ),
-                                      ],
-                                      
-                                      SizedBox(height: 16),
-                                    ] else ...[
-                                      // Read-only role and department for approved/rejected
-                                      Row(
-                                        children: [
-                                          _buildDetailItem(
-                                            icon: Icons.person,
-                                            title: 'Role',
-                                            value: userCreation.role.displayName,
+
+                                        // Status Badge
+                                        _buildStatusBadge(
+                                          userCreation.isApproved,
+                                        ),
+
+                                        // Expand/Collapse Arrow
+                                        Transform.rotate(
+                                          angle: isExpanded ? -1.5708 : 1.5708,
+                                          child: Icon(
+                                            Icons.arrow_forward_ios,
+                                            size: 16,
+                                            color: Colors.grey[600],
                                           ),
-                                          SizedBox(width: 24),
-                                          _buildDetailItem(
-                                            icon: Icons.business,
-                                            title: 'Department',
-                                            value: userCreation.departmentName ?? 'Not Assigned',
-                                          ),
-                                        ],
-                                      ),
-                                      SizedBox(height: 16),
-                                    ],
-                                    
-                                    // Request Date
-                                    Row(
-                                      children: [
-                                        _buildDetailItem(
-                                          icon: Icons.calendar_today,
-                                          title: 'Requested',
-                                          value: userCreation.createdAt?.toIso8601String().split('T').first ?? 'N/A',
                                         ),
                                       ],
                                     ),
-                                          
-                                    SizedBox(height: 16),
-                                    
-                                    // Action Buttons
-                                    _buildActionButtons(userCreation, index, canApprove, currentRole, currentDepartmentId),
+
+                                    // Expanded Details
+                                    if (isExpanded) ...[
+                                      SizedBox(height: 16),
+                                      Divider(
+                                        height: 1,
+                                        color: Colors.grey[300],
+                                      ),
+                                      SizedBox(height: 16),
+
+                                      // Contact Info
+                                      _buildInfoRow(
+                                        Icons.phone,
+                                        userCreation.phone,
+                                      ),
+                                      _buildInfoRow(
+                                        Icons.email,
+                                        userCreation.email,
+                                      ),
+
+                                      SizedBox(height: 16),
+
+                                      // Editable Role and Department (only for pending)
+                                      if (userCreation.isApproved ==
+                                          'pending') ...[
+                                        // Role Dropdown
+                                        _buildEditableDropdown(
+                                          icon: Icons.person,
+                                          label: 'User Role',
+                                          value: currentRole,
+                                          items: _availableRoles,
+                                          onChanged: (value) {
+                                            if (value != null) {
+                                              setState(() {
+                                                _tempSelectedRole = value;
+                                              });
+                                            }
+                                          },
+                                        ),
+
+                                        SizedBox(height: 12),
+
+                                        // Department Dropdown
+                                        _buildDepartmentDropdown(
+                                          currentDepartmentId:
+                                              currentDepartmentId,
+                                          onChanged: (value) {
+                                            if (value != null) {
+                                              setState(() {
+                                                _tempSelectedDepartmentId =
+                                                    value;
+                                              });
+                                            }
+                                          },
+                                        ),
+
+                                        // Warning message if department is not selected
+                                        if (!canApprove) ...[
+                                          SizedBox(height: 8),
+                                          Container(
+                                            padding: EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: Colors.orange[50],
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              border: Border.all(
+                                                color: Colors.orange,
+                                              ),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.warning,
+                                                  color: Colors.orange,
+                                                  size: 16,
+                                                ),
+                                                SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    'Please select a department before approval',
+                                                    style: TextStyle(
+                                                      color: Colors.orange[800],
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+
+                                        SizedBox(height: 16),
+                                      ] else ...[
+                                        // Read-only role and department for approved/rejected
+                                        Row(
+                                          children: [
+                                            _buildDetailItem(
+                                              icon: Icons.person,
+                                              title: 'Role',
+                                              value:
+                                                  userCreation.role.displayName,
+                                            ),
+                                            SizedBox(width: 24),
+                                            _buildDetailItem(
+                                              icon: Icons.business,
+                                              title: 'Department',
+                                              value:
+                                                  userCreation.departmentName ??
+                                                  'Not Assigned',
+                                            ),
+                                          ],
+                                        ),
+                                        SizedBox(height: 16),
+                                      ],
+
+                                      // Request Date
+                                      Row(
+                                        children: [
+                                          _buildDetailItem(
+                                            icon: Icons.calendar_today,
+                                            title: 'Requested',
+                                            value:
+                                                userCreation.createdAt
+                                                    ?.toIso8601String()
+                                                    .split('T')
+                                                    .first ??
+                                                'N/A',
+                                          ),
+                                        ],
+                                      ),
+
+                                      SizedBox(height: 16),
+
+                                      // Action Buttons
+                                      _buildActionButtons(
+                                        userCreation,
+                                        index,
+                                        canApprove,
+                                        currentRole,
+                                        currentDepartmentId,
+                                      ),
+                                    ],
                                   ],
-                                ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   ),
                 ),
         ),
-      )
-      ]
+      ],
     );
   }
 
@@ -912,109 +1164,131 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
     );
   }
 
-  Widget _buildActionButtons(UserCreation userCreation, int index, bool canApprove, String currentRole, String currentDepartmentId) {
+  Widget _buildActionButtons(
+    UserCreation userCreation,
+    int index,
+    bool canApprove,
+    String currentRole,
+    String currentDepartmentId,
+  ) {
     final status = userCreation.isApproved;
-    
+
     return Row(
       children: [
         // Reject Button (show for pending and approved)
         if (status == 'pending' || status == 'approved')
-        Expanded(
-          child: Container(
-            height: 46,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.red, width: 2),
-              borderRadius: BorderRadius.circular(12),
-              color: Colors.red,
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
+          Expanded(
+            child: Container(
+              height: 46,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.red, width: 2),
                 borderRadius: BorderRadius.circular(12),
-                onTap: () {
-                  _showRejectConfirmation(index);
-                },
-                child: Center(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(width: 8),
-                      Text(
-                        status == 'approved' ? 'Change to Reject' : 'Reject',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                color: Colors.red,
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    _showRejectConfirmation(index);
+                  },
+                  child: Center(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(width: 8),
+                        Text(
+                          status == 'approved' ? 'Change to Reject' : 'Reject',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
 
         if (status == 'pending' || status == 'approved') SizedBox(width: 12),
-        
+
         // Approve Button (show for pending and rejected)
         if (status == 'pending' || status == 'rejected')
-        Expanded(
-          child: Container(
-            height: 46,
-            decoration: BoxDecoration(
-              color: (status == 'pending' && canApprove) || status == 'rejected' 
-                  ? Colors.green
-                  : Colors.grey[400],
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: (status == 'pending' && canApprove) || status == 'rejected' ? [
-              BoxShadow(
-                color: Colors.green.withOpacity(0.3),
-                blurRadius: 8,
-                offset: Offset(0, 4),
+          Expanded(
+            child: Container(
+              height: 46,
+              decoration: BoxDecoration(
+                color:
+                    (status == 'pending' && canApprove) || status == 'rejected'
+                    ? Colors.green
+                    : Colors.grey[400],
+                borderRadius: BorderRadius.circular(12),
+                boxShadow:
+                    (status == 'pending' && canApprove) || status == 'rejected'
+                    ? [
+                        BoxShadow(
+                          color: Colors.green.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
+                        ),
+                      ]
+                    : [],
               ),
-            ] : [],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: (status == 'pending' && canApprove) || status == 'rejected' ? () {
-                if (status == 'pending') {
-                  _showApproveConfirmation(index, currentRole, currentDepartmentId);
-                } else if (status == 'rejected') {
-                  _showChangeToApproveConfirmation(index);
-                }
-              } : null,
-              child: Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(width: 8),
-                    Text(
-                      status == 'rejected' ? 'Change to Approve' : 'Approve',
-                      style: TextStyle(
-                        color: (status == 'pending' && canApprove) || status == 'rejected' 
-                            ? Colors.white 
-                            : Colors.grey[600],
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap:
+                      (status == 'pending' && canApprove) ||
+                          status == 'rejected'
+                      ? () {
+                          if (status == 'pending') {
+                            _showApproveConfirmation(
+                              index,
+                              currentRole,
+                              currentDepartmentId,
+                            );
+                          } else if (status == 'rejected') {
+                            _showChangeToApproveConfirmation(index);
+                          }
+                        }
+                      : null,
+                  child: Center(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(width: 8),
+                        Text(
+                          status == 'rejected'
+                              ? 'Change to Approve'
+                              : 'Approve',
+                          style: TextStyle(
+                            color:
+                                (status == 'pending' && canApprove) ||
+                                    status == 'rejected'
+                                ? Colors.white
+                                : Colors.grey[600],
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-        )
       ],
     );
   }
-  
+
   Widget _buildFilterButtons() {
     final filters = ['Pending', 'Approved', 'Rejected', 'All'];
-    
+
     return Container(
       padding: EdgeInsets.all(16),
       child: SingleChildScrollView(
@@ -1037,7 +1311,9 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
                 backgroundColor: Colors.grey[200],
                 selectedColor: AppColors.secondary,
                 labelStyle: TextStyle(
-                  color: _selectedFilter == filter ? AppColors.primary : Colors.black,
+                  color: _selectedFilter == filter
+                      ? AppColors.primary
+                      : Colors.black,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -1054,8 +1330,10 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
   }) {
     // Ensure the current value exists in available departments
     String safeCurrentDepartmentId = currentDepartmentId;
-    if (_availableDepartments.isNotEmpty && 
-        !_availableDepartments.any((dept) => dept.id.toString() == currentDepartmentId)) {
+    if (_availableDepartments.isNotEmpty &&
+        !_availableDepartments.any(
+          (dept) => dept.id.toString() == currentDepartmentId,
+        )) {
       safeCurrentDepartmentId = _availableDepartments.first.id.toString();
     }
 
@@ -1109,10 +1387,9 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
       ],
     );
   }
-  
+
   void _showRejectConfirmation(int index) {
     bool _isSubmitting = false;
-    //final userCreation = _filteredUserCreations[index];
     final userCreation = _displayedUserCreations[index];
     final currentStatus = userCreation.isApproved;
     final actionText = 'Reject';
@@ -1148,10 +1425,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
                     currentStatus == 'approved'
                         ? 'Are you sure you want to change ${userCreation.displayname} from Approved to Rejected?'
                         : 'Are you sure you want to reject ${userCreation.displayname}?',
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 16,
-                    ),
+                    style: const TextStyle(color: Colors.grey, fontSize: 16),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
@@ -1162,7 +1436,10 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
                         child: Container(
                           height: 50,
                           decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade600, width: 2),
+                            border: Border.all(
+                              color: Colors.grey.shade600,
+                              width: 2,
+                            ),
                             borderRadius: BorderRadius.circular(12),
                             color: Colors.transparent,
                           ),
@@ -1170,7 +1447,9 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
                             color: Colors.transparent,
                             child: InkWell(
                               borderRadius: BorderRadius.circular(12),
-                              onTap: _isSubmitting ? null : () => Navigator.pop(context),
+                              onTap: _isSubmitting
+                                  ? null
+                                  : () => Navigator.pop(context),
                               child: Center(
                                 child: Text(
                                   'Cancel',
@@ -1186,39 +1465,46 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
                         ),
                       ),
                       const SizedBox(width: 12),
-                      
+
                       Expanded(
                         child: Container(
                           height: 50,
                           decoration: BoxDecoration(
                             color: _isSubmitting ? Colors.grey : Colors.red,
                             borderRadius: BorderRadius.circular(12),
-                            boxShadow: _isSubmitting ? [] : [
-                              BoxShadow(
-                                color: Colors.red.withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
+                            boxShadow: _isSubmitting
+                                ? []
+                                : [
+                                    BoxShadow(
+                                      color: Colors.red.withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
                           ),
                           child: Material(
                             color: Colors.transparent,
                             child: InkWell(
                               borderRadius: BorderRadius.circular(12),
-                              onTap: _isSubmitting ? null : () async {
-                                try {
-                                  setState(() {
-                                    _isSubmitting = true;
-                                  });
+                              onTap: _isSubmitting
+                                  ? null
+                                  : () async {
+                                      try {
+                                        setState(() {
+                                          _isSubmitting = true;
+                                        });
 
-                                  await _rejectUserCreation(userCreation.id, index);
-                                  Navigator.pop(context);
-                                } catch (e) {
-                                  setState(() {
-                                    _isSubmitting = false;
-                                  });
-                                }
-                              },
+                                        await _rejectUserCreation(
+                                          userCreation.id,
+                                          index,
+                                        );
+                                        Navigator.pop(context);
+                                      } catch (e) {
+                                        setState(() {
+                                          _isSubmitting = false;
+                                        });
+                                      }
+                                    },
                               child: Center(
                                 child: _isSubmitting
                                     ? SizedBox(
@@ -1255,7 +1541,6 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
 
   void _showApproveConfirmation(int index, String role, String departmentId) {
     bool _isSubmitting = false;
-    //final userCreation = _filteredUserCreations[index];
     final userCreation = _displayedUserCreations[index];
     final departmentName = _getDepartmentName(departmentId);
 
@@ -1288,15 +1573,12 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
 
                   Text(
                     'Are you sure you want to approve ${userCreation.displayname}?',
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 16,
-                    ),
+                    style: const TextStyle(color: Colors.grey, fontSize: 16),
                     textAlign: TextAlign.center,
                   ),
-                  
+
                   SizedBox(height: 12),
-                  
+
                   // Show selected role and department
                   Container(
                     padding: EdgeInsets.all(12),
@@ -1334,7 +1616,10 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
                         child: Container(
                           height: 50,
                           decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade600, width: 2),
+                            border: Border.all(
+                              color: Colors.grey.shade600,
+                              width: 2,
+                            ),
                             borderRadius: BorderRadius.circular(12),
                             color: Colors.transparent,
                           ),
@@ -1342,7 +1627,9 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
                             color: Colors.transparent,
                             child: InkWell(
                               borderRadius: BorderRadius.circular(12),
-                              onTap: _isSubmitting ? null : () => Navigator.pop(context),
+                              onTap: _isSubmitting
+                                  ? null
+                                  : () => Navigator.pop(context),
                               child: Center(
                                 child: Text(
                                   'Cancel',
@@ -1358,44 +1645,52 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
                         ),
                       ),
                       const SizedBox(width: 12),
-                      
+
                       Expanded(
                         child: Container(
                           height: 50,
                           decoration: BoxDecoration(
-                            color: _isSubmitting ? Colors.grey : AppColors.secondary,
+                            color: _isSubmitting
+                                ? Colors.grey
+                                : AppColors.secondary,
                             borderRadius: BorderRadius.circular(12),
-                            boxShadow: _isSubmitting ? [] : [
-                              BoxShadow(
-                                color: AppColors.secondary.withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
+                            boxShadow: _isSubmitting
+                                ? []
+                                : [
+                                    BoxShadow(
+                                      color: AppColors.secondary.withOpacity(
+                                        0.3,
+                                      ),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
                           ),
                           child: Material(
                             color: Colors.transparent,
                             child: InkWell(
                               borderRadius: BorderRadius.circular(12),
-                              onTap: _isSubmitting ? null : () async {
-                                try {
-                                  setState(() {
-                                    _isSubmitting = true;
-                                  });
+                              onTap: _isSubmitting
+                                  ? null
+                                  : () async {
+                                      try {
+                                        setState(() {
+                                          _isSubmitting = true;
+                                        });
 
-                                  await _approveUserCreation(
-                                    userCreation.id, 
-                                    index, 
-                                    role, 
-                                    departmentId
-                                  );
-                                  Navigator.pop(context);
-                                } catch (e) {
-                                  setState(() {
-                                    _isSubmitting = false;
-                                  });
-                                }
-                              },
+                                        await _approveUserCreation(
+                                          userCreation.id,
+                                          index,
+                                          role,
+                                          departmentId,
+                                        );
+                                        Navigator.pop(context);
+                                      } catch (e) {
+                                        setState(() {
+                                          _isSubmitting = false;
+                                        });
+                                      }
+                                    },
                               child: Center(
                                 child: _isSubmitting
                                     ? SizedBox(
@@ -1429,15 +1724,15 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
       ),
     );
   }
-  
+
   void _showChangeToApproveConfirmation(int index) {
     bool _isSubmitting = false;
-    //final userCreation = _filteredUserCreations[index];
     final userCreation = _displayedUserCreations[index];
-    
+
     // Use temporary values if available, otherwise use original values
     _tempSelectedRole = _tempSelectedRole ?? userCreation.role.name;
-    _tempSelectedDepartmentId = _tempSelectedDepartmentId ?? _getSafeDepartmentId(userCreation);
+    _tempSelectedDepartmentId =
+        _tempSelectedDepartmentId ?? _getSafeDepartmentId(userCreation);
 
     showDialog(
       context: context,
@@ -1470,15 +1765,12 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
 
                   Text(
                     'Change ${userCreation.displayname} from Rejected to Approved?',
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 16,
-                    ),
+                    style: const TextStyle(color: Colors.grey, fontSize: 16),
                     textAlign: TextAlign.center,
                   ),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Role Dropdown
                   _buildRoleDropdownNew(
                     currentRole: _tempSelectedRole ?? '',
@@ -1490,9 +1782,9 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
                       }
                     },
                   ),
-                  
+
                   const SizedBox(height: 16),
-                  
+
                   // Department Dropdown
                   _buildDepartmentDropdownNew(
                     currentDepartmentId: _tempSelectedDepartmentId ?? '',
@@ -1504,7 +1796,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
                       }
                     },
                   ),
-                  
+
                   // Warning message if department is not selected
                   if (!canApprove) ...[
                     const SizedBox(height: 12),
@@ -1543,7 +1835,10 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
                         child: Container(
                           height: 50,
                           decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade600, width: 2),
+                            border: Border.all(
+                              color: Colors.grey.shade600,
+                              width: 2,
+                            ),
                             borderRadius: BorderRadius.circular(12),
                             color: Colors.transparent,
                           ),
@@ -1551,9 +1846,11 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
                             color: Colors.transparent,
                             child: InkWell(
                               borderRadius: BorderRadius.circular(12),
-                              onTap: _isSubmitting ? null : () {
-                                Navigator.pop(context);
-                              },
+                              onTap: _isSubmitting
+                                  ? null
+                                  : () {
+                                      Navigator.pop(context);
+                                    },
                               child: Center(
                                 child: Text(
                                   'Cancel',
@@ -1569,47 +1866,51 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
                         ),
                       ),
                       const SizedBox(width: 12),
-                      
+
                       // Approve Button
                       Expanded(
                         child: Container(
                           height: 50,
                           decoration: BoxDecoration(
-                            color: _isSubmitting || !canApprove 
-                                ? Colors.grey 
+                            color: _isSubmitting || !canApprove
+                                ? Colors.grey
                                 : Colors.yellow[600],
                             borderRadius: BorderRadius.circular(12),
-                            boxShadow: (_isSubmitting || !canApprove) ? [] : [
-                              BoxShadow(
-                                color: Colors.yellow.withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
+                            boxShadow: (_isSubmitting || !canApprove)
+                                ? []
+                                : [
+                                    BoxShadow(
+                                      color: Colors.yellow.withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
                           ),
                           child: Material(
                             color: Colors.transparent,
                             child: InkWell(
                               borderRadius: BorderRadius.circular(12),
-                              onTap: (_isSubmitting || !canApprove) ? null : () async {
-                                try {
-                                  setState(() {
-                                    _isSubmitting = true;
-                                  });
+                              onTap: (_isSubmitting || !canApprove)
+                                  ? null
+                                  : () async {
+                                      try {
+                                        setState(() {
+                                          _isSubmitting = true;
+                                        });
 
-                                  await _approveUserCreation(
-                                    userCreation.id, 
-                                    index, 
-                                    _tempSelectedRole ?? '', 
-                                    _tempSelectedDepartmentId
-                                  );
-                                  Navigator.pop(context);
-                                } catch (e) {
-                                  setState(() {
-                                    _isSubmitting = false;
-                                  });
-                                }
-                              },
+                                        await _approveUserCreation(
+                                          userCreation.id,
+                                          index,
+                                          _tempSelectedRole ?? '',
+                                          _tempSelectedDepartmentId,
+                                        );
+                                        Navigator.pop(context);
+                                      } catch (e) {
+                                        setState(() {
+                                          _isSubmitting = false;
+                                        });
+                                      }
+                                    },
                               child: Center(
                                 child: _isSubmitting
                                     ? SizedBox(
@@ -1643,15 +1944,17 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
       ),
     );
   }
-  
+
   Widget _buildDepartmentDropdownNew({
     required String currentDepartmentId,
     required Function(String?) onChanged,
   }) {
     // Ensure the current value exists in available departments
     String safeCurrentDepartmentId = currentDepartmentId;
-    if (_availableDepartments.isNotEmpty && 
-        !_availableDepartments.any((dept) => dept.id.toString() == currentDepartmentId)) {
+    if (_availableDepartments.isNotEmpty &&
+        !_availableDepartments.any(
+          (dept) => dept.id.toString() == currentDepartmentId,
+        )) {
       safeCurrentDepartmentId = _availableDepartments.first.id.toString();
     }
 
@@ -1665,15 +1968,12 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
             SizedBox(width: 8),
             Text(
               'Department *',
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Colors.grey, fontSize: 14),
             ),
           ],
         ),
         const SizedBox(height: 8),
-        
+
         // Dropdown without icon
         DropdownButtonFormField<String>(
           dropdownColor: Colors.black,
@@ -1692,13 +1992,19 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
             ),
             filled: true,
             fillColor: Colors.transparent,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 16,
+            ),
           ),
           value: safeCurrentDepartmentId,
           items: _availableDepartments.map((department) {
             return DropdownMenuItem(
               value: department.id.toString(),
-              child: Text(department.name, style: TextStyle(color: Colors.yellow)),
+              child: Text(
+                department.name,
+                style: TextStyle(color: Colors.yellow),
+              ),
             );
           }).toList(),
           onChanged: onChanged,
@@ -1706,7 +2012,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
       ],
     );
   }
-  
+
   Widget _buildRoleDropdownNew({
     required String currentRole,
     required Function(String?) onChanged,
@@ -1721,15 +2027,12 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
             SizedBox(width: 8),
             Text(
               'User Role',
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Colors.grey, fontSize: 14),
             ),
           ],
         ),
         const SizedBox(height: 8),
-        
+
         // Dropdown without icon
         DropdownButtonFormField<String>(
           dropdownColor: Colors.black,
@@ -1748,13 +2051,19 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
             ),
             filled: true,
             fillColor: Colors.transparent,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 16,
+            ),
           ),
           value: currentRole,
           items: _availableRoles.map((role) {
             return DropdownMenuItem(
               value: role,
-              child: Text(role.toUpperCase(), style: TextStyle(color: Colors.yellow)),
+              child: Text(
+                role.toUpperCase(),
+                style: TextStyle(color: Colors.yellow),
+              ),
             );
           }).toList(),
           onChanged: onChanged,
@@ -1762,5 +2071,4 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> with Realtime
       ],
     );
   }
-
 }

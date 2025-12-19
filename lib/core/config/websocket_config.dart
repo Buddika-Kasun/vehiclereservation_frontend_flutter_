@@ -1,6 +1,6 @@
 // config/websocket_config.dart
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:vehiclereservation_frontend_flutter_/core/api_config.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/config/api_config.dart';
 
 class WebSocketConfig {
   static bool _initialized = false;
@@ -31,7 +31,7 @@ class WebSocketConfig {
   // WebSocket connection configuration
   static Map<String, dynamic> get connectionOptions {
     return {
-      'transports': ['websocket', 'polling'],
+      'transports': ['polling', 'websocket'], // polling first, then websocket
       'path': ApiConfig.wsPath,
       'timeout': 30000,
       'reconnection': true,
@@ -80,7 +80,7 @@ static String get socketIoUrl {
   }
 
   // For Socket.IO, we need the base URL without namespace
-  final baseUrl = ApiConfig.wsUrl;
+  final baseUrl = ApiConfig.wsBaseUrl;
 
   // Clean up URL
   String cleanUrl = baseUrl;

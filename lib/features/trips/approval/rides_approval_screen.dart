@@ -1,8 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/approval_trip_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/api_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/shared/mixins/realtime_screen_mixin.dart';
 import 'package:flutter/foundation.dart';
+
+// Import new WebSocket structure
+import 'package:vehiclereservation_frontend_flutter_/data/services/ws/websocket_manager.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/services/ws/handlers/trip_handler.dart';
 
 class RidesApprovalScreen extends StatefulWidget {
   const RidesApprovalScreen({super.key});
@@ -11,17 +15,11 @@ class RidesApprovalScreen extends StatefulWidget {
   State<RidesApprovalScreen> createState() => _RidesApprovalScreenState();
 }
 
-class _RidesApprovalScreenState extends State<RidesApprovalScreen> with RealtimeScreenMixin {
-  @override
-  String get namespace => 'trips';
+class _RidesApprovalScreenState extends State<RidesApprovalScreen> {
+  // WebSocket managers
+  final WebSocketManager _webSocketManager = WebSocketManager();
+  final TripHandler _tripHandler = TripHandler();
 
-  @override
-  void handleScreenRefresh(Map<String, dynamic> data) {
-    final scope = data['scope'] ?? 'ALL';
-    if (scope == 'TRIPS' || scope == 'ALL' || scope == 'METER_READING') {
-      _refreshTrips();
-    }
-  }
   List<ApprovalTrip> _allTrips = [];
   bool _isLoading = true;
   bool _loadingMore = false;
@@ -36,17 +34,152 @@ class _RidesApprovalScreenState extends State<RidesApprovalScreen> with Realtime
 
   final ScrollController _scrollController = ScrollController();
 
+  // WebSocket connection state
+  bool _isConnected = false;
+  bool _isInitializing = false;
+  Timer? _debounceTimer;
+
   @override
   void initState() {
     super.initState();
     _loadTrips(reset: true);
     _scrollController.addListener(_scrollListener);
+    _initializeWebSocket();
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _debounceTimer?.cancel();
+    _cleanupWebSocket();
     super.dispose();
+  }
+
+  Future<void> _initializeWebSocket() async {
+    try {
+      if (mounted) {
+        setState(() {
+          _isInitializing = true;
+        });
+      }
+
+      // Get token and userId from storage (you need to implement this)
+      final token = await _getToken();
+      final userId = await _getUserId();
+
+      if (token == null || userId == null) {
+        if (mounted) {
+          setState(() {
+            _isInitializing = false;
+          });
+        }
+        return;
+      }
+
+      // Initialize WebSocket manager
+      _webSocketManager.initialize(token: token, userId: userId);
+
+      // Initialize trip handler
+      await _tripHandler.initialize(token: token, userId: userId);
+
+      // Connect to trips namespace
+      await _webSocketManager.connectToNamespace('/trips');
+
+      // Set up trip handler callback for refresh events
+      _tripHandler.onTripUpdate = (update) {
+        _handleTripUpdate(update);
+      };
+
+      // Set up connection listener
+      _webSocketManager.addConnectionListener('/trips', (isConnected) {
+        if (kDebugMode) {
+          print('🔌 RidesApprovalScreen connection: $isConnected');
+        }
+        if (mounted) {
+          setState(() {
+            _isConnected = isConnected;
+            _isInitializing = false;
+          });
+        }
+      });
+
+      // Set up message listener for direct messages
+      _webSocketManager.addMessageListener('/trips', (message) {
+        _handleWebSocketMessage(message);
+      });
+
+      if (mounted) {
+        setState(() {
+          _isConnected = _webSocketManager.isNamespaceConnected('/trips');
+          _isInitializing = false;
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ RidesApprovalScreen WebSocket error: $e');
+      }
+      if (mounted) {
+        setState(() {
+          _isConnected = false;
+          _isInitializing = false;
+        });
+      }
+    }
+  }
+
+  void _handleWebSocketMessage(Map<String, dynamic> message) {
+    if (!mounted) return;
+
+    final event = message['event']?.toString() ?? '';
+    final data = message['data'];
+
+    if (kDebugMode) {
+      print('📨 RidesApprovalScreen received event: $event');
+    }
+
+    // Handle refresh events
+    if (event == 'refresh') {
+      _handleRefreshEvent(data);
+    }
+  }
+
+  void _handleTripUpdate(Map<String, dynamic> update) {
+    final type = update['type']?.toString() ?? '';
+    final scope = update['scope']?.toString() ?? '';
+
+    if (kDebugMode) {
+      print('🔄 Trip update received: $type, scope: $scope');
+    }
+
+    // Only refresh if scope is relevant to meter reading
+    if (scope == 'TRIPS' || scope == 'ALL' || scope == 'METER_READING') {
+      _debounceRefresh();
+    }
+  }
+
+  void _handleRefreshEvent(Map<String, dynamic> data) {
+    final scope = data['scope']?.toString() ?? 'ALL';
+
+    if (kDebugMode) {
+      print('🔄 Refresh event received, scope: $scope');
+    }
+
+    // Only refresh if scope is relevant to meter reading
+    if (scope == 'TRIPS' || scope == 'ALL' || scope == 'METER_READING') {
+      _debounceRefresh();
+    }
+  }
+
+  void _debounceRefresh() {
+    if (_debounceTimer?.isActive ?? false) {
+      _debounceTimer?.cancel();
+    }
+
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        _refreshTrips();
+      }
+    });
   }
 
   void _scrollListener() {
@@ -76,9 +209,7 @@ class _RidesApprovalScreenState extends State<RidesApprovalScreen> with Realtime
         'limit': _limit,
       };
 
-      final response = await ApiService.getTripsForMeterReading(
-        request,
-      );
+      final response = await ApiService.getTripsForMeterReading(request);
 
       if (response['success'] == true && response['data'] != null) {
         final data = response['data'];
@@ -305,16 +436,19 @@ class _RidesApprovalScreenState extends State<RidesApprovalScreen> with Realtime
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     decoration: BoxDecoration(
-                      //color: Color(0xFFF9C80E).withOpacity(0.2),
                       color: trip.readingTypeNeeded == 'start'
-                          ? const Color.fromARGB(255, 49, 229, 55).withOpacity(0.2)
+                          ? const Color.fromARGB(
+                              255,
+                              49,
+                              229,
+                              55,
+                            ).withOpacity(0.2)
                           : Colors.red.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       'NEEDS ${trip.readingTypeNeeded!.toUpperCase()} READING',
                       style: TextStyle(
-                        //color: Color(0xFFF9C80E),
                         color: trip.readingTypeNeeded == 'start'
                             ? Color.fromARGB(255, 49, 229, 55)
                             : Colors.red,
@@ -332,7 +466,11 @@ class _RidesApprovalScreenState extends State<RidesApprovalScreen> with Realtime
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.check_circle, size: 12, color: Colors.yellow),
+                        Icon(
+                          Icons.check_circle,
+                          size: 12,
+                          color: Colors.yellow,
+                        ),
                         SizedBox(width: 4),
                         Text(
                           'COMPLETED',
@@ -524,8 +662,9 @@ class _RidesApprovalScreenState extends State<RidesApprovalScreen> with Realtime
                 onPressed: () =>
                     _showOdometerDialog(trip, trip.readingTypeNeeded!),
                 style: ElevatedButton.styleFrom(
-                  //backgroundColor: Color(0xFFF9C80E),
-                  backgroundColor: trip.needsStartReading ? Colors.green : Colors.red,
+                  backgroundColor: trip.needsStartReading
+                      ? Colors.green
+                      : Colors.red,
                   minimumSize: Size(double.infinity, 40),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -576,7 +715,7 @@ class _RidesApprovalScreenState extends State<RidesApprovalScreen> with Realtime
                             SizedBox(height: 2),
                             Padding(
                               padding: EdgeInsets.fromLTRB(18, 2, 0, 0),
-                                child: Text(
+                              child: Text(
                                 trip.odometerReading?.startReading
                                         ?.toStringAsFixed(0) ??
                                     'Not recorded',
@@ -603,7 +742,7 @@ class _RidesApprovalScreenState extends State<RidesApprovalScreen> with Realtime
                         ),
                       ),
 
-                      if (trip.hasEndReading) 
+                      if (trip.hasEndReading)
                         // Vertical divider
                         Container(
                           width: 1,
@@ -612,7 +751,7 @@ class _RidesApprovalScreenState extends State<RidesApprovalScreen> with Realtime
                           margin: EdgeInsets.symmetric(horizontal: 8),
                         ),
 
-                      if (trip.hasEndReading) 
+                      if (trip.hasEndReading)
                         // End Reading Column
                         Expanded(
                           child: Column(
@@ -635,9 +774,8 @@ class _RidesApprovalScreenState extends State<RidesApprovalScreen> with Realtime
                               Padding(
                                 padding: EdgeInsets.fromLTRB(18, 2, 0, 0),
                                 child: Text(
-                                  trip.odometerReading?.endReading?.toStringAsFixed(
-                                        0,
-                                      ) ??
+                                  trip.odometerReading?.endReading
+                                          ?.toStringAsFixed(0) ??
                                       'Not recorded',
                                   style: TextStyle(
                                     color: Colors.white,
@@ -721,17 +859,81 @@ class _RidesApprovalScreenState extends State<RidesApprovalScreen> with Realtime
     );
   }
 
+  void _cleanupWebSocket() async {
+    try {
+      await _tripHandler.dispose();
+      await _webSocketManager.disconnectFromNamespace('/trips');
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error cleaning up WebSocket: $e');
+      }
+    }
+  }
+
+  void _reconnectWebSocket() {
+    setState(() {
+      _isInitializing = true;
+    });
+    _initializeWebSocket();
+  }
+
+  // Helper methods to get token and userId (you need to implement these)
+  Future<String?> _getToken() async {
+    // Implement token retrieval from storage
+    // Example: return await SecureStorageService().accessToken;
+    return null;
+  }
+
+  Future<String?> _getUserId() async {
+    // Implement userId retrieval from storage
+    // Example: final user = StorageService.userData; return user?.id.toString();
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
-        title: Text(
-          'Meter Reading',
-          style: TextStyle(color: Colors.white, fontSize: 20),
+        title: Row(
+          children: [
+            Text(
+              'Meter Reading',
+              style: TextStyle(color: Colors.white, fontSize: 20),
+            ),
+            SizedBox(width: 8),
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _isConnected ? Colors.green : Colors.red,
+                boxShadow: [
+                  BoxShadow(
+                    color: (_isConnected ? Colors.green : Colors.red)
+                        .withOpacity(0.3),
+                    blurRadius: 4,
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
         actions: [
+          if (_isInitializing)
+            Padding(
+              padding: EdgeInsets.only(right: 16),
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.yellow[600],
+                ),
+              ),
+            ),
           IconButton(
             onPressed: _refreshTrips,
             icon: Icon(Icons.refresh, color: Colors.white),
@@ -742,7 +944,6 @@ class _RidesApprovalScreenState extends State<RidesApprovalScreen> with Realtime
         children: [
           Column(
             children: [
-              
               // Time filter buttons
               _buildTimeFilterRow(),
 
@@ -976,6 +1177,4 @@ class _RidesApprovalScreenState extends State<RidesApprovalScreen> with Realtime
       ),
     );
   }
-
 }
-

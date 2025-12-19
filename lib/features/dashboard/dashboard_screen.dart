@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/dashboard_stats.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
-import 'package:vehiclereservation_frontend_flutter_/shared/mixins/realtime_screen_mixin.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/role_widgets/admin_dashboard.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/role_widgets/dashboard_top_panels.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/role_widgets/driver_dashboard.dart';
@@ -12,7 +11,6 @@ import 'package:vehiclereservation_frontend_flutter_/features/trips/create_trip_
 import 'package:vehiclereservation_frontend_flutter_/data/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/secure_storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/storage_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/namespace_websocket_manager.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -21,9 +19,8 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> with RealtimeScreenMixin {
+class _DashboardScreenState extends State<DashboardScreen> {
   @override
-  String get namespace => 'dashboard';
   User? _user;
   DashboardStats? _dashboardStats;
   bool _isLoading = true;
@@ -33,19 +30,6 @@ class _DashboardScreenState extends State<DashboardScreen> with RealtimeScreenMi
   void initState() {
     super.initState();
     _loadUserData();
-    _initializeWebSocket();
-  }
-
-  Future<void> _initializeWebSocket() async {
-    try {
-      final token = await SecureStorageService().accessToken;
-      final user = StorageService.userData;
-      if (token != null && user != null) {
-        await NamespaceWebSocketManager().initializeNamespace(namespace, token, user.id.toString());
-      }
-    } catch (e) {
-      print('Dashboard WebSocket initialization error: $e');
-    }
   }
 
   @override

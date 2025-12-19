@@ -3,13 +3,11 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
-import 'package:vehiclereservation_frontend_flutter_/shared/mixins/realtime_screen_mixin.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/vehicle_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/secure_storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/storage_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/namespace_websocket_manager.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/color_generator.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/constant.dart';
 
@@ -22,7 +20,7 @@ class VehicleScreen extends StatefulWidget {
   _VehicleScreenState createState() => _VehicleScreenState();
 }
 
-class _VehicleScreenState extends State<VehicleScreen> with RealtimeScreenMixin {
+class _VehicleScreenState extends State<VehicleScreen> {
   @override
   String get namespace => 'vehicles';
   List<Vehicle> _primaryVehicles = [];
@@ -38,17 +36,6 @@ class _VehicleScreenState extends State<VehicleScreen> with RealtimeScreenMixin 
   void initState() {
     super.initState();
     _loadDriverVehicles();
-  }
-
-
-
-  @override
-  void handleScreenRefresh(Map<String, dynamic> data) {
-    // Handle realtime vehicle assignments and locations
-    final scope = data['scope'] ?? 'ALL';
-    if (scope == 'VEHICLES' || scope == 'ALL' || scope == 'MY_VEHICLES') {
-      _loadDriverVehicles();
-    }
   }
 
   List<Vehicle> _safeMapToVehicles(List<dynamic> data) {

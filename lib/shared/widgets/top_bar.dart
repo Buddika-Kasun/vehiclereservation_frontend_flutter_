@@ -1,12 +1,14 @@
-// lib/widgets/common/top_bar.dart - FIXED
+// lib/shared/widgets/top_bar.dart
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/services/ws/websocket_manager.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/notifications/screens/notification_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/profile/profile_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/global_websocket_manager.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/services/api_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/services/ws/handlers/notification_handler.dart';
 
 class TopBar extends StatefulWidget {
   final User user;
@@ -25,113 +27,145 @@ class TopBar extends StatefulWidget {
 }
 
 class _TopBarState extends State<TopBar> {
-  final GlobalWebSocketManager _webSocketManager = GlobalWebSocketManager();
+  final NotificationHandler _notificationHandler = NotificationHandler();
+  final WebSocketManager _webSocketManager = WebSocketManager();
   int _unreadCount = 0;
   bool _isConnected = false;
   bool _isInitializing = false;
-
-  // Unique listener IDs for this widget instance
-  late final String _connectionListenerId;
-  late final String _unreadListenerId;
 
   @override
   void initState() {
     super.initState();
 
-    _connectionListenerId = UniqueKey().toString();
-    _unreadListenerId = UniqueKey().toString();
-
     if (kDebugMode) {
       print('🎯 TopBar initialized - User ID: ${widget.user.id}');
-      print(
-        '🎯 Listener IDs - Connection: $_connectionListenerId, Unread: $_unreadListenerId',
-      );
     }
 
-    _setupListeners();
-    _initializeWebSocket();
+    _loadUnreadCount(); // Initial API call
+    _initializeNotificationHandler();
   }
 
-  void _setupListeners() {
-    // Listen for connection status updates
-    _webSocketManager.addConnectionListener(_connectionListenerId, (
-      isConnected,
-    ) {
-      if (kDebugMode) {
-        print('🔌 TopBar connection update: $isConnected');
-      }
-      if (mounted) {
-        setState(() {
-          _isConnected = isConnected;
-          _isInitializing = false;
-        });
-      }
-    });
+  // In TopBar, update the connection method:
+  // lib/shared/widgets/top_bar.dart (updated _initializeNotificationHandler method)
 
-    // Listen for unread count updates
-    _webSocketManager.addUnreadListener(_unreadListenerId, (count) {
-      if (kDebugMode) {
-        print('📊 TopBar unread update: $count');
-      }
-      if (mounted) {
-        setState(() {
-          _unreadCount = count;
-        });
-      }
-    });
-  }
-
-  Future<void> _initializeWebSocket() async {
+  Future<void> _initializeNotificationHandler() async {
     try {
-      // Convert user.id to string
-      final userId = widget.user.id.toString();
-
-      // Check if already initialized for this user
-      if (_webSocketManager.isInitializedForUser(userId)) {
-        if (kDebugMode) {
-          print('🔄 WebSocket already initialized for user: $userId');
-        }
-
-        // Just sync current state
-        if (mounted) {
-          setState(() {
-            _isConnected = _webSocketManager.isConnected;
-            _unreadCount = _webSocketManager.unreadCount;
-          });
-        }
-        return;
-      }
-
       if (mounted) {
         setState(() {
           _isInitializing = true;
         });
       }
 
-      if (kDebugMode) {
-        print('🚀 Initializing WebSocket for user: $userId');
-      }
+      // Add connection listener BEFORE connecting
+      _webSocketManager.addConnectionListener('notifications', (isConnected) {
+        if (mounted) {
+          setState(() {
+            _isConnected = isConnected;
+            if (isConnected) {
+              print('✅ WebSocket connection status: Connected');
+            } else {
+              print('❌ WebSocket connection status: Disconnected');
+            }
+          });
+        }
+      });
 
-      // Initialize global WebSocket
-      await _webSocketManager.initialize(widget.token, userId);
+      // Add message listener to handle notifications
+      _webSocketManager.addMessageListener('notifications', (message) {
+        final event = message['event']?.toString() ?? '';
+        print('📨 Received notification event: $event');
 
-      // Sync state after initialization
+        // Handle specific notification events
+        if (event == 'notification') {
+          // Update unread count when new notification arrives
+          _loadUnreadCount();
+        }
+      });
+
+      // Initialize WebSocketManager first
+      _webSocketManager.initialize(
+        token: widget.token,
+        userId: widget.user.id.toString(),
+      );
+
+      // Then connect to notifications namespace
+      await _webSocketManager.connectToNamespace('notifications');
+
+      // Initialize notification handler with Socket.IO
+      await _notificationHandler.initialize(
+        token: widget.token,
+        userId: widget.user.id.toString(),
+      );
+
+      // Set up callbacks
+      _notificationHandler.onUnreadCountUpdate = (count) {
+        if (count == -1) {
+          // -1 means refresh via API
+          _loadUnreadCount();
+        } else {
+          // Specific count provided
+          if (mounted) {
+            setState(() {
+              _unreadCount = count;
+            });
+          }
+        }
+      };
+
+      _notificationHandler.onNewNotification = (notification) {
+        // Handle new notification if needed
+        print('New notification: $notification');
+      };
+
+      // Set max count flag
+      _notificationHandler.setMaxCount(_unreadCount > 9);
+
+      // Check initial connection status
+      final isConnected = _webSocketManager.isNamespaceConnected(
+        'notifications',
+      );
+
       if (mounted) {
         setState(() {
-          _isConnected = _webSocketManager.isConnected;
-          _unreadCount = _webSocketManager.unreadCount;
+          _isConnected = isConnected;
           _isInitializing = false;
         });
       }
+
+      // Print connection status
+      if (kDebugMode) {
+        print('🔔 Connection status after initialization: $isConnected');
+      }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Failed to initialize WebSocket: $e');
+        print('❌ Failed to initialize notification handler: $e');
       }
       if (mounted) {
         setState(() {
           _isConnected = false;
           _isInitializing = false;
         });
+      }
+    }
+  }
+  
+  Future<void> _loadUnreadCount() async {
+    try {
+      final response = await ApiService.getUnreadCount();
+      if (response['success'] == true && response['data'] != null) {
+        final count = response['data']['count'] ?? 0;
+        if (mounted) {
+          setState(() {
+            _unreadCount = count;
+          });
+        }
+
+        // Update max count flag in handler
+        _notificationHandler.setMaxCount(count > 9);
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error loading unread count: $e');
       }
     }
   }
@@ -143,29 +177,27 @@ class _TopBarState extends State<TopBar> {
       });
     }
 
-    // Reinitialize WebSocket
-    _initializeWebSocket();
+    // Reinitialize handler
+    _initializeNotificationHandler();
   }
 
   @override
   void didUpdateWidget(covariant TopBar oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // If user changed, reinitialize
-    if (widget.user.id != oldWidget.user.id) {
+    // If user or token changed, reinitialize
+    if (widget.user.id != oldWidget.user.id ||
+        widget.token != oldWidget.token) {
       if (kDebugMode) {
-        print('🔄 User changed, reinitializing WebSocket');
+        print('🔄 User/token changed, reinitializing notification handler');
       }
-      _initializeWebSocket();
+      _initializeNotificationHandler();
     }
   }
 
   @override
   void dispose() {
-    // Remove listeners but DON'T disconnect WebSocket (global manager handles it)
-    _webSocketManager.removeConnectionListener(_connectionListenerId);
-    _webSocketManager.removeUnreadListener(_unreadListenerId);
-
+    _notificationHandler.dispose();
     super.dispose();
   }
 
@@ -199,128 +231,100 @@ class _TopBarState extends State<TopBar> {
           ),
           centerTitle: true,
           actions: [
-            // Notification Icon with Badge and Connection Dot
-            GestureDetector(
-              onLongPress: () {
-                if (kDebugMode) {
-                  final info = _webSocketManager.getConnectionInfo();
-                  print('📡 Connection debug:');
-                  print('  UI _isConnected: $_isConnected');
-                  print('  Global isConnected: ${info['isConnected']}');
-                  print('  Socket ID: ${info['socketId']}');
-                  print('  Unread count: ${info['unreadCount']}');
-                  print('  User ID: ${widget.user.id}');
-                  print('  Initialized: ${info['isInitialized']}');
-                }
-              },
-              child: Stack(
-                children: [
-                  // Notification icon
-                  IconButton(
-                    icon: _isInitializing
-                        ? SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
+            // Notification Icon
+            Stack(
+              children: [
+                IconButton(
+                  icon: _isInitializing
+                      ? SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
+                      : Icon(
+                          Icons.notifications,
+                          color: _isConnected
+                              ? Colors.white
+                              : Colors.white.withOpacity(0.5),
+                        ),
+                  onPressed: _isConnected
+                      ? () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => NotificationScreen(
+                                userId: widget.user.id.toString(),
+                                token: widget.token,
                               ),
                             ),
-                          )
-                        : Icon(
-                            Icons.notifications,
-                            color: _isConnected
-                                ? Colors.white
-                                : Colors.white.withOpacity(0.5),
-                          ),
-                    onPressed: _isConnected
-                        ? () {
-                            final userId = widget.user.id.toString();
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => NotificationScreen(
-                                  userId: userId,
-                                  token: widget.token,
-                                ),
-                              ),
-                            );
-                          }
-                        : () {
-                            // Show connection status on tap when not connected
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  _isInitializing
-                                      ? 'Connecting to notifications...'
-                                      : 'Notifications offline. Tap and hold to reconnect.',
-                                ),
-                                duration: const Duration(seconds: 2),
-                              ),
-                            );
-                          },
-                  ),
+                          );
+                        }
+                      : null,
+                ),
 
-                  // Unread count badge
-                  if (_unreadCount > 0)
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 16,
-                          minHeight: 16,
-                        ),
-                        child: Text(
-                          _unreadCount > 9 ? '9+' : _unreadCount.toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-
-                  // Connection status dot (bottom right of icon)
+                // Unread count badge
+                if (_unreadCount > 0)
                   Positioned(
-                    right: 12,
-                    bottom: 12,
-                    child: GestureDetector(
-                      onTap: _refreshConnection,
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: _isInitializing
-                              ? Colors.orange
-                              : _isConnected
-                              ? Colors.green
-                              : Colors.red,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.3),
-                              blurRadius: 2,
-                              spreadRadius: 1,
-                            ),
-                          ],
+                    right: 8,
+                    top: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      child: Text(
+                        _unreadCount > 9 ? '9+' : _unreadCount.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
                         ),
+                        textAlign: TextAlign.center,
                       ),
                     ),
                   ),
-                ],
-              ),
+
+                // Connection status dot
+                Positioned(
+                  right: 12,
+                  bottom: 12,
+                  child: GestureDetector(
+                    onTap: _refreshConnection,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _isInitializing
+                            ? Colors.orange
+                            : _isConnected
+                            ? Colors.green
+                            : Colors.red,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 2,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
 
-            // Avatar with click functionality
+            // Avatar
             GestureDetector(
               onTap: () {
                 Navigator.push(
@@ -360,4 +364,3 @@ class _TopBarState extends State<TopBar> {
     return 'U';
   }
 }
-
