@@ -10,6 +10,7 @@ class SocketIOClient {
   final String _namespace;
   final String _url;
   final Map<String, dynamic> _options;
+  Map<String, dynamic>? _queryParams;
 
   StreamController<Map<String, dynamic>> _messageStreamController =
       StreamController.broadcast();
@@ -28,10 +29,51 @@ class SocketIOClient {
     required String namespace,
     required String baseUrl,
     Map<String, dynamic>? options,
+    Map<String, dynamic>? queryParams,
   }) : _namespace = namespace,
        _url = baseUrl,
-       _options = options ?? WebSocketConfig.connectionOptions {
+       _options = options ?? WebSocketConfig.connectionOptions,
+       _queryParams = queryParams {
     _setupSocket();
+  }
+
+  void _setupSocket() {
+    final url = '$_url/$_namespace';
+
+    if (kDebugMode) {
+      print('🔌 Creating Socket.IO connection to: $url');
+      if (_queryParams != null) {
+        print('   With query params: $_queryParams');
+      }
+    }
+
+    // Create options with query params
+    final optionsBuilder = io.OptionBuilder()
+        .setTransports(_options['transports'] ?? ['websocket'])
+        .setPath(_options['path'] ?? '/socket.io')
+        .enableReconnection()
+        .setReconnectionAttempts(_options['reconnectionAttempts'] ?? 5)
+        .setReconnectionDelay(_options['reconnectionDelay'] ?? 1000)
+        .setReconnectionDelayMax(_options['reconnectionDelayMax'] ?? 5000)
+        .setTimeout(_options['timeout'] ?? 30000);
+
+    // Add query parameters to options
+    if (_queryParams != null) {
+      // Convert to Map<String, dynamic> for Socket.IO
+      final queryMap = <String, dynamic>{};
+      _queryParams!.forEach((key, value) {
+        queryMap[key] = value;
+      });
+      optionsBuilder.setExtraHeaders({'query': jsonEncode(queryMap)});
+
+      // Also set query directly
+      optionsBuilder.setQuery(queryMap);
+    }
+
+    // Create Socket.IO client with options
+    _socket = io.io(url, optionsBuilder.build());
+
+    _setupEventListeners();
   }
 
   Stream<Map<String, dynamic>> get messageStream =>
@@ -40,30 +82,15 @@ class SocketIOClient {
   Stream<String> get eventStream => _eventStreamController.stream;
   bool get isConnected => _isConnected;
 
-  void _setupSocket() {
-    final url = '$_url/$_namespace';
-
-    if (kDebugMode) {
-      print('🔌 Creating Socket.IO connection to: $url');
+  void onRawEvent(Function(String, dynamic) handler) {
+    if (_socket != null) {
+      _socket!.onAny((event, data) {
+        handler(event, data);
+      });
     }
-
-    // Create Socket.IO client with options
-    _socket = io.io(
-      url,
-      io.OptionBuilder()
-          .setTransports(_options['transports'] ?? ['websocket'])
-          .setPath(_options['path'] ?? '/socket.io')
-          .enableReconnection() // Use enableReconnection instead of setReconnection
-          .setReconnectionAttempts(_options['reconnectionAttempts'] ?? 5)
-          .setReconnectionDelay(_options['reconnectionDelay'] ?? 1000)
-          .setReconnectionDelayMax(_options['reconnectionDelayMax'] ?? 5000)
-          .setTimeout(_options['timeout'] ?? 30000)
-          .build(),
-    );
-
-    _setupEventListeners();
   }
 
+  
   void _setupEventListeners() {
     _socket!.onConnect((_) {
       _handleConnect();
@@ -121,10 +148,38 @@ class SocketIOClient {
     _eventStreamController.add('error');
   }
 
+  // In SocketIOClient, update the _handleEvent method:
+  // In SocketIOClient class, add this method:
+  void listenToAllEvents(Function(String, dynamic) handler) {
+    if (_socket != null) {
+      _socket!.onAny((event, data) {
+        if (kDebugMode) {
+          print('🎯 RAW Socket.IO Event: $event');
+          print('🎯 RAW Socket.IO Data: $data');
+        }
+        handler(event, data);
+      });
+    }
+  }
+
+  // Also update the _handleEvent method to log more details:
   void _handleEvent(String event, dynamic data) {
     try {
       if (kDebugMode) {
-        print('📨 [$_namespace] Event: $event, Data: $data');
+        print('🎯 [$_namespace] Processing event: $event');
+        print('🎯 [$_namespace] Raw data type: ${data.runtimeType}');
+        print('🎯 [$_namespace] Raw data: $data');
+
+        // Check if it's a notification_update event
+        if (event == 'notification_update') {
+          print('🎯 [$_namespace] THIS IS A NOTIFICATION_UPDATE EVENT!');
+          print('🎯 [$_namespace] Data structure:');
+          if (data is Map) {
+            data.forEach((key, value) {
+              print('      $key: $value (${value.runtimeType})');
+            });
+          }
+        }
       }
 
       final message = {
@@ -165,6 +220,7 @@ class SocketIOClient {
     });
   }
 
+  // In SocketIOClient.connect method, ensure query params are being set:
   Future<void> connect({Map<String, dynamic>? queryParams}) async {
     if (_isConnecting || _isConnected) return;
 
@@ -174,25 +230,27 @@ class SocketIOClient {
     try {
       // Add query parameters if provided
       if (queryParams != null && _socket != null) {
+        if (kDebugMode) {
+          print('🔗 Setting query params: $queryParams');
+        }
+        // Clear existing query first
+        _socket!.io.options?['query'] = null;
+        // Set new query params
         _socket!.io.options?['query'] = queryParams;
       }
 
-      _socket!.connect();
-
       if (kDebugMode) {
         print('🚀 Connecting to namespace: $_namespace');
+        print('   Query params: ${_socket?.io.options?['query']}');
       }
+
+      _socket!.connect();
     } catch (error) {
-      _isConnecting = false;
-      _connectionStreamController.add(false);
-
-      if (kDebugMode) {
-        print('❌ Socket.IO connection error: $error');
-      }
-
-      _scheduleReconnect();
+      // ... error handling ...
     }
   }
+
+  
 
   void emit(String event, dynamic data) {
     if (_isConnected && _socket != null) {

@@ -14,13 +14,11 @@ class TopBar extends StatefulWidget {
   final User user;
   final VoidCallback onMenuTap;
   final String token;
-  final VoidCallback? onPcwRideTap;
 
   const TopBar({
     required this.user,
     required this.onMenuTap,
     required this.token,
-    this.onPcwRideTap,
     Key? key,
   }) : super(key: key);
 
@@ -47,7 +45,9 @@ class _TopBarState extends State<TopBar> {
     _initializeNotificationHandler();
   }
 
-  
+  // In TopBar, update the connection method:
+  // lib/shared/widgets/top_bar.dart (updated _initializeNotificationHandler method)
+
   Future<void> _initializeNotificationHandler() async {
     try {
       if (mounted) {
@@ -76,21 +76,19 @@ class _TopBarState extends State<TopBar> {
         print('📨 Received notification event: $event');
 
         // Handle specific notification events
-        if (event == 'notification' ||
-            event == 'refresh' ||
-            event == 'notification_update') {
-          // When any notification-related event comes, refresh unread count via API
+        if (event == 'notification') {
+          // Update unread count when new notification arrives
           _loadUnreadCount();
         }
       });
 
-      // Initialize WebSocketManager first (if not already initialized)
+      // Initialize WebSocketManager first
       _webSocketManager.initialize(
         token: widget.token,
         userId: widget.user.id.toString(),
       );
 
-      // Connect to notifications namespace - this will increment reference count
+      // Then connect to notifications namespace
       await _webSocketManager.connectToNamespace('notifications');
 
       // Initialize notification handler with Socket.IO
@@ -117,8 +115,6 @@ class _TopBarState extends State<TopBar> {
       _notificationHandler.onNewNotification = (notification) {
         // Handle new notification if needed
         print('New notification: $notification');
-        // Refresh unread count when new notification arrives
-        _loadUnreadCount();
       };
 
       // Set max count flag
@@ -152,8 +148,7 @@ class _TopBarState extends State<TopBar> {
       }
     }
   }
-
-
+  
   Future<void> _loadUnreadCount() async {
     try {
       final response = await ApiService.getUnreadCount();
@@ -200,15 +195,9 @@ class _TopBarState extends State<TopBar> {
     }
   }
 
-  // Update the dispose method in TopBar
   @override
   void dispose() {
-    // Only dispose the notification handler, don't disconnect WebSocket
-    // so it stays alive for other components
     _notificationHandler.dispose();
-    // Remove listeners but keep connection alive
-    _webSocketManager.removeConnectionListener('notifications', (_) {});
-    _webSocketManager.removeMessageListener('notifications', (_) {});
     super.dispose();
   }
 
@@ -226,16 +215,10 @@ class _TopBarState extends State<TopBar> {
           ),
           title: GestureDetector(
             onTap: () {
-              if (widget.onPcwRideTap != null) {
-                // Use the callback to navigate to dashboard
-                widget.onPcwRideTap!();
-              } else {
-                // Fallback: try old navigation
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (context) => HomeScreen()),
-                  (Route<dynamic> route) => false,
-                );
-              }
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => HomeScreen()),
+                (Route<dynamic> route) => false,
+              );
             },
             child: const Text(
               'PCW RIDE',

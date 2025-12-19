@@ -26,119 +26,6 @@ class WebSocketManager {
   String? _token;
   String? _userId;
 
-
-
-  // Track connection usage count
-  final Map<String, int> _connectionUsageCount = {};
-
-   // Add this public getter
-  SocketIOClient? getConnection(String namespace) {
-    return _connections[namespace];
-  }
-
-  // Add this to get all events directly
-  void listenToRawEvents(String namespace, Function(String, dynamic) handler) {
-    final client = _connections[namespace];
-    if (client != null) {
-      // We'll need to add a method to SocketIOClient for this
-    }
-  }
-
-  // Connect to a specific namespace with Socket.IO
-  // lib/data/services/ws/websocket_manager.dart
-  Future<void> connectToNamespace(String namespace) async {
-    if (_token == null || _userId == null) {
-      throw Exception('WebSocketManager not initialized');
-    }
-
-    if (kDebugMode) {
-      print('🔗 Connecting to namespace: $namespace');
-      print('   User ID: $_userId');
-      print('   Token length: ${_token?.length}');
-    }
-
-    // Increment usage count
-    _connectionUsageCount[namespace] =
-        (_connectionUsageCount[namespace] ?? 0) + 1;
-
-    if (kDebugMode) {
-      print('   Usage count: ${_connectionUsageCount[namespace]}');
-    }
-
-    // Check if already connected
-    if (_connections.containsKey(namespace) &&
-        _connections[namespace]!.isConnected) {
-      if (kDebugMode) {
-        print('ℹ️ Already connected to namespace: $namespace');
-      }
-      return;
-    }
-
-    // Clean up old connection if exists
-    if (_connections.containsKey(namespace)) {
-      if (kDebugMode) {
-        print('🔄 Cleaning up old connection for: $namespace');
-      }
-      await _disconnectFromNamespace(namespace);
-    }
-
-    // Prepare query parameters
-    final queryParams = {
-      'userId': _userId,
-      'token': _token,
-      'userRoom': 'user_$_userId',
-      'timestamp': DateTime.now().millisecondsSinceEpoch.toString(),
-    };
-
-    if (kDebugMode) {
-      print('📤 Query params for $namespace:');
-      queryParams.forEach((key, value) {
-        if (key == 'token') {
-          print(
-            '   $key: ...${value.toString().substring(value.toString().length - 10)}',
-          );
-        } else {
-          print('   $key: $value');
-        }
-      });
-    }
-
-    // Create Socket.IO client WITH query parameters
-    final client = SocketIOClient(
-      namespace: namespace,
-      baseUrl: WebSocketConfig.socketIoUrl,
-      options: WebSocketConfig.connectionOptions,
-      queryParams: queryParams, // Pass query params here
-    );
-
-    _connections[namespace] = client;
-
-    // Listen for messages
-    client.messageStream.listen((message) {
-      if (kDebugMode) {
-        print('📨 Raw message from SocketIOClient for $namespace: $message');
-      }
-      _handleIncomingMessage(namespace, message);
-    });
-
-    // Listen for connection changes
-    client.connectionStream.listen((isConnected) {
-      if (kDebugMode) {
-        print('🔌 Connection stream for $namespace: $isConnected');
-      }
-      _notifyConnectionListeners(namespace, isConnected);
-    });
-
-    // Connect (no need to pass query params again)
-    await client.connect();
-
-    if (kDebugMode) {
-      print('✅ Connected to namespace: $namespace as user_$_userId');
-    }
-  }
-
-
-
   // Initialize with user info
   void initialize({required String token, required String userId}) {
     // Don't reinitialize if already initialized with same credentials
@@ -158,40 +45,52 @@ class WebSocketManager {
     }
   }
 
-  // Disconnect from namespace with reference counting
-  Future<void> disconnectFromNamespace(String namespace) async {
-    if (!_connectionUsageCount.containsKey(namespace)) {
+  // Connect to a specific namespace with Socket.IO
+  Future<void> connectToNamespace(String namespace) async {
+    if (_token == null || _userId == null) {
+      throw Exception('WebSocketManager not initialized');
+    }
+
+    // Check if already connected
+    if (_connections.containsKey(namespace) &&
+        _connections[namespace]!.isConnected) {
+      if (kDebugMode) {
+        print('ℹ️ Already connected to namespace: $namespace');
+      }
       return;
     }
 
-    // Decrement usage count
-    _connectionUsageCount[namespace] = _connectionUsageCount[namespace]! - 1;
-
-    // Only disconnect if no one is using it
-    if (_connectionUsageCount[namespace]! <= 0) {
-      _connectionUsageCount.remove(namespace);
+    // Clean up old connection if exists
+    if (_connections.containsKey(namespace)) {
       await _disconnectFromNamespace(namespace);
-      _messageListeners.remove(namespace);
-      _connectionListeners.remove(namespace);
+    }
 
-      if (kDebugMode) {
-        print('🔌 Disconnected from namespace: $namespace');
-      }
-    } else {
-      if (kDebugMode) {
-        print(
-          'ℹ️ Keeping namespace connection alive (${_connectionUsageCount[namespace]} users)',
-        );
-      }
+    // Create Socket.IO client
+    final client = SocketIOClient(
+      namespace: namespace,
+      baseUrl: WebSocketConfig.socketIoUrl,
+      options: WebSocketConfig.connectionOptions,
+    );
+
+    _connections[namespace] = client;
+
+    // Listen for messages
+    client.messageStream.listen((message) {
+      _handleIncomingMessage(namespace, message);
+    });
+
+    // Listen for connection changes
+    client.connectionStream.listen((isConnected) {
+      _notifyConnectionListeners(namespace, isConnected);
+    });
+
+    // Connect with query parameters
+    await client.connect(queryParams: {'userId': _userId, 'token': _token});
+
+    if (kDebugMode) {
+      print('✅ Connected to namespace: $namespace');
     }
   }
-
-  // Check if namespace has active users
-  bool hasActiveUsers(String namespace) {
-    return (_connectionUsageCount[namespace] ?? 0) > 0;
-  }
-
-
 
   void _handleIncomingMessage(String namespace, Map<String, dynamic> message) {
     final event = message['event']?.toString() ?? '';
@@ -280,7 +179,13 @@ class WebSocketManager {
     }
   }
 
-  
+  // Disconnect from namespace
+  Future<void> disconnectFromNamespace(String namespace) async {
+    await _disconnectFromNamespace(namespace);
+    _messageListeners.remove(namespace);
+    _connectionListeners.remove(namespace);
+  }
+
   // Cleanup all connections
   Future<void> disconnectAll() async {
     final futures = _connections.values.map((client) => client.disconnect());

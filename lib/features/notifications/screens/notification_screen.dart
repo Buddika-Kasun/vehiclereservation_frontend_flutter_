@@ -47,6 +47,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
     _initializeWebSocket();
   }
 
+  
   Future<void> _initializeWebSocket() async {
     try {
       if (mounted) {
@@ -55,17 +56,17 @@ class _NotificationScreenState extends State<NotificationScreen> {
         });
       }
 
-      // Initialize WebSocket manager
+      // Initialize WebSocket manager (if not already initialized)
       _webSocketManager.initialize(token: widget.token, userId: widget.userId);
+
+      // Connect to notifications namespace - this will increment reference count
+      await _webSocketManager.connectToNamespace('notifications');
 
       // Initialize notification handler
       await _notificationHandler.initialize(
         token: widget.token,
         userId: widget.userId,
       );
-
-      // Connect to notifications namespace
-      await _webSocketManager.connectToNamespace('notifications');
 
       // Set up notification handler callbacks
       _notificationHandler.onUnreadCountUpdate = (count) {
@@ -93,7 +94,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
               duration: const Duration(seconds: 3),
             ),
           );
-          // Refresh notifications list
+          // Refresh notifications list when new notification arrives
           _loadNotifications();
         }
       };
@@ -138,6 +139,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
     }
   }
 
+  // Update the _handleWebSocketMessage method
   void _handleWebSocketMessage(Map<String, dynamic> message) {
     if (!mounted) return;
 
@@ -150,6 +152,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
     // Handle different events
     switch (event) {
+      case 'notification':
       case 'notification_update':
         _handleNotificationUpdate(data);
         break;
@@ -165,6 +168,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
     }
   }
 
+  // Update the _handleNotificationUpdate method
   void _handleNotificationUpdate(Map<String, dynamic> data) {
     final action = data['action']?.toString() ?? '';
     final notificationData = data['data'];
@@ -177,6 +181,22 @@ class _NotificationScreenState extends State<NotificationScreen> {
     _loadNotifications();
     _loadUnreadCount();
   }
+
+  // Update the dispose method in NotificationScreen
+  @override
+  void dispose() {
+    // Only dispose the notification handler and remove listeners
+    // The WebSocket connection will be maintained by reference counting
+    _notificationHandler.dispose();
+    // Remove listeners
+    _webSocketManager.removeConnectionListener('notifications', (_) {});
+    _webSocketManager.removeMessageListener('notifications', (_) {});
+    // Decrement reference count but keep connection alive if TopBar is using it
+    _webSocketManager.disconnectFromNamespace('notifications');
+    super.dispose();
+  }
+
+  
 
   void _handleRefreshEvent(Map<String, dynamic> data) {
     if (kDebugMode) {
@@ -586,13 +606,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
       _isInitializing = true;
     });
     _initializeWebSocket();
-  }
-
-  @override
-  void dispose() {
-    _notificationHandler.dispose();
-    _webSocketManager.disconnectFromNamespace('notifications');
-    super.dispose();
   }
 
   @override
@@ -1017,4 +1030,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
         return Icons.notifications;
     }
   }
+
+  
 }

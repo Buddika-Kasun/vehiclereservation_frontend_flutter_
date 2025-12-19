@@ -57,9 +57,6 @@ class _HomeScreenState extends State<HomeScreen> {
   // Current screen state - Start with Dashboard
   Widget _currentScreen = DashboardScreen();
 
-  // Add a flag to track if WebSocket is already initialized
-  bool _isWebSocketInitialized = false;
-
   @override
   void initState() {
     super.initState();
@@ -117,11 +114,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoading = false;
       });
 
-      // Initialize WebSocket handlers only once
-      if (!_isWebSocketInitialized) {
-        await _initializeWebSocketHandlers();
-        _isWebSocketInitialized = true;
-      }
+      // Initialize WebSocket handlers
+      await _initializeWebSocketHandlers();
 
       // Navigate to requested screen after user data is loaded
       if (widget.screenName != null) {
@@ -169,18 +163,6 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       print('Error initializing WebSocket handlers: $e');
     }
-  }
-
-  void navigateToDashboard() {
-    if (mounted) {
-      setState(() {
-        _currentScreen = DashboardScreen();
-      });
-    }
-  }
-
-  void _handlePcwRideTap() {
-    navigateToDashboard();
   }
 
   // NEW: Method to navigate to a specific screen by name
@@ -356,7 +338,6 @@ class _HomeScreenState extends State<HomeScreen> {
       await _tripHandler.dispose();
       await _userHandler.dispose();
       await _webSocketManager.disconnectAll();
-      _isWebSocketInitialized = false;
     } catch (e) {
       print('Error disconnecting WebSocket: $e');
     }
@@ -375,7 +356,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _navigateToRides() {
     setState(() {
       _currentScreen = AssignedRidesScreen(
-        userId: _user!.id,
+        userId: _user!.id, 
         //token: _token!
       );
     });
@@ -390,9 +371,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void _navigateToAssignedRides() {
     setState(() {
       _currentScreen = AssignedRidesScreen(
-        userId: _user!.id,
+        userId: _user!.id, 
         //token: _token!
-      );
+        );
     });
   }
 
@@ -729,13 +710,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    // Only dispose if this is the main HomeScreen (not a duplicate)
-    if (ModalRoute.of(context)?.isCurrent ?? false) {
-      _notificationHandler.dispose();
-      _tripHandler.dispose();
-      _userHandler.dispose();
-      _webSocketManager.disconnectAll();
-    }
+    // Clean up WebSocket connections when screen is disposed
+    _notificationHandler.dispose();
+    _tripHandler.dispose();
+    _userHandler.dispose();
+    _webSocketManager.disconnectAll();
     super.dispose();
   }
 
@@ -799,7 +778,6 @@ class _HomeScreenState extends State<HomeScreen> {
             user: _user!,
             onMenuTap: () => _scaffoldKey.currentState?.openDrawer(),
             token: _token!,
-            onPcwRideTap: _handlePcwRideTap,
           ),
           Expanded(child: _currentScreen),
         ],

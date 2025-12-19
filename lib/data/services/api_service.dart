@@ -1035,16 +1035,16 @@ class ApiService {
     bool? read,
   }) async {
     try {
-      final Map<String, dynamic> body = {'page': page, 'limit': limit};
+      // Build the URL with query parameters
+      String url = 'notifications/get-all?page=$page&limit=$limit';
 
       if (read != null) {
-        body['read'] = read;
+        url += '&read=$read';
       }
 
       return await authenticatedApiCall(
-        'notifications',
-        method: 'POST',
-        body: body,
+        url, // Pass the full URL with query parameters
+        method: 'GET',
       );
     } catch (e) {
       print('Error fetching notifications: $e');

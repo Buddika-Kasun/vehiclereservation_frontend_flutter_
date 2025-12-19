@@ -42,6 +42,10 @@ class NotificationHandler {
 
     // Handle different notification events
     switch (event) {
+      case 'notification':
+        // Direct notification event
+        _handleDirectNotification(data);
+        break;
       case 'notification_update':
         _handleNotificationUpdate(data);
         break;
@@ -51,6 +55,23 @@ class NotificationHandler {
     }
   }
 
+  // Add this new method
+  void _handleDirectNotification(Map<String, dynamic> data) {
+    // When direct notification comes, trigger refresh
+    if (onUnreadCountUpdate != null && !_hasMaxCount) {
+      _debounceRefresh(() {
+        if (onUnreadCountUpdate != null) {
+          onUnreadCountUpdate!(-1); // -1 means "refresh via API"
+        }
+      });
+    }
+
+    // Also notify about new notification
+    if (onNewNotification != null) {
+      onNewNotification!(data);
+    }
+  }
+  
   void _handleNotificationUpdate(Map<String, dynamic> data) {
     final action = data['action']?.toString() ?? '';
     final notificationData = Map<String, dynamic>.from(data['data'] ?? {});

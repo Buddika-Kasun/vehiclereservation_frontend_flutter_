@@ -607,10 +607,13 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
             //onTap: () => Navigator.pop(context),
             onTap: () {
               // Navigate to home screen
+              /*
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(builder: (context) => HomeScreen()),
                 (Route<dynamic> route) => false,
               );
+              */
+              Navigator.of(context).pop();
             },
             child: Container(
               padding: EdgeInsets.all(10),
