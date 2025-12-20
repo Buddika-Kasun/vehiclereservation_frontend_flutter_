@@ -1103,6 +1103,473 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     );
   }
 
+  // Update the _buildVehicleSection() method:
+  Widget _buildVehicleSection() {
+    // Check if vehicle details are null or empty
+    final hasVehicle =
+        _tripDetails?.vehicle != null &&
+        (_tripDetails!.vehicle.regNo != null &&
+            _tripDetails!.vehicle.regNo!.isNotEmpty);
+
+    final hasDrivers =
+        _tripDetails?.details.drivers.hasDrivers == true &&
+        (_tripDetails!.details.drivers.primary != null ||
+            _tripDetails!.details.drivers.secondary != null);
+
+    if (!hasVehicle && !hasDrivers) {
+      return Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey[900],
+          border: Border(bottom: BorderSide(color: Colors.grey[800]!)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Vehicle Details',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 12),
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[800],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.schedule, color: Colors.orange, size: 24),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Supervisor under reviewing',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Vehicle will be assigned soon',
+                          style: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        border: Border(bottom: BorderSide(color: Colors.grey[800]!)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Vehicle Details',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 12),
+
+          // Vehicle Information - Only show if has vehicle
+          if (hasVehicle)
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey[800],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Color(0xFFF9C80E),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Icon(
+                          Icons.directions_car,
+                          color: Colors.black,
+                          size: 20,
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _tripDetails?.vehicle.model ?? 'N/A',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              _tripDetails?.vehicle.regNo ?? 'N/A',
+                              style: TextStyle(
+                                color: Colors.grey[300],
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    children: [
+                      _buildVehicleDetailChip(
+                        Icons.airline_seat_recline_normal,
+                        '${_tripDetails?.vehicle.seatingCapacity ?? 0} Seats',
+                      ),
+                      _buildVehicleDetailChip(
+                        Icons.event_seat,
+                        '${_tripDetails?.vehicle.seatingAvailability ?? 0} Available',
+                      ),
+                      if (_tripDetails
+                                  ?.details
+                                  .vehicleDetails
+                                  .specifications
+                                  .fuelType !=
+                              null &&
+                          _tripDetails!
+                              .details
+                              .vehicleDetails
+                              .specifications
+                              .fuelType!
+                              .isNotEmpty)
+                        _buildVehicleDetailChip(
+                          Icons.local_gas_station,
+                          _tripDetails!
+                              .details
+                              .vehicleDetails
+                              .specifications
+                              .fuelType!,
+                        ),
+                    ],
+                  ),
+                  SizedBox(height: 12),
+                  if (_tripDetails
+                          ?.details
+                          .vehicleDetails
+                          .status
+                          .odometerLastReading !=
+                      null)
+                    Row(
+                      children: [
+                        Icon(Icons.speed, color: Colors.grey[400], size: 16),
+                        SizedBox(width: 8),
+                        Text(
+                          'Last Odometer: ${_tripDetails!.details.vehicleDetails.status.odometerLastReading} km',
+                          style: TextStyle(
+                            color: Colors.grey[300],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+
+          // Drivers Section - Only show if has drivers
+          if (hasDrivers)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(height: hasVehicle ? 16 : 0),
+                Text(
+                  'Drivers',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 8),
+                if (_tripDetails?.details.drivers.primary != null)
+                  _buildDriverCard(
+                    _tripDetails!.details.drivers.primary!,
+                    'Primary Driver',
+                  ),
+                if (_tripDetails?.details.drivers.secondary != null)
+                  _buildDriverCard(
+                    _tripDetails!.details.drivers.secondary!,
+                    'Secondary Driver',
+                  ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Update the _buildApprovalSection() method:
+  Widget _buildApprovalSection() {
+    // Check if approval details are available
+    final hasApproval =
+        _tripDetails?.details.approval.hasApproval == true &&
+        (_tripDetails!.details.approval.approvers.hod != null ||
+            _tripDetails!.details.approval.approvers.secondary != null ||
+            _tripDetails!.details.approval.approvers.safety != null);
+
+    if (!hasApproval) {
+      return Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey[900],
+          border: Border(bottom: BorderSide(color: Colors.grey[800]!)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Approval Status',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 12),
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[800],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.schedule, color: Colors.orange, size: 24),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Awaiting supervisor assignment',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Approvers will be assigned shortly',
+                          style: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        border: Border(bottom: BorderSide(color: Colors.grey[800]!)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Approval Status',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 12),
+          if (_tripDetails?.details.approval.approvers.hod != null)
+            _buildApproverRow(
+              'HOD Approval',
+              _tripDetails!.details.approval.approvers.hod!,
+            ),
+          if (_tripDetails?.details.approval.approvers.secondary != null)
+            _buildApproverRow(
+              'Secondary Approval',
+              _tripDetails!.details.approval.approvers.secondary!,
+            ),
+          if (_tripDetails?.details.approval.approvers.safety != null)
+            _buildApproverRow(
+              'Safety Approval',
+              _tripDetails!.details.approval.approvers.safety!,
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Update the _buildVehicleDetailChip method to handle null values:
+  Widget _buildVehicleDetailChip(IconData icon, String text) {
+    // If text is empty or "0", show placeholder
+    final displayText = text.isNotEmpty && text != "0" ? text : 'N/A';
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.grey[700],
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Color(0xFFF9C80E), size: 14),
+          SizedBox(width: 6),
+          Text(
+            displayText,
+            style: TextStyle(color: Colors.white, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Update the driver card to handle null values:
+  Widget _buildDriverCard(Driver driver, String role) {
+    // Check if driver has valid data
+    final hasValidName = driver.name != null && driver.name.isNotEmpty;
+    final hasValidPhone = driver.phone != null && driver.phone.isNotEmpty;
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[800],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: role.contains('Primary') ? Colors.blue : Colors.green,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Icon(Icons.person, color: Colors.white, size: 20),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        hasValidName ? driver.name : 'Driver Name',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: role.contains('Primary')
+                            ? Colors.blue.withOpacity(0.1)
+                            : Colors.green.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        role,
+                        style: TextStyle(
+                          color: role.contains('Primary')
+                              ? Colors.blue
+                              : Colors.green,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(Icons.phone, color: Colors.grey[400], size: 14),
+                    SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        hasValidPhone ? driver.phone : 'Phone not available',
+                        style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (hasValidPhone)
+                      IconButton(
+                        onPressed: () => _makePhoneCall(driver.phone),
+                        icon: Icon(
+                          Icons.call,
+                          color: Color(0xFFF9C80E),
+                          size: 20,
+                        ),
+                        padding: EdgeInsets.zero,
+                        constraints: BoxConstraints(),
+                        tooltip: 'Call driver',
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+/*
   Widget _buildVehicleSection() {
     return Container(
       padding: EdgeInsets.all(16),
@@ -1348,6 +1815,51 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     );
   }
 
+  Widget _buildApprovalSection() {
+    if (_tripDetails?.details.approval.hasApproval != true) {
+      return SizedBox.shrink();
+    }
+
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        border: Border(
+          bottom: BorderSide(color: Colors.grey[800]!),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Approval Status',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 12),
+          if (_tripDetails?.details.approval.approvers.hod != null)
+            _buildApproverRow(
+              'HOD Approval',
+              _tripDetails!.details.approval.approvers.hod!,
+            ),
+          if (_tripDetails?.details.approval.approvers.secondary != null)
+            _buildApproverRow(
+              'Secondary Approval',
+              _tripDetails!.details.approval.approvers.secondary!,
+            ),
+          if (_tripDetails?.details.approval.approvers.safety != null)
+            _buildApproverRow(
+              'Safety Approval',
+              _tripDetails!.details.approval.approvers.safety!,
+            ),
+        ],
+      ),
+    );
+  }
+*/
   Widget _buildLocationsSection() {
     return Container(
       padding: EdgeInsets.all(16),
@@ -1609,51 +2121,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
   }
 
-  Widget _buildApprovalSection() {
-    if (_tripDetails?.details.approval.hasApproval != true) {
-      return SizedBox.shrink();
-    }
-
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[900],
-        border: Border(
-          bottom: BorderSide(color: Colors.grey[800]!),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Approval Status',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 12),
-          if (_tripDetails?.details.approval.approvers.hod != null)
-            _buildApproverRow(
-              'HOD Approval',
-              _tripDetails!.details.approval.approvers.hod!,
-            ),
-          if (_tripDetails?.details.approval.approvers.secondary != null)
-            _buildApproverRow(
-              'Secondary Approval',
-              _tripDetails!.details.approval.approvers.secondary!,
-            ),
-          if (_tripDetails?.details.approval.approvers.safety != null)
-            _buildApproverRow(
-              'Safety Approval',
-              _tripDetails!.details.approval.approvers.safety!,
-            ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildApproverRow(String label, Approver approver) {
     return Container(
       margin: EdgeInsets.only(bottom: 8),
@@ -1878,4 +2345,5 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       ],
     );
   }
+
 }
