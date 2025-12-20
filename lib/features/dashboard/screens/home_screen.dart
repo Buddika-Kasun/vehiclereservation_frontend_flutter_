@@ -1,6 +1,7 @@
 // File: lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/ws/global_websocket.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/ride/rides_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/approval_user_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicleType_managemnet_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicle_screen.dart';
@@ -15,7 +16,7 @@ import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/login
 
 // Import all the screens
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/dashboard_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/ride/rides_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/ride/rides_approval_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/creations/user_creations_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/approval/approvals_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/company_management_screen.dart';
@@ -391,7 +392,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _navigateToRides() {
     setState(() {
-      _currentScreen = AssignedRidesScreen(
+      _currentScreen = RidesScreen(
         userId: _user!.id,
         //token: _token!
       );
