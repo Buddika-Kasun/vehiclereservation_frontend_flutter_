@@ -86,6 +86,14 @@ class SideMenu extends StatelessWidget {
           MenuItem(Icons.verified, 'Meter Reading'),
         ]);
         break;
+
+      case UserRole.supervisor:
+        items.addAll([
+          //MenuItem(Icons.home, 'Home'),
+          //MenuItem(Icons.directions_car, 'My Rides'),
+          MenuItem(Icons.verified, 'Meter Reading'),
+        ]);
+        break;
         
       case UserRole.driver:
         items.addAll([
@@ -117,6 +125,8 @@ class SideMenu extends StatelessWidget {
         return 'Manager';
       case UserRole.security:
         return 'Security';
+      case UserRole.supervisor:
+        return 'Supervisor';
       case UserRole.driver:
         return 'Driver';
       case UserRole.employee:

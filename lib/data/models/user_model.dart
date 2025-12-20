@@ -7,7 +7,8 @@ enum UserRole {
   admin('admin', 'Administrator'),
   hr('hr', 'HR'),
   manager('manager', 'Manager'),
-  security('security', 'Security');
+  security('security', 'Security'),
+  supervisor('supervisor', 'Supervisor');
 
   const UserRole(this.value, this.displayName);
   final String value;
@@ -98,6 +99,7 @@ class User {
   bool get isSecurity => role == UserRole.security;
   bool get isHr => role == UserRole.hr;
   bool get isEmployee => role == UserRole.employee;
+  bool get isSupervisor => role == UserRole.supervisor;
 }
 
 class ShortUser {

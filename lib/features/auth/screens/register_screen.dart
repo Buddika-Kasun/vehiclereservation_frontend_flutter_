@@ -29,7 +29,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   List<Department> _departments = [];
 
-  final List<String> _roles = ['Employee', 'Admin', 'HR', 'Security', 'Driver'];
+  final List<String> _roles = ['Employee', 'Admin', 'HR', 'Security', 'Driver', 'Supervisor'];
 
   Future<void> _register() async {
     final displayName = _displayNameController.text.trim();
