@@ -222,7 +222,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ),
       ),
       debugShowCheckedModeBanner: false,
-      //home: const WelcomeScreen(),
+      home: const WelcomeScreen(),
       builder: (context, child) {
         return GestureDetector(
           onTap: () {
