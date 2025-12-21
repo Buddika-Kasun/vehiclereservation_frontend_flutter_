@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/department_model.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/api_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});

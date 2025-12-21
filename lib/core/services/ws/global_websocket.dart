@@ -1,5 +1,5 @@
 // lib/data/services/ws/global_websocket.dart
-import './websocket_manager.dart';
+import 'websocket_manager.dart';
 
 class GlobalWebSocket {
   static final WebSocketManager _instance = WebSocketManager();

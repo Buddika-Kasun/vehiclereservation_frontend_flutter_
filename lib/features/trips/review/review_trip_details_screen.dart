@@ -7,15 +7,15 @@ import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/trip_details_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/trip_list_response.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/api_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/secure_storage_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/storage_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart';
 
 // Import new WebSocket structure
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/websocket_manager.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/handlers/trip_handler.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/ws/websocket_manager.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/trip_handler.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/review/review_vehicle_selection_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/vehicle_selection_screen.dart';
 

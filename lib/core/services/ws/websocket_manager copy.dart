@@ -2,7 +2,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/config/websocket_config.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/socketio_client.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/ws/socketio_client.dart';
 
 class WebSocketManager {
   static final WebSocketManager _instance = WebSocketManager._internal();

@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/approval_trip_model.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/api_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:flutter/foundation.dart';
 
 // Import new WebSocket structure
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/websocket_manager.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/handlers/trip_handler.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/ws/websocket_manager.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/trip_handler.dart';
 
 class RidesApprovalScreen extends StatefulWidget {
   const RidesApprovalScreen({super.key});

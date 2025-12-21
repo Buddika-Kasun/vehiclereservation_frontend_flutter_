@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/auth_manager.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/notifications/screens/notification_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/secure_storage_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
 
 // Top-level background message handler
 @pragma('vm:entry-point')

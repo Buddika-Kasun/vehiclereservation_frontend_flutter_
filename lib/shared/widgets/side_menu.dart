@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/authority_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/authority_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/constant.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
 

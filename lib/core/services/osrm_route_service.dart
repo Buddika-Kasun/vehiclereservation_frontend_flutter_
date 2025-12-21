@@ -102,7 +102,7 @@ class OSRMService {
 */
 
 import 'package:latlong2/latlong.dart';
-import '../services/api_service.dart';
+import 'api_service.dart';
 
 class OSRMService {
   static Future<List<LatLng>> getRoute(List<LatLng> points) async {

@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/department_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_creation_model.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/api_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/color_generator.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/constant.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/global_websocket.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/ws/global_websocket.dart';
 
 // Import WebSocket structure
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/websocket_manager.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/handlers/user_handler.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/ws/websocket_manager.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/user_handler.dart';
 
 class UserCreationsScreen extends StatefulWidget {
   final String userId;

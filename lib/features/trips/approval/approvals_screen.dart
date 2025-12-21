@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/approval/approval_details_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/api_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/secure_storage_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/storage_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/approval_model.dart';
 
 class ApprovalsScreen extends StatefulWidget {

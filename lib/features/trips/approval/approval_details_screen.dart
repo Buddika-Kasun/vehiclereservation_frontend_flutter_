@@ -6,9 +6,9 @@ import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/approval_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/trip_details_model.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/api_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:intl/intl.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/storage_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
 
 class ApprovalDetailsScreen extends StatefulWidget {
   final int tripId;

@@ -1,6 +1,6 @@
 // File: lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/global_websocket.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/ws/global_websocket.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/review/review_trip_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/ride/rides_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/approval_user_screen.dart';
@@ -8,9 +8,9 @@ import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicl
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicle_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/assigned/assigned_rides_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/ride/trip_details_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/secure_storage_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/storage_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/shared/widgets/side_menu.dart';
 import 'package:vehiclereservation_frontend_flutter_/shared/widgets/top_bar.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/login_screen.dart';
@@ -28,10 +28,10 @@ import 'package:vehiclereservation_frontend_flutter_/features/users/admin/approv
 import 'package:vehiclereservation_frontend_flutter_/features/notifications/screens/notification_screen.dart';
 
 // Import new WebSocket structure
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/websocket_manager.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/handlers/notification_handler.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/handlers/trip_handler.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/handlers/user_handler.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/ws/websocket_manager.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/notification_handler.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/trip_handler.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/user_handler.dart';
 
 class HomeScreen extends StatefulWidget {
   final String? screenName; // Optional screen name to navigate to

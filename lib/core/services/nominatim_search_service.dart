@@ -52,7 +52,7 @@ class NominatimService {
 }
 */
 
-import '../services/api_service.dart';
+import 'api_service.dart';
 
 class NominatimService {
   static Future<List<dynamic>> search(String query) async {

@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/ride/trip_details_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/api_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/driver_trip_response.dart';
 import 'package:flutter/foundation.dart';
 
 // Import new WebSocket structure
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/websocket_manager.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/handlers/trip_handler.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/ws/websocket_manager.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/trip_handler.dart';
 
 class AssignedRidesScreen extends StatefulWidget {
   final int userId;

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/api_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {

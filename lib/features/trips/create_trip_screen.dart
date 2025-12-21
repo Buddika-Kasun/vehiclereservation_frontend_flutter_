@@ -5,8 +5,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/schedule_passenger_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/nominatim_search_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/osrm_route_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/nominatim_search_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/osrm_route_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/geocode_helper.dart';
 import 'dart:math' as math;
 

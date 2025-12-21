@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/approvalConfig_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/approval_user_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/api_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/constant.dart';
 
 class ApprovalManagementScreen extends StatefulWidget {

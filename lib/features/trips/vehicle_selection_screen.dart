@@ -7,7 +7,7 @@ import 'package:vehiclereservation_frontend_flutter_/core/utils/constant.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/available_vehicles_response.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/trip_booking_response.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/trip_request_model.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/api_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/create_trip_screen.dart';
 
 class VehicleSelectionScreen extends StatefulWidget {

@@ -7,8 +7,8 @@ import 'package:vehiclereservation_frontend_flutter_/data/models/trip_list_respo
 import 'package:vehiclereservation_frontend_flutter_/data/models/trip_request_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/dashboard_stats.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/secure_storage_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/storage_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/config/api_config.dart';
 
 class ApiService {

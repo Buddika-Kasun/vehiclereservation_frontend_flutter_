@@ -8,7 +8,7 @@ import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/vehicleType_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/vehicle_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/api_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/color_generator.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/constant.dart';
 

@@ -8,9 +8,9 @@ import 'package:vehiclereservation_frontend_flutter_/features/dashboard/role_wid
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/role_widgets/hr_dashboard.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/role_widgets/security_dashboard.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/create_trip_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/api_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/secure_storage_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/storage_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);

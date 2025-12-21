@@ -2,7 +2,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/secure_storage_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
 
 class StorageService {
   static final StorageService _instance = StorageService._internal();

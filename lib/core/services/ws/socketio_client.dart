@@ -3,7 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
-import '../../../core/config/websocket_config.dart';
+import '../../config/websocket_config.dart';
 
 class SocketIOClient {
   io.Socket? _socket;

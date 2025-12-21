@@ -8,14 +8,14 @@ import 'package:vehiclereservation_frontend_flutter_/core/config/websocket_confi
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/shared/screens/splash_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/login_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/secure_storage_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/storage_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/auth_manager.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/firebase_notification_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/firebase_notification_service.dart';
 
 // Import new WebSocket structure
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/websocket_manager.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/handlers/notification_handler.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/ws/websocket_manager.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/notification_handler.dart';
 
 // Import notification observer if you have it
 // import 'package:vehiclereservation_frontend_flutter_/core/utils/websocket_navigator_observer.dart';

@@ -1,8 +1,8 @@
 // lib/data/services/ws/handlers/user_handler.dart
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/global_websocket.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/ws/websocket_manager.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/ws/global_websocket.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/ws/websocket_manager.dart';
 
 class UserHandler {
   // Use global instance

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/available_vehicles_response.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/services/api_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 
 class ReviewVehicleSelectionScreen extends StatefulWidget {
   final String tripId;
