@@ -2,7 +2,7 @@
 <resources>
 
     <!-- Launch theme shown before Flutter renders -->
-    <style name="LaunchTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <style name="LaunchTheme" parent="Theme.AppCompat.Light.NoActionBar">
         <item name="android:windowBackground">@drawable/launch_background</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
         <item name="android:statusBarColor">@android:color/black</item>
@@ -10,7 +10,7 @@
     </style>
 
     <!-- Normal theme used AFTER Flutter renders -->
-    <style name="NormalTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <style name="NormalTheme" parent="Theme.AppCompat.Light.NoActionBar">
         <item name="android:windowBackground">@android:color/black</item>
     </style>
 
