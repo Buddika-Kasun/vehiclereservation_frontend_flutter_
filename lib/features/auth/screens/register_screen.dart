@@ -924,7 +924,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
             Align(
               alignment: Alignment.bottomCenter,
-              child: Image.asset('Icon_half.png'),
+              child: Image.asset('assets/images/Icon_half.png'),
             ),
           ],
         ),

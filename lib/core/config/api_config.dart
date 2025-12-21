@@ -6,7 +6,7 @@ class ApiConfig {
 
   static Future<void> init() async {
     if (!_initialized) {
-      await dotenv.load(fileName: ".env");
+      await dotenv.load(fileName: "assets/.env");
       _initialized = true;
     }
   }
