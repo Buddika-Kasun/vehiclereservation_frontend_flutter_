@@ -6,6 +6,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/trip_details_model.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/models/trip_list_response.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/secure_storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/storage_service.dart';
@@ -15,22 +16,24 @@ import 'package:flutter/foundation.dart';
 // Import new WebSocket structure
 import 'package:vehiclereservation_frontend_flutter_/data/services/ws/websocket_manager.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/ws/handlers/trip_handler.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/review/review_vehicle_selection_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/vehicle_selection_screen.dart';
 
-class TripDetailsScreen extends StatefulWidget {
+class ReviewTripDetailsScreen extends StatefulWidget {
   final int tripId;
   final bool fromConflictNavigation;
 
-  const TripDetailsScreen({
+  const ReviewTripDetailsScreen({
     Key? key,
     required this.tripId,
     this.fromConflictNavigation = false,
   }) : super(key: key);
 
   @override
-  _TripDetailsScreenState createState() => _TripDetailsScreenState();
+  _ReviewTripDetailsScreenState createState() => _ReviewTripDetailsScreenState();
 }
 
-class _TripDetailsScreenState extends State<TripDetailsScreen> {
+class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
   // WebSocket managers
   final WebSocketManager _webSocketManager = WebSocketManager();
   final TripHandler _tripHandler = TripHandler();
@@ -55,6 +58,18 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     super.initState();
     _loadTripDetails();
     _initializeWebSocket();
+
+    // Add listener for route changes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _subscribeToRouteChanges();
+    });
+  }
+
+  void _subscribeToRouteChanges() {
+    // This will be called when the screen regains focus
+    if (ModalRoute.of(context)?.isCurrent == true) {
+      _loadTripDetails();
+    }
   }
 
   @override
@@ -102,7 +117,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       // Set up connection listener
       _webSocketManager.addConnectionListener('/trips', (isConnected) {
         if (kDebugMode) {
-          print('🔌 TripDetailsScreen connection: $isConnected');
+          print('🔌 ReviewTripDetailsScreen connection: $isConnected');
         }
         if (mounted) {
           setState(() {
@@ -125,7 +140,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ TripDetailsScreen WebSocket error: $e');
+        print('❌ ReviewTripDetailsScreen WebSocket error: $e');
       }
       if (mounted) {
         setState(() {
@@ -143,7 +158,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     final data = message['data'];
 
     if (kDebugMode) {
-      print('📨 TripDetailsScreen received event: $event');
+      print('📨 ReviewTripDetailsScreen received event: $event');
     }
 
     // Handle refresh events
@@ -578,7 +593,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => TripDetailsScreen(
+        builder: (context) => ReviewTripDetailsScreen(
           tripId: tripId,
           fromConflictNavigation: true,
         ),
@@ -941,9 +956,15 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _buildMetricCard(
-                Icons.edit_road,
-                '${_tripDetails!.details.route.metrics.distance} km',
-                '${_tripDetails!.details.route.metrics.estimatedDuration} min',
+                //Icons.route,
+                Icons.swap_vert,
+                '${(double.parse(_tripDetails!.details.route.metrics.distance) * 2).toStringAsFixed(1)} km',
+                _formatDurationToHoursMinutes(
+                  double.parse(
+                        _tripDetails!.details.route.metrics.estimatedDuration,
+                      ) *
+                      2,
+                ),
               ),
               _buildMetricCard(
                 Icons.calendar_month,
@@ -969,15 +990,20 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                 '${_tripDetails?.passengerCount ?? 0}',
               ),
               _buildMetricCard(
-                Icons.directions_car,
-                _tripDetails?.vehicle.regNo != null &&
-                        _tripDetails!.vehicle.regNo!.isNotEmpty
-                    ? '${_tripDetails!.vehicle.regNo}'
-                    : 'Vehicle',
-                _tripDetails?.vehicle.model != null &&
-                        _tripDetails!.vehicle.model!.isNotEmpty
-                    ? '${_tripDetails!.vehicle.model}'
-                    : 'Assigning...',
+                Icons.sledding,
+                'Resting Time',
+                _formatDurationToHoursMinutes(
+                  _tripDetails?.details.route.metrics.estimatedRestingMinutes !=
+                          null
+                      ? double.parse(
+                          _tripDetails!
+                              .details
+                              .route
+                              .metrics
+                              .estimatedRestingMinutes!,
+                        )
+                      : 0.0,
+                ),
               ),
             ],
           ),
@@ -1086,6 +1112,19 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     );
   }
 
+  // Add this helper function:
+  String _formatDurationToHoursMinutes(double minutes) {
+    int totalMinutes = minutes.round();
+    int hours = totalMinutes ~/ 60;
+    int remainingMinutes = totalMinutes % 60;
+
+    if (hours > 0) {
+      return '${hours}h ${remainingMinutes}min';
+    } else {
+      return '${remainingMinutes}min';
+    }
+  }
+
   Widget _buildInfoRow(String label, String value) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 4),
@@ -1110,6 +1149,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   }
 
   // Update the _buildVehicleSection() method:
+  /*
   Widget _buildVehicleSection() {
     // Check if vehicle details are null or empty
     final hasVehicle =
@@ -1141,40 +1181,83 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               ),
             ),
             SizedBox(height: 12),
-            Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey[800],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.schedule, color: Colors.orange, size: 24),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Supervisor under reviewing',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Vehicle will be assigned soon',
-                          style: TextStyle(
-                            color: Colors.grey[400],
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
+            GestureDetector(
+              onTap: () async {
+                // Navigate to vehicle selection screen
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ReviewVehicleSelectionScreen(
+                      tripId: widget.tripId.toString(),
+                      // Pass any additional data needed for vehicle selection
+                      //tripDetails: _tripDetails,
                     ),
                   ),
-                ],
+                );
+
+                // If result is true, refresh trip details
+                if (result == true) {
+                  _loadTripDetails();
+                }
+              },
+              child: Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[800],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.yellow[600]!, width: 1),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.yellow.withOpacity(0.2),
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.directions_car,
+                      color: Colors.yellow[600],
+                      size: 24,
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Assign Vehicle',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              Icon(
+                                Icons.arrow_forward_ios_rounded,
+                                color: Colors.yellow[600],
+                                size: 16,
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Click to select vehicle for this trip',
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -1336,6 +1419,260 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   _buildDriverCard(
                     _tripDetails!.details.drivers.secondary!,
                     'Secondary Driver',
+                  ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  */
+  
+  Widget _buildVehicleSection() {
+    // Check if vehicle details are null or empty
+    final hasVehicle = _tripDetails?.vehicle != null &&
+        (_tripDetails!.vehicle.regNo != null &&
+            _tripDetails!.vehicle.regNo!.isNotEmpty);
+
+    final hasDrivers = _tripDetails?.details.drivers.hasDrivers == true &&
+        (_tripDetails!.details.drivers.primary != null ||
+            _tripDetails!.details.drivers.secondary != null);
+
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        border: Border(bottom: BorderSide(color: Colors.grey[800]!)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Vehicle Details',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              if (!hasVehicle && _isDraftTrip)
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.red),
+                  ),
+                  child: Text(
+                    'VEHICLE REQUIRED',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          SizedBox(height: 12),
+
+          if (!hasVehicle)
+            GestureDetector(
+              onTap: _tripDetails?.status?.toLowerCase() == 'draft'
+                  ? () => _navigateToVehicleSelection()
+                  : null,
+              child: Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _tripDetails?.status?.toLowerCase() == 'draft'
+                      ? Colors.grey[800]
+                      : Colors.grey[900],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: _tripDetails?.status?.toLowerCase() == 'draft'
+                        ? Colors.yellow[600]!
+                        : Colors.grey[700]!,
+                    width: 2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _tripDetails?.status?.toLowerCase() == 'draft'
+                          ? Colors.yellow.withOpacity(0.2)
+                          : Colors.transparent,
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: _tripDetails?.status?.toLowerCase() == 'draft'
+                            ? Colors.yellow[600]
+                            : Colors.grey[700],
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: Icon(
+                        _tripDetails?.status?.toLowerCase() == 'draft'
+                            ? Icons.add_circle_outline
+                            : Icons.lock_outline,
+                        color: _tripDetails?.status?.toLowerCase() == 'draft'
+                            ? Colors.black
+                            : Colors.grey[400],
+                        size: 24,
+                      ),
+                    ),
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  _tripDetails?.status?.toLowerCase() == 'draft'
+                                      ? 'Assign Vehicle Required'
+                                      : 'Cannot Assign Vehicle',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              Icon(
+                                _tripDetails?.status?.toLowerCase() == 'draft'
+                                    ? Icons.arrow_forward_ios_rounded
+                                    : Icons.block,
+                                color:
+                                    _tripDetails?.status?.toLowerCase() ==
+                                        'draft'
+                                    ? Colors.yellow[600]
+                                    : Colors.grey[500],
+                                size: 16,
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            _tripDetails?.status?.toLowerCase() == 'draft'
+                                ? 'Tap to select a vehicle. This is required to confirm the trip.'
+                                : 'Vehicle can only be assigned during DRAFT status. Current status: ${_tripDetails?.status?.toUpperCase() ?? 'N/A'}',
+                            style: TextStyle(
+                              color:
+                                  _tripDetails?.status?.toLowerCase() == 'draft'
+                                  ? Colors.grey[400]
+                                  : Colors.grey[500],
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+          if (hasVehicle)
+            Column(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[800],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Color(0xFFF9C80E),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Icon(
+                              Icons.directions_car,
+                              color: Colors.black,
+                              size: 20,
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _tripDetails?.vehicle.model ?? 'N/A',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  _tripDetails?.vehicle.regNo ?? 'N/A',
+                                  style: TextStyle(
+                                    color: Colors.grey[300],
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (_isDraftTrip)
+                            IconButton(
+                              onPressed: _navigateToVehicleSelection,
+                              icon: Icon(Icons.edit, color: Colors.yellow[600]),
+                              tooltip: 'Change Vehicle',
+                            ),
+                        ],
+                      ),
+                      SizedBox(height: 12),
+                      // ... rest of vehicle details code
+                    ],
+                  ),
+                ),
+
+                // Drivers Section - Only show if has drivers
+                if (hasDrivers)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(height: 16),
+                      Text(
+                        'Drivers',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      if (_tripDetails?.details.drivers.primary != null)
+                        _buildDriverCard(
+                          _tripDetails!.details.drivers.primary!,
+                          'Primary Driver',
+                        ),
+                      if (_tripDetails?.details.drivers.secondary != null)
+                        _buildDriverCard(
+                          _tripDetails!.details.drivers.secondary!,
+                          'Secondary Driver',
+                        ),
+                    ],
                   ),
               ],
             ),
@@ -1575,297 +1912,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       ),
     );
   }
-/*
-  Widget _buildVehicleSection() {
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[900],
-        border: Border(
-          bottom: BorderSide(color: Colors.grey[800]!),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Vehicle Details',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 12),
-          
-          // Vehicle Information
-          Container(
-            padding: EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.grey[800],
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Color(0xFFF9C80E),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Icon(Icons.directions_car, color: Colors.black, size: 20),
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _tripDetails?.vehicle.model ?? 'N/A',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            _tripDetails?.vehicle.regNo ?? 'N/A',
-                            style: TextStyle(
-                              color: Colors.grey[300],
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 12),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 8,
-                  children: [
-                    _buildVehicleDetailChip(
-                      Icons.airline_seat_recline_normal,
-                      '${_tripDetails?.vehicle.seatingCapacity ?? 0} Seats',
-                    ),
-                    _buildVehicleDetailChip(
-                      Icons.event_seat,
-                      '${_tripDetails?.vehicle.seatingAvailability ?? 0} Available',
-                    ),
-                    _buildVehicleDetailChip(
-                      Icons.local_gas_station,
-                      _tripDetails?.details.vehicleDetails.specifications.fuelType ?? 'N/A',
-                    ),
-                  ],
-                ),
-                SizedBox(height: 12),
-                if (_tripDetails?.details.vehicleDetails.status.odometerLastReading != null)
-                  Row(
-                    children: [
-                      Icon(Icons.speed, color: Colors.grey[400], size: 16),
-                      SizedBox(width: 8),
-                      Text(
-                        'Last Odometer: ${_tripDetails!.details.vehicleDetails.status.odometerLastReading} km',
-                        style: TextStyle(color: Colors.grey[300], fontSize: 14),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
-          ),
-          
-          // Drivers Section
-          if (_tripDetails?.details.drivers.hasDrivers == true)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(height: 16),
-                Text(
-                  'Drivers',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: 8),
-                if (_tripDetails?.details.drivers.primary != null)
-                  _buildDriverCard(
-                    _tripDetails!.details.drivers.primary!,
-                    'Primary Driver',
-                  ),
-                if (_tripDetails?.details.drivers.secondary != null)
-                  _buildDriverCard(
-                    _tripDetails!.details.drivers.secondary!,
-                    'Secondary Driver',
-                  ),
-              ],
-            ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildVehicleDetailChip(IconData icon, String text) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.grey[700],
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: Color(0xFFF9C80E), size: 14),
-          SizedBox(width: 6),
-          Text(
-            text,
-            style: TextStyle(color: Colors.white, fontSize: 12),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDriverCard(Driver driver, String role) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 8),
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[800],
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: role.contains('Primary') ? Colors.blue : Colors.green,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Icon(
-              Icons.person,
-              color: Colors.white,
-              size: 20,
-            ),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      driver.name,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: role.contains('Primary') 
-                            ? Colors.blue.withOpacity(0.1)
-                            : Colors.green.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        role,
-                        style: TextStyle(
-                          color: role.contains('Primary') ? Colors.blue : Colors.green,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.phone, color: Colors.grey[400], size: 14),
-                    SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        driver.phone,
-                        style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => _makePhoneCall(driver.phone),
-                      icon: Icon(Icons.call, color: Color(0xFFF9C80E), size: 20),
-                      padding: EdgeInsets.zero,
-                      constraints: BoxConstraints(),
-                      tooltip: 'Call driver',
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildApprovalSection() {
-    if (_tripDetails?.details.approval.hasApproval != true) {
-      return SizedBox.shrink();
-    }
-
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[900],
-        border: Border(
-          bottom: BorderSide(color: Colors.grey[800]!),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Approval Status',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 12),
-          if (_tripDetails?.details.approval.approvers.hod != null)
-            _buildApproverRow(
-              'HOD Approval',
-              _tripDetails!.details.approval.approvers.hod!,
-            ),
-          if (_tripDetails?.details.approval.approvers.secondary != null)
-            _buildApproverRow(
-              'Secondary Approval',
-              _tripDetails!.details.approval.approvers.secondary!,
-            ),
-          if (_tripDetails?.details.approval.approvers.safety != null)
-            _buildApproverRow(
-              'Safety Approval',
-              _tripDetails!.details.approval.approvers.safety!,
-            ),
-        ],
-      ),
-    );
-  }
-*/
   Widget _buildLocationsSection() {
     return Container(
       padding: EdgeInsets.all(16),
@@ -2227,281 +2274,102 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: _isLoading
-          ? _buildLoadingState()
-          : _errorMessage.isNotEmpty
-              ? _buildErrorState()
-              : _tripDetails == null
-                  ? _buildNoDataState()
-                  : _buildContent(),
-    );
-  }
-
-  // Add this method in the _TripDetailsScreenState class
-  Widget _buildCancelButton() {
-    // Check if the current user is the trip requester
-    final isRequester =
-        StorageService.userData?.id == _tripDetails?.requester.id;
-
-    // Get approval status
-    final approval = _tripDetails?.details.approval;
-    final hasApproval = approval?.hasApproval == true;
-
-    // Check approval statuses
-    final hodStatus = approval?.approvers.hod?.status ?? '';
-    final secondaryStatus = approval?.approvers.secondary?.status ?? '';
-    final safetyStatus = approval?.approvers.safety?.status ?? '';
-
-    // Check if any approver has approved
-    final hasAnyApproval =
-        hodStatus.toLowerCase() == 'approved' ||
-        secondaryStatus.toLowerCase() == 'approved' ||
-        safetyStatus.toLowerCase() == 'approved';
-
-    // Check if all are pending (no approvals yet)
-    final allPending =
-        !hasAnyApproval &&
-        (hodStatus.toLowerCase() == 'pending' || hodStatus == '') &&
-        (secondaryStatus.toLowerCase() == 'pending' || secondaryStatus == '') &&
-        (safetyStatus.toLowerCase() == 'pending' || safetyStatus == '');
-
-    // Check if trip can be cancelled based on status
-    final canCancelTrip =
-        isRequester &&
-        (_tripDetails?.status == 'pending' ||
-            _tripDetails?.status == 'draft') &&
-        allPending;
-
-    if (!isRequester || !canCancelTrip) {
-      return SizedBox.shrink(); // Only show to requester
-    }
-
-    if (hasAnyApproval) {
-      // Trip partially approved - show disabled button with message
-      return Container(
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.black,
-          border: Border(top: BorderSide(color: Colors.grey[800]!)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Cannot Cancel Trip',
-              style: TextStyle(
-                color: Colors.red,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'This trip has been partially approved by supervisors. '
-              'Only trips with zero approval can be cancelled.',
-              style: TextStyle(color: Colors.grey[300], fontSize: 12),
-            ),
-            SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey[700],
-                foregroundColor: Colors.grey[400],
-                minimumSize: Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.cancel, size: 20),
-                  SizedBox(width: 8),
-                  Text(
-                    'Trip Partially Approved',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    } else if (!allPending) {
-      // Some other approval state (rejected, etc.)
-      return Container(
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.black,
-          border: Border(top: BorderSide(color: Colors.grey[800]!)),
-        ),
-        child: ElevatedButton(
-          onPressed: null,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.grey[700],
-            foregroundColor: Colors.grey[400],
-            minimumSize: Size(double.infinity, 50),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.cancel, size: 20),
-              SizedBox(width: 8),
-              Text(
-                'Trip Status: ${_tripDetails?.status?.toUpperCase() ?? 'N/A'}',
-                style: TextStyle(fontSize: 16),
-              ),
-            ],
-          ),
-        ),
-      );
-    } else if (canCancelTrip) {
-      // Trip can be cancelled - show active cancel button
-      return Container(
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.black,
-          border: Border(top: BorderSide(color: Colors.grey[800]!)),
-        ),
-        child: ElevatedButton(
-          onPressed: () => _showCancelConfirmationDialog(),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red,
-            foregroundColor: Colors.white,
-            minimumSize: Size(double.infinity, 50),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.cancel, size: 20),
-              SizedBox(width: 8),
-              Text('Cancel This Trip', style: TextStyle(fontSize: 16)),
-            ],
-          ),
-        ),
-      );
-    } else {
-      // Trip cannot be cancelled for other reasons
-      return Container(
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.black,
-          border: Border(top: BorderSide(color: Colors.grey[800]!)),
-        ),
-        child: ElevatedButton(
-          onPressed: null,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.grey[700],
-            foregroundColor: Colors.grey[400],
-            minimumSize: Size(double.infinity, 50),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.cancel, size: 20),
-              SizedBox(width: 8),
-              Text('Trip Cannot Be Cancelled', style: TextStyle(fontSize: 16)),
-            ],
-          ),
-        ),
-      );
-    }
-  }
-
-  // Add this method for the confirmation dialog
-  Future<void> _showCancelConfirmationDialog() async {
-    final result = await showDialog(
+  void _showNoVehicleDialog() {
+    showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color.fromARGB(215, 83, 83, 83),
-        title: Text(
-          'Confirm Cancellation',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+        backgroundColor: const Color.fromARGB(198, 168, 168, 168),
+        title: Row(
           children: [
-            Text(
-              'Are you sure you want to cancel this trip?',
-              style: TextStyle(color: Colors.grey[300]),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Trip ID: #${_tripDetails?.id}',
-              style: TextStyle(color: Colors.grey[400]),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Note: This action cannot be undone.',
-              style: TextStyle(color: Colors.orange),
-            ),
+            Icon(Icons.warning, color: Colors.orange),
+            SizedBox(width: 10),
+            Text('Vehicle Required', style: TextStyle(color: Colors.white)),
           ],
+        ),
+        content: Text(
+          'You cannot confirm this trip without assigning a vehicle. '
+          'Please assign a vehicle first.',
+          style: TextStyle(color: Colors.grey[300]),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('No', style: TextStyle(color: Colors.white)),
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: TextStyle(color: Colors.white)),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              Navigator.pop(context);
+              _navigateToVehicleSelection();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.yellow[600],
+            ),
             child: Text(
-              'Yes, Cancel Trip',
-              style: TextStyle(color: Colors.white),
+              'Assign Vehicle',
+              style: TextStyle(color: Colors.black),
             ),
           ),
         ],
       ),
     );
-
-    if (result == true) {
-      await _cancelTrip();
-    }
   }
 
-  // Add this method to handle trip cancellation
-  Future<void> _cancelTrip() async {
+  // Helper method to navigate to vehicle selection
+  void _navigateToVehicleSelection() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            ReviewVehicleSelectionScreen(tripId: widget.tripId.toString()),
+      ),
+    );
+
+    // If vehicle was assigned, refresh trip details
+    if (result == true) {
+      _loadTripDetails();
+    }
+  }
+  
+  void _confirmTrip() async {
+    // Check if vehicle is assigned
+    if (_tripDetails?.vehicle == null ||
+        _tripDetails!.vehicle.regNo == null ||
+        _tripDetails!.vehicle.regNo!.isEmpty) {
+      _showNoVehicleDialog();
+      return;
+    }
+
     try {
       setState(() {
         _isLoading = true;
       });
 
-      final response = await ApiService.cancelTrip(widget.tripId);
+      final response = await ApiService.confirmReviewTrip(widget.tripId);
 
       if (response['success'] == true) {
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Trip cancelled successfully'),
+            content: Text('Trip confirmed successfully'),
             backgroundColor: Colors.green,
           ),
         );
 
-        // Reload trip details to update status
-        await _loadTripDetails();
-
+        // Refresh trip details
+        _loadTripDetails();
       } else {
-        throw Exception(response['message'] ?? 'Failed to cancel trip');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message'] ?? 'Failed to confirm trip'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } catch (e) {
-      print('Error cancelling trip: $e');
+      print('Error confirming trip: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error cancelling trip: ${e.toString()}'),
+          content: Text('Error: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -2512,34 +2380,198 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
   }
 
-  // Update the _buildContent() method to include the cancel button:
-  Widget _buildContent() {
-    return Column(
-      children: [
-        _buildHeader(),
-        Expanded(
-          child: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      _buildMapSection(),
-                      _buildTripInfoSection(),
-                      _buildVehicleSection(),
-                      _buildLocationsSection(),
-                      _buildPassengersSection(),
-                      _buildApprovalSection(),
-                      SizedBox(height: 16),
-                    ],
-                  ),
+  void _cancelTrip() async {
+    // Show confirmation dialog
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: Text('Cancel Trip', style: TextStyle(color: Colors.white)),
+        content: Text(
+          'Are you sure you want to cancel this trip? This action cannot be undone.',
+          style: TextStyle(color: Colors.grey[300]),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('No', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _performCancellation();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: Text('Yes, Cancel', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _performCancellation() async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final response = await ApiService.cancelTrip(widget.tripId);
+
+      if (response['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Trip cancelled successfully'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+
+        // Refresh trip details
+        _loadTripDetails();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message'] ?? 'Failed to cancel trip'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error cancelling trip: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Add this method to check if trip is draft:
+  bool get _isDraftTrip => _tripDetails?.status.toLowerCase() == 'draft';
+
+  // Add this method to build the button row:
+  Widget _buildActionButtons() {
+    if (!_isDraftTrip) {
+      return SizedBox.shrink();
+    }
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.black,
+        border: Border(top: BorderSide(color: Colors.grey[800]!)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.5),
+            blurRadius: 10,
+            offset: Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Cancel Button
+          Expanded(
+            child: ElevatedButton(
+              onPressed: _isLoading ? null : _cancelTrip,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                padding: EdgeInsets.symmetric(vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              _buildCancelButton(), // Add cancel button at the bottom
-            ],
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
           ),
-        ),
-      ],
+          SizedBox(width: 12),
+          // Confirm Button
+          Expanded(
+            child: ElevatedButton(
+              onPressed: _isLoading ? null : _confirmTrip,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                padding: EdgeInsets.symmetric(vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 3,
+              ),
+              child: _isLoading
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(
+                      'Confirm',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Column(
+        children: [
+          _buildHeader(),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  _buildMapSection(),
+                  _buildTripInfoSection(),
+                  _buildVehicleSection(),
+                  _buildLocationsSection(),
+                  _buildPassengersSection(),
+                  _buildApprovalSection(),
+                  SizedBox(height: 16),
+                ],
+              ),
+            ),
+          ),
+          // Add the action buttons at the bottom
+          _buildActionButtons(),
+        ],
+      ),
+    );
+  }
+
+  // Also update the main Scaffold in the build method:
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: _isLoading && _tripDetails == null
+          ? _buildLoadingState()
+          : _errorMessage.isNotEmpty
+          ? _buildErrorState()
+          : _tripDetails == null
+          ? _buildNoDataState()
+          : _buildContent(),
     );
   }
 
@@ -2583,7 +2615,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   Text(
                     _errorMessage,
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey[300]),
+                    style: TextStyle(color: Colors.white),
                   ),
                   SizedBox(height: 16),
                   ElevatedButton(

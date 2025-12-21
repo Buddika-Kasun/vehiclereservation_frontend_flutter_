@@ -8,6 +8,7 @@ import 'package:vehiclereservation_frontend_flutter_/data/models/approval_model.
 import 'package:vehiclereservation_frontend_flutter_/data/models/trip_details_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/api_service.dart';
 import 'package:intl/intl.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/services/storage_service.dart';
 
 class ApprovalDetailsScreen extends StatefulWidget {
   final int tripId;
@@ -1948,6 +1949,31 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
     }
   }
 
+  String? _getCurrentUserApprovalStatus() {
+    final currentUser = StorageService.userData;
+    if (currentUser == null) return null;
+    
+    final approval = _tripDetails?.details.approval;
+    if (approval?.hasApproval != true) return null;
+    
+    // Check HOD approver
+    if (approval?.approvers.hod?.id == currentUser.id) {
+      return approval?.approvers.hod?.status;
+    }
+    
+    // Check Secondary approver
+    if (approval?.approvers.secondary?.id == currentUser.id) {
+      return approval?.approvers.secondary?.status;
+    }
+    
+    // Check Safety approver
+    if (approval?.approvers.safety?.id == currentUser.id) {
+      return approval?.approvers.safety?.status;
+    }
+    
+    return null;
+  }
+  
   Widget _buildActionButtons() {
     // Don't show action buttons if viewing from conflict navigation
     /*
@@ -1962,6 +1988,19 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
 
     // Only show action buttons for pending trips
     if (_tripDetails?.status != 'pending') {
+      return SizedBox.shrink();
+    }
+
+    // Check current user role and approval status
+    final currentUser = StorageService.userData;
+    final isSysAdmin = currentUser?.role.value.toLowerCase() == 'sysadmin';
+
+    // Get current user's approval status for this trip
+    final approval = _tripDetails?.details.approval;
+    final currentApprovalStatus = _getCurrentUserApprovalStatus();
+
+    // If current user has already approved and is not sysadmin, hide buttons
+    if (currentApprovalStatus?.toLowerCase() == 'approved' && !isSysAdmin) {
       return SizedBox.shrink();
     }
 

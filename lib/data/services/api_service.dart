@@ -693,42 +693,118 @@ class ApiService {
   }
 
   static Future<AvailableVehiclesResponse> getAvailableVehicles(TripRequest tripRequest) async {
-  try {
-    print('Sending available vehicles request: ${tripRequest.toJson()}');
-    
+    try {
+      print('Sending available vehicles request: ${tripRequest.toJson()}');
+      
+      final response = await authenticatedApiCall(
+        'trips/available-vehicles',
+        method: 'POST',
+        body: tripRequest.toJson(),
+      );
+
+      print('Available vehicles API response: $response');
+
+      // Check if the response contains the expected data structure
+      if (response.containsKey('recommendedVehicles') || response.containsKey('allVehicles')) {
+        print('Successfully parsed available vehicles - direct response structure');
+        return AvailableVehiclesResponse.fromJson(response);
+      } 
+      // Check if response has nested data structure
+      else if (response['success'] == true && response['data'] != null) {
+        print('Successfully parsed available vehicles - nested data structure');
+        return AvailableVehiclesResponse.fromJson(response['data']);
+      } 
+      // Check if response has success field but no data
+      else if (response['success'] == true) {
+        print('Successfully parsed available vehicles - success response');
+        return AvailableVehiclesResponse.fromJson(response);
+      } 
+      else {
+        final errorMessage = response['message'] ?? 'Failed to fetch available vehicles';
+        print('API returned error: $errorMessage');
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      print('Error in getAvailableVehicles: $e');
+      rethrow;
+    }
+  }
+
+  static Future<AvailableVehiclesResponse> getReviewAvailableVehicles(
+    String tripId,
+    {
+      int page = 0,
+      int pageSize = 10,
+      String? search,
+    }
+  ) async {
+    try {
+      // Build query parameters
+      final Map<String, dynamic> queryParams = {
+        'tripId': tripId, // Add tripId as query parameter
+        'page': page.toString(),
+        'pageSize': pageSize.toString(),
+      };
+
+      // Add search parameter if provided
+      if (search != null && search.isNotEmpty) {
+        queryParams['search'] = search;
+      }
+
+      // Convert query parameters to URL string
+      final queryString = Uri(queryParameters: queryParams).query;
+
+      final response = await authenticatedApiCall(
+        'trips/available-vehicles-review?$queryString',
+        method: 'POST',
+        //body: tripRequest.toJson(),
+      );
+
+      print('Available vehicles API response: $response');
+
+      // Check if the response contains the expected data structure
+      if (response.containsKey('recommendedVehicles') ||
+          response.containsKey('allVehicles')) {
+        print(
+          'Successfully parsed available vehicles - direct response structure',
+        );
+        return AvailableVehiclesResponse.fromJson(response);
+      }
+      // Check if response has nested data structure
+      else if (response['success'] == true && response['data'] != null) {
+        print('Successfully parsed available vehicles - nested data structure');
+        return AvailableVehiclesResponse.fromJson(response['data']);
+      }
+      // Check if response has success field but no data
+      else if (response['success'] == true) {
+        print('Successfully parsed available vehicles - success response');
+        return AvailableVehiclesResponse.fromJson(response);
+      } else {
+        final errorMessage =
+            response['message'] ?? 'Failed to fetch available vehicles';
+        print('API returned error: $errorMessage');
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      print('Error in getAvailableVehicles: $e');
+      rethrow;
+    }
+  }
+
+  static Future<bool> addVehicleToTrip({
+    required String tripId,
+    required String vehicleId,
+  }) async {
+    final body = {'tripId': tripId, 'vehicleId': vehicleId};
+
     final response = await authenticatedApiCall(
-      'trips/available-vehicles',
+      'trips/assign-trip-vehicle',
       method: 'POST',
-      body: tripRequest.toJson(),
+      body: body,
     );
 
-    print('Available vehicles API response: $response');
-
-    // Check if the response contains the expected data structure
-    if (response.containsKey('recommendedVehicles') || response.containsKey('allVehicles')) {
-      print('Successfully parsed available vehicles - direct response structure');
-      return AvailableVehiclesResponse.fromJson(response);
-    } 
-    // Check if response has nested data structure
-    else if (response['success'] == true && response['data'] != null) {
-      print('Successfully parsed available vehicles - nested data structure');
-      return AvailableVehiclesResponse.fromJson(response['data']);
-    } 
-    // Check if response has success field but no data
-    else if (response['success'] == true) {
-      print('Successfully parsed available vehicles - success response');
-      return AvailableVehiclesResponse.fromJson(response);
-    } 
-    else {
-      final errorMessage = response['message'] ?? 'Failed to fetch available vehicles';
-      print('API returned error: $errorMessage');
-      throw Exception(errorMessage);
-    }
-  } catch (e) {
-    print('Error in getAvailableVehicles: $e');
-    rethrow;
+    return true;
   }
-}
 
   static Future<TripBookingResponse> bookTrip(TripRequest tripRequest) async {
     final response = await authenticatedApiCall(
@@ -740,10 +816,27 @@ class ApiService {
     return TripBookingResponse.fromJson(response);
   }
 
+  static Future<TripBookingResponse> bookTripAsDraft(TripRequest tripRequest) async {
+    final response = await authenticatedApiCall(
+      'trips/create-as-draft',
+      method: 'POST',
+      body: tripRequest.toJson(),
+    );
+
+    return TripBookingResponse.fromJson(response);
+  }
+
   static Future<Map<String, dynamic>> cancelTrip(int tripId) async {
     return await authenticatedApiCall(
       'trips/cancel/$tripId',
-      method: 'DELETE',
+      method: 'POST',
+    );
+  }
+  
+  static Future<Map<String, dynamic>> confirmReviewTrip(int tripId) async {
+    return await authenticatedApiCall(
+      'trips/confirm-review/$tripId',
+      method: 'POST',
     );
   }
 
@@ -776,6 +869,33 @@ class ApiService {
       }
     } catch (e) {
       print('Error in getUserTrips: $e');
+      rethrow;
+    }
+  }
+
+  static Future<TripListResponse> getSupervisorTrips(TripListRequest request) async {
+    try {
+      //print('Getting user trips with filters: ${request.toJson()}');
+
+      final response = await authenticatedApiCall(
+        'trips/supervisor-trips',
+        method: 'POST',
+        body: request.toJson(),
+      );
+
+      //print('User trips API response: $response');
+
+      if (response['success'] == true && response['data'] != null) {
+        //print('Successfully parsed user trips');
+        return TripListResponse.fromJson(response['data']);
+      } else {
+        final errorMessage =
+            response['message'] ?? 'Failed to fetch user trips';
+        //print('API returned error: $errorMessage');
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      //print('Error in getUserTrips: $e');
       rethrow;
     }
   }

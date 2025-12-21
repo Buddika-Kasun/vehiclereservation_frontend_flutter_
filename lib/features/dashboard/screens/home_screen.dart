@@ -1,6 +1,7 @@
 // File: lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/ws/global_websocket.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/review/review_trip_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/ride/rides_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/approval_user_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicleType_managemnet_screen.dart';
@@ -336,6 +337,9 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'All Rides':
         _navigateToRides();
         break;
+      case 'Review Trips':
+        _navigateToReviewTrips();
+        break;
       case 'Meter Reading':
         _navigateToRideApprovals();
         break;
@@ -393,6 +397,15 @@ class _HomeScreenState extends State<HomeScreen> {
   void _navigateToRides() {
     setState(() {
       _currentScreen = RidesScreen(
+        userId: _user!.id,
+        //token: _token!
+      );
+    });
+  }
+
+  void _navigateToReviewTrips() {
+    setState(() {
+      _currentScreen = ReviewTripScreen(
         userId: _user!.id,
         //token: _token!
       );

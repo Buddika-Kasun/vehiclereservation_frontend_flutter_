@@ -71,6 +71,7 @@ class SideMenu extends StatelessWidget {
         items.addAll([
           //MenuItem(Icons.home, 'Home'),
           MenuItem(Icons.directions_car, 'All Rides'),
+          MenuItem(Icons.verified, 'Review Trips'),
           //MenuItem(Icons.person_add, 'User Creations'),
           //MenuItem(Icons.verified, 'All Approvals'),
           MenuItem(Icons.verified, 'Meter Reading'),
@@ -91,7 +92,7 @@ class SideMenu extends StatelessWidget {
         items.addAll([
           //MenuItem(Icons.home, 'Home'),
           //MenuItem(Icons.directions_car, 'My Rides'),
-          MenuItem(Icons.verified, 'Meter Reading'),
+          MenuItem(Icons.verified, 'Review Trips'),
         ]);
         break;
         

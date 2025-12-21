@@ -1,7 +1,4 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/models/trip_booking_response.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/models/trip_request_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/vehicle_selection_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/services/api_service.dart';
@@ -11,12 +8,10 @@ import 'package:vehiclereservation_frontend_flutter_/core/utils/constant.dart';
 class SchedulePassengersScreen extends StatefulWidget {
   final Map<String, dynamic> locationData;
 
-  const SchedulePassengersScreen({Key? key, required this.locationData})
-    : super(key: key);
+  const SchedulePassengersScreen({Key? key, required this.locationData}) : super(key: key);
 
   @override
-  _SchedulePassengersScreenState createState() =>
-      _SchedulePassengersScreenState();
+  _SchedulePassengersScreenState createState() => _SchedulePassengersScreenState();
 }
 
 class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
@@ -24,13 +19,11 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
   DateTime? _startDate = DateTime.now();
   DateTime? _validTillDate;
   TimeOfDay? _startTime = TimeOfDay.fromDateTime(
-    DateTime.now().add(Duration(minutes: 20)),
+    DateTime.now().add(Duration(minutes: 20))
   );
   String _repetition = 'once';
   bool _includeWeekends = false;
   int _repeatAfterDays = 0;
-  bool _isBooking = false;
-  Trip? _bookedTrip;
 
   // Passengers Section State
   String _passengerType = 'own';
@@ -59,16 +52,16 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
   Future<void> _loadUserData() async {
     try {
       final user = StorageService.userData;
-
+      
       if (user == null) {
         print('No user data found in storage');
         return;
       }
-
+      
       setState(() {
         _user = user;
       });
-
+      
       print('User data loaded: ${user.displayname}');
     } catch (e) {
       print('Load user data error: $e');
@@ -95,10 +88,10 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                     // Schedule Section
                     _buildScheduleSection(),
                     SizedBox(height: 16),
-
+                    
                     // Passengers Section
                     _buildPassengersSection(),
-
+                    
                     // Selected Users Display
                     if (_shouldShowSelectedUsers())
                       _buildSelectedUsersSection(),
@@ -106,7 +99,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                 ),
               ),
             ),
-
+            
             // Next Button
             Container(
               width: double.infinity,
@@ -119,11 +112,9 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                onPressed: (_isBooking || _bookedTrip != null)
-                    ? null
-                    : _bookTrip,
+                onPressed: _validateAndProceed,
                 child: Text(
-                  'Confirm',
+                  'Next',
                   style: TextStyle(
                     color: Colors.black,
                     fontSize: 16,
@@ -162,11 +153,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                 color: Color(0xFFF9C80E),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                Icons.arrow_back_ios_rounded,
-                color: Colors.black,
-                size: 20,
-              ),
+              child: Icon(Icons.arrow_back_ios_rounded, color: Colors.black, size: 20),
             ),
           ),
           SizedBox(width: 16),
@@ -185,13 +172,8 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
 
   bool _shouldShowSelectedUsers() {
     if (_passengerType == 'own') return true;
-    if (_passengerType == 'other_individual' && _selectedIndividual != null)
-      return true;
-    if (_passengerType == 'group' &&
-        (_selectedGroupUsers.isNotEmpty ||
-            _selectedOthers.isNotEmpty ||
-            _includeMeInGroup))
-      return true;
+    if (_passengerType == 'other_individual' && _selectedIndividual != null) return true;
+    if (_passengerType == 'group' && (_selectedGroupUsers.isNotEmpty || _selectedOthers.isNotEmpty || _includeMeInGroup)) return true;
     return false;
   }
 
@@ -235,13 +217,8 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                 _buildTimeField(
                   'Start Time',
                   _startTime,
-                  () => _selectTime(
-                    context,
-                    (time) => setState(() => _startTime = time),
-                  ),
-                  onClear: _startTime != null
-                      ? () => setState(() => _startTime = null)
-                      : null,
+                  () => _selectTime(context, (time) => setState(() => _startTime = time)),
+                  onClear: _startTime != null ? () => setState(() => _startTime = null) : null,
                 ),
                 SizedBox(height: 16),
 
@@ -251,61 +228,28 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                   children: [
                     Text(
                       'Repetition',
-                      style: TextStyle(color: Colors.grey, fontSize: 14),
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 14,
+                      ),
                     ),
                     SizedBox(height: 4),
                     DropdownButtonFormField<String>(
                       dropdownColor: Colors.grey[800],
                       style: TextStyle(color: Colors.yellow),
                       decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
-                        ),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       ),
                       value: _repetition,
                       items: [
-                        DropdownMenuItem(
-                          value: 'once',
-                          child: Text(
-                            'Once',
-                            style: TextStyle(color: Colors.yellow),
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: 'daily',
-                          child: Text(
-                            'Daily',
-                            style: TextStyle(color: Colors.yellow),
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: 'weekly',
-                          child: Text(
-                            'Weekly',
-                            style: TextStyle(color: Colors.yellow),
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: 'monthly',
-                          child: Text(
-                            'Monthly',
-                            style: TextStyle(color: Colors.yellow),
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: 'custom',
-                          child: Text(
-                            'Custom',
-                            style: TextStyle(color: Colors.yellow),
-                          ),
-                        ),
+                        DropdownMenuItem(value: 'once', child: Text('Once', style: TextStyle(color: Colors.yellow))),
+                        DropdownMenuItem(value: 'daily', child: Text('Daily', style: TextStyle(color: Colors.yellow))),
+                        DropdownMenuItem(value: 'weekly', child: Text('Weekly', style: TextStyle(color: Colors.yellow))),
+                        DropdownMenuItem(value: 'monthly', child: Text('Monthly', style: TextStyle(color: Colors.yellow))),
+                        DropdownMenuItem(value: 'custom', child: Text('Custom', style: TextStyle(color: Colors.yellow))),
                       ],
-                      onChanged: (value) =>
-                          setState(() => _repetition = value!),
+                      onChanged: (value) => setState(() => _repetition = value!),
                     ),
                   ],
                 ),
@@ -321,12 +265,10 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                       ),
                       Spacer(),
                       Transform.scale(
-                        scale:
-                            0.8, // Adjust this value (0.7 = 70%, 1.2 = 120%, etc.)
+                        scale: 0.8, // Adjust this value (0.7 = 70%, 1.2 = 120%, etc.)
                         child: Switch(
                           value: _includeWeekends,
-                          onChanged: (value) =>
-                              setState(() => _includeWeekends = value),
+                          onChanged: (value) => setState(() => _includeWeekends = value),
                           activeColor: Colors.yellow[600],
                         ),
                       ),
@@ -338,18 +280,11 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                     decoration: InputDecoration(
                       labelText: 'Repeat after (days)',
                       labelStyle: TextStyle(color: Colors.grey),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 2,
-                      ),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 2)
                     ),
                     keyboardType: TextInputType.number,
-                    onChanged: (value) => setState(
-                      () => _repeatAfterDays = int.tryParse(value) ?? 1,
-                    ),
+                    onChanged: (value) => setState(() => _repeatAfterDays = int.tryParse(value) ?? 1),
                   ),
                 ],
               ],
@@ -361,10 +296,12 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
   }
 
   Widget _buildPassengersSection() {
+    //final totalPassengers = _getTotalPassengerCount();
+
     return Card(
       color: Colors.grey[900],
       child: ExpansionTile(
-        title: Text(
+        title:Text(
           'Select Passenger',
           style: TextStyle(
             fontSize: 18,
@@ -388,20 +325,14 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                       activeColor: Colors.yellow[600],
                     ),
                     RadioListTile<String>(
-                      title: Text(
-                        'Other Individual',
-                        style: TextStyle(color: Colors.white),
-                      ),
+                      title: Text('Other Individual', style: TextStyle(color: Colors.white)),
                       value: 'other_individual',
                       groupValue: _passengerType,
                       onChanged: (value) => _handlePassengerTypeChange(value!),
                       activeColor: Colors.yellow[600],
                     ),
                     RadioListTile<String>(
-                      title: Text(
-                        'Group',
-                        style: TextStyle(color: Colors.white),
-                      ),
+                      title: Text('Group', style: TextStyle(color: Colors.white)),
                       value: 'group',
                       groupValue: _passengerType,
                       onChanged: (value) => _handlePassengerTypeChange(value!),
@@ -410,12 +341,17 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                   ],
                 ),
 
+                // Own Passenger Section
+                //if (_passengerType == 'own')
+                //  _buildOwnPassengerSection(),
+
                 // Other Individual Section
                 if (_passengerType == 'other_individual')
                   _buildOtherIndividualSection(),
 
                 // Group Section
-                if (_passengerType == 'group') _buildGroupSection(),
+                if (_passengerType == 'group')
+                  _buildGroupSection(),
               ],
             ),
           ),
@@ -433,9 +369,10 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
           _selectedGroupUsers.clear();
           _selectedOthers.clear();
         }
-        if (newType == 'other_individual') {
+        if(newType == 'other_individual') {
           _includeMeInGroup = false;
-        } else {
+        }
+        else {
           _includeMeInGroup = true;
         }
       }
@@ -491,51 +428,46 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
   }
 
   Widget _buildOwnPassengerSection() {
-    return Column(
-      children: [
-        SizedBox(height: 16),
-        Container(
-          padding: EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.grey[800],
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: Colors.yellow[600],
-                child: Text(
-                  _currentUser['displayName'].isNotEmpty
-                      ? _currentUser['displayName'][0].toUpperCase()
-                      : 'Y',
-                  style: TextStyle(color: Colors.black),
-                ),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _currentUser['displayName'],
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'Passenger Count: 1',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+  return Column(
+    children: [
+      SizedBox(height: 16),
+      Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey[800],
+          borderRadius: BorderRadius.circular(8),
         ),
-      ],
-    );
-  }
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: Colors.yellow[600],
+              child: Text(
+                _currentUser['displayName'].isNotEmpty ? _currentUser['displayName'][0].toUpperCase() : 'Y',
+                style: TextStyle(color: Colors.black),
+              ),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _currentUser['displayName'],
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    'Passenger Count: 1',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
+}
 
   Widget _buildOtherIndividualSection() {
     return Column(
@@ -559,13 +491,11 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                _selectedIndividual != null
+                _selectedIndividual != null 
                     ? _selectedIndividual!['displayName']
                     : 'Select User',
                 style: TextStyle(
-                  color: _selectedIndividual != null
-                      ? Colors.yellow
-                      : Colors.grey,
+                  color: _selectedIndividual != null ? Colors.yellow : Colors.grey,
                 ),
               ),
               Icon(Icons.arrow_drop_down, color: Colors.grey),
@@ -606,9 +536,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
             );
             if (result != null) {
               setState(() {
-                if (!_selectedGroupUsers.any(
-                  (user) => user['id'] == result['id'],
-                )) {
+                if (!_selectedGroupUsers.any((user) => user['id'] == result['id'])) {
                   _selectedGroupUsers.add(result);
                 }
               });
@@ -636,10 +564,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
             children: [
               Icon(Icons.person_add, color: Colors.yellow),
               SizedBox(width: 8),
-              Text(
-                'Add Other Passenger',
-                style: TextStyle(color: Colors.yellow),
-              ),
+              Text('Add Other Passenger', style: TextStyle(color: Colors.yellow)),
             ],
           ),
         ),
@@ -655,10 +580,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.grey[900],
-        title: Text(
-          'Add Other Passenger',
-          style: TextStyle(color: Colors.white),
-        ),
+        title: Text('Add Other Passenger', style: TextStyle(color: Colors.white)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -696,17 +618,15 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
             child: Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.yellow[600],
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.yellow[600]),
             onPressed: () {
               if (nameController.text.trim().isNotEmpty) {
                 setState(() {
                   _selectedOthers.add({
                     'id': 'other_${DateTime.now().millisecondsSinceEpoch}',
                     'displayName': nameController.text.trim(),
-                    'contactNo': contactController.text.trim().isNotEmpty
-                        ? contactController.text.trim()
+                    'contactNo': contactController.text.trim().isNotEmpty 
+                        ? contactController.text.trim() 
                         : 'N/A',
                     'isOther': true,
                   });
@@ -724,11 +644,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
   Widget _buildSelectedUsersSection() {
     final companyUsersCount = _selectedGroupUsers.length;
     final othersCount = _selectedOthers.length;
-    final ownCount =
-        (_passengerType == 'own' ||
-            (_passengerType == 'group' && _includeMeInGroup))
-        ? 1
-        : 0;
+    final ownCount = (_passengerType == 'own' || (_passengerType == 'group' && _includeMeInGroup)) ? 1 : 0;
 
     return Card(
       color: Colors.grey[900],
@@ -737,42 +653,29 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionHeader(
-              'Selected Passengers',
-              _getTotalPassengerCount(),
-            ),
+            _buildSectionHeader('Selected Passengers', _getTotalPassengerCount()),
             SizedBox(height: 12),
-
+            
             // Own User Card
-            if (_passengerType == 'own' ||
-                (_passengerType == 'group' && _includeMeInGroup))
+            if (_passengerType == 'own' || (_passengerType == 'group' && _includeMeInGroup))
               _buildUserCard(_currentUser, 'own'),
-
+            
             // Individual User Card
-            if (_passengerType == 'other_individual' &&
-                _selectedIndividual != null)
+            if (_passengerType == 'other_individual' && _selectedIndividual != null)
               _buildUserCard(_selectedIndividual!, 'individual'),
-
+            
             // Company Users
             if (_selectedGroupUsers.isNotEmpty) ...[
               SizedBox(height: 8),
-              Text(
-                'Company Users ($companyUsersCount):',
-                style: TextStyle(color: Colors.grey),
-              ),
+              Text('Company Users ($companyUsersCount):', style: TextStyle(color: Colors.grey)),
               SizedBox(height: 8),
-              ..._selectedGroupUsers.map(
-                (user) => _buildUserCard(user, 'company'),
-              ),
+              ..._selectedGroupUsers.map((user) => _buildUserCard(user, 'company')),
             ],
-
+            
             // Others
             if (_selectedOthers.isNotEmpty) ...[
               SizedBox(height: 16),
-              Text(
-                'Others ($othersCount):',
-                style: TextStyle(color: Colors.grey),
-              ),
+              Text('Others ($othersCount):', style: TextStyle(color: Colors.grey)),
               SizedBox(height: 8),
               ..._selectedOthers.map((user) => _buildUserCard(user, 'other')),
             ],
@@ -820,13 +723,8 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
           CircleAvatar(
             backgroundColor: avatarColor,
             child: Text(
-              user['displayName'].isNotEmpty
-                  ? user['displayName'][0].toUpperCase()
-                  : 'U',
-              style: TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.bold,
-              ),
+              user['displayName'].isNotEmpty ? user['displayName'][0].toUpperCase() : 'U',
+              style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
             ),
           ),
           SizedBox(width: 12),
@@ -836,10 +734,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
               children: [
                 Text(
                   user['displayName'],
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                 ),
                 if (user['contactNo'] != null && user['contactNo'] != 'N/A')
                   Text(
@@ -865,9 +760,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                   if (type == 'individual') {
                     _selectedIndividual = null;
                   } else if (type == 'company') {
-                    _selectedGroupUsers.removeWhere(
-                      (u) => u['id'] == user['id'],
-                    );
+                    _selectedGroupUsers.removeWhere((u) => u['id'] == user['id']);
                   } else if (type == 'other') {
                     _selectedOthers.removeWhere((u) => u['id'] == user['id']);
                   }
@@ -879,95 +772,75 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
     );
   }
 
-  Widget _buildDateField(
-    String label,
-    DateTime? date,
-    Function(DateTime?) onDateSelected, {
-    required bool isStartDate,
-  }) {
-    final bool isEnabled = isStartDate || _startDate != null;
+  Widget _buildDateField(String label, DateTime? date, Function(DateTime?) onDateSelected, {required bool isStartDate}) {
+  final bool isEnabled = isStartDate || _startDate != null;
+  
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        label,
+        style: TextStyle(
+          color: isEnabled ? Colors.grey : Colors.grey.shade400,
+          fontSize: 14,
+        ),
+      ),
+      SizedBox(height: 4),
+      InkWell(
+        onTap: isEnabled ? () => _selectDate(context, onDateSelected, isStartDate: isStartDate) : null,
+        child: Container(
+          width: double.infinity,
+          height: 45,
+          padding: EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: isEnabled ? Colors.grey.shade600 : Colors.grey.shade800,
+            ),
+            borderRadius: BorderRadius.circular(8.0),
+            color: isEnabled ? Colors.transparent : Colors.grey.shade800,
+          ),
+          child: Row(
+            children: [
+              Text(
+                date != null 
+                  ? '${date.day}/${date.month}/${date.year}'
+                  : isStartDate ? 'Select start date' : (_startDate == null ? 'Select start date first' : 'Select valid till date'),
+                style: TextStyle(
+                  color: date != null ? Colors.yellow : (isEnabled ? Colors.grey.shade600 : Colors.grey.shade500),
+                ),
+              ),
+              Spacer(),
+              if (date != null && isEnabled)
+                IconButton(
+                  icon: Icon(Icons.clear, color: Colors.red, size: 18),
+                  onPressed: () => onDateSelected(null),
+                  padding: EdgeInsets.zero,
+                  constraints: BoxConstraints(),
+                ),
+              Icon(
+                Icons.calendar_today,
+                color: isEnabled ? Colors.grey.shade600 : Colors.grey.shade500,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
+    ],
+  );
+}
 
+  Widget _buildTimeField(String label, TimeOfDay? time, VoidCallback onTap, {VoidCallback? onClear}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
           style: TextStyle(
-            color: isEnabled ? Colors.grey : Colors.grey.shade400,
+            color: Colors.grey,
             fontSize: 14,
           ),
         ),
-        SizedBox(height: 4),
-        InkWell(
-          onTap: isEnabled
-              ? () => _selectDate(
-                  context,
-                  onDateSelected,
-                  isStartDate: isStartDate,
-                )
-              : null,
-          child: Container(
-            width: double.infinity,
-            height: 45,
-            padding: EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: isEnabled ? Colors.grey.shade600 : Colors.grey.shade800,
-              ),
-              borderRadius: BorderRadius.circular(8.0),
-              color: isEnabled ? Colors.transparent : Colors.grey.shade800,
-            ),
-            child: Row(
-              children: [
-                Text(
-                  date != null
-                      ? '${date.day}/${date.month}/${date.year}'
-                      : isStartDate
-                      ? 'Select start date'
-                      : (_startDate == null
-                            ? 'Select start date first'
-                            : 'Select valid till date'),
-                  style: TextStyle(
-                    color: date != null
-                        ? Colors.yellow
-                        : (isEnabled
-                              ? Colors.grey.shade600
-                              : Colors.grey.shade500),
-                  ),
-                ),
-                Spacer(),
-                if (date != null && isEnabled)
-                  IconButton(
-                    icon: Icon(Icons.clear, color: Colors.red, size: 18),
-                    onPressed: () => onDateSelected(null),
-                    padding: EdgeInsets.zero,
-                    constraints: BoxConstraints(),
-                  ),
-                Icon(
-                  Icons.calendar_today,
-                  color: isEnabled
-                      ? Colors.grey.shade600
-                      : Colors.grey.shade500,
-                  size: 20,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTimeField(
-    String label,
-    TimeOfDay? time,
-    VoidCallback onTap, {
-    VoidCallback? onClear,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: TextStyle(color: Colors.grey, fontSize: 14)),
         SizedBox(height: 4),
         InkWell(
           onTap: onTap,
@@ -982,9 +855,9 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
             child: Row(
               children: [
                 Text(
-                  time != null
-                      ? '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'
-                      : 'Select time',
+                  time != null 
+                    ? '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'
+                    : 'Select time',
                   style: TextStyle(
                     color: time != null ? Colors.yellow : Colors.grey.shade600,
                   ),
@@ -997,7 +870,11 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                     padding: EdgeInsets.zero,
                     constraints: BoxConstraints(),
                   ),
-                Icon(Icons.access_time, color: Colors.grey.shade600, size: 20),
+                Icon(
+                  Icons.access_time,
+                  color: Colors.grey.shade600,
+                  size: 20,
+                ),
               ],
             ),
           ),
@@ -1006,91 +883,85 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
     );
   }
 
-  Future<void> _selectDate(
-    BuildContext context,
-    Function(DateTime?) onDateSelected, {
-    required bool isStartDate,
-  }) async {
-    final DateTime now = DateTime.now();
-    final DateTime initialDate = isStartDate ? now : (_startDate ?? now);
-
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: initialDate,
-      firstDate: isStartDate ? now : (_startDate ?? now),
-      lastDate: DateTime(2100),
-    );
-
-    if (picked != null) {
-      if (isStartDate) {
-        // For start date, validate time if it's today
-        if (_isToday(picked) && _startTime != null) {
-          final selectedDateTime = DateTime(
-            picked.year,
-            picked.month,
-            picked.day,
-            _startTime!.hour,
-            _startTime!.minute,
+  Future<void> _selectDate(BuildContext context, Function(DateTime?) onDateSelected, {required bool isStartDate}) async {
+  final DateTime now = DateTime.now();
+  final DateTime initialDate = isStartDate ? now : (_startDate ?? now);
+  
+  final DateTime? picked = await showDatePicker(
+    context: context,
+    initialDate: initialDate,
+    firstDate: isStartDate ? now : (_startDate ?? now),
+    lastDate: DateTime(2100),
+  );
+  
+  if (picked != null) {
+    if (isStartDate) {
+      // For start date, validate time if it's today
+      if (_isToday(picked) && _startTime != null) {
+        final selectedDateTime = DateTime(
+          picked.year, 
+          picked.month, 
+          picked.day, 
+          _startTime!.hour, 
+          _startTime!.minute
+        );
+        if (selectedDateTime.isBefore(now)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Start time cannot be in the past')),
           );
-          if (selectedDateTime.isBefore(now)) {
-            _showMessage('Start time cannot be in the past', false);
-            return;
-          }
-        }
-
-        // If start date is changed and validTillDate is before new start date, clear validTillDate
-        if (_validTillDate != null && _validTillDate!.isBefore(picked)) {
-          setState(() {
-            _validTillDate = null;
-          });
-        }
-      } else {
-        // For valid till date, ensure it's not before start date
-        if (_startDate != null && picked.isBefore(_startDate!)) {
-          _showMessage('Valid till date cannot be before start date', false);
           return;
         }
       }
-
-      onDateSelected(picked);
+      
+      // If start date is changed and validTillDate is before new start date, clear validTillDate
+      if (_validTillDate != null && _validTillDate!.isBefore(picked)) {
+        setState(() {
+          _validTillDate = null;
+        });
+      }
+    } else {
+      // For valid till date, ensure it's not before start date
+      if (_startDate != null && picked.isBefore(_startDate!)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Valid till date cannot be before start date')),
+        );
+        return;
+      }
     }
+    
+    onDateSelected(picked);
   }
+}
 
   bool _isToday(DateTime date) {
     final now = DateTime.now();
-    return date.year == now.year &&
-        date.month == now.month &&
-        date.day == now.day;
+    return date.year == now.year && date.month == now.month && date.day == now.day;
   }
 
-  Future<void> _selectTime(
-    BuildContext context,
-    Function(TimeOfDay?) onTimeSelected,
-  ) async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-    );
-
-    if (picked != null) {
-      // Only validate time if start date is today
-      if (_startDate != null && _isToday(_startDate!)) {
-        final now = TimeOfDay.now();
-        final currentTotalMinutes = now.hour * 60 + now.minute;
-        final selectedTotalMinutes = picked.hour * 60 + picked.minute;
-
-        if (selectedTotalMinutes < currentTotalMinutes + 15) {
-          _showMessage(
-            'Start time must be at least 15 minutes from now',
-            false,
-          );
-          return;
-        }
+  Future<void> _selectTime(BuildContext context, Function(TimeOfDay?) onTimeSelected) async {
+  final TimeOfDay? picked = await showTimePicker(
+    context: context,
+    initialTime: TimeOfDay.now(),
+  );
+  
+  if (picked != null) {
+    // Only validate time if start date is today
+    if (_startDate != null && _isToday(_startDate!)) {
+      final now = TimeOfDay.now();
+      final currentTotalMinutes = now.hour * 60 + now.minute;
+      final selectedTotalMinutes = picked.hour * 60 + picked.minute;
+      
+      if (selectedTotalMinutes < currentTotalMinutes + 15) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Start time must be at least 15 minutes from now')),
+        );
+        return;
       }
-
-      onTimeSelected(picked);
     }
+    
+    onTimeSelected(picked);
   }
+}
 
   // Show user selection dialog
   Future<Map<String, dynamic>?> _showUserSelectionDialog({
@@ -1108,6 +979,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
 
         return StatefulBuilder(
           builder: (context, setState) {
+            
             // Local search function for the dialog
             Future<void> localSearchUsers(String query) async {
               if (query.isEmpty) {
@@ -1127,25 +999,15 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                 if (response['success'] == true) {
                   final usersData = response['data']['users'] as List<dynamic>;
                   setState(() {
-                    localSearchResults = usersData
-                        .map(
-                          (data) => {
-                            'id': data['_id'] ?? data['id'],
-                            'displayName':
-                                data['displayName'] ??
-                                data['displayname'] ??
-                                'Unknown',
-                            'contactNo':
-                                data['phone'] ?? data['contactNo'] ?? 'N/A',
-                          },
-                        )
-                        .toList();
+                    localSearchResults = usersData.map((data) => {
+                      'id': data['_id'] ?? data['id'],
+                      'displayName': data['displayName'] ?? data['displayname'] ?? 'Unknown',
+                      'contactNo': data['phone'] ?? data['contactNo'] ?? 'N/A'
+                    }).toList();
                     localIsSearching = false;
                   });
                 } else {
-                  throw Exception(
-                    response['message'] ?? 'Failed to search users',
-                  );
+                  throw Exception(response['message'] ?? 'Failed to search users');
                 }
               } catch (e) {
                 print('Error searching users: $e');
@@ -1175,7 +1037,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                       ),
                     ),
                     SizedBox(height: 16),
-
+                    
                     // Search field
                     Row(
                       children: [
@@ -1186,20 +1048,11 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                             decoration: InputDecoration(
                               labelText: 'Search users by name',
                               labelStyle: TextStyle(color: Colors.grey),
-                              floatingLabelStyle: TextStyle(
-                                color: Colors.yellow,
-                              ),
-                              prefixIcon: Icon(
-                                Icons.search,
-                                color: Colors.yellow,
-                              ),
+                              floatingLabelStyle: TextStyle(color: Colors.yellow),
+                              prefixIcon: Icon(Icons.search, color: Colors.yellow),
                               suffixIcon: localSearchQuery.isNotEmpty
                                   ? IconButton(
-                                      icon: Icon(
-                                        Icons.cancel,
-                                        color: Colors.red,
-                                        size: 20,
-                                      ),
+                                      icon: Icon(Icons.cancel, color: Colors.red, size: 20),
                                       onPressed: () {
                                         searchController.clear();
                                         setState(() {
@@ -1209,22 +1062,14 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                                       },
                                     )
                                   : null,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: Colors.grey.shade600,
-                                  width: 1,
-                                ),
+                                borderSide: BorderSide(color: Colors.grey.shade600, width: 1),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: Colors.yellow,
-                                  width: 1,
-                                ),
+                                borderSide: BorderSide(color: Colors.yellow, width: 1),
                               ),
                               filled: true,
                               fillColor: Colors.transparent,
@@ -1240,7 +1085,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                       ],
                     ),
                     SizedBox(height: 16),
-
+                    
                     // Search results
                     Expanded(
                       child: localIsSearching
@@ -1250,51 +1095,47 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                               ),
                             )
                           : localSearchResults.isEmpty
-                          ? Center(
-                              child: Text(
-                                localSearchQuery.isEmpty
-                                    ? 'Start typing to search users'
-                                    : 'No users found',
-                                style: TextStyle(color: Colors.grey),
-                              ),
-                            )
-                          : ListView.builder(
-                              itemCount: localSearchResults.length,
-                              itemBuilder: (context, index) {
-                                final user = localSearchResults[index];
-                                return ListTile(
-                                  leading: CircleAvatar(
-                                    backgroundColor: Colors.yellow[600],
-                                    child: Text(
-                                      user['displayName'].isNotEmpty
-                                          ? user['displayName'][0].toUpperCase()
-                                          : 'U',
-                                      style: TextStyle(
-                                        color: Colors.black,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  title: Text(
-                                    user['displayName'],
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                  subtitle: Text(
-                                    user['contactNo'],
+                              ? Center(
+                                  child: Text(
+                                    localSearchQuery.isEmpty 
+                                        ? 'Start typing to search users'
+                                        : 'No users found',
                                     style: TextStyle(color: Colors.grey),
                                   ),
-                                  trailing:
-                                      currentSelection == user['displayName']
-                                      ? Icon(Icons.check, color: Colors.yellow)
-                                      : null,
-                                  onTap: () {
-                                    Navigator.pop(context, user);
+                                )
+                              : ListView.builder(
+                                  itemCount: localSearchResults.length,
+                                  itemBuilder: (context, index) {
+                                    final user = localSearchResults[index];
+                                    return ListTile(
+                                      leading: CircleAvatar(
+                                        backgroundColor: Colors.yellow[600],
+                                        child: Text(
+                                          user['displayName'].isNotEmpty 
+                                              ? user['displayName'][0].toUpperCase()
+                                              : 'U',
+                                          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                      title: Text(
+                                        user['displayName'],
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                      subtitle: Text(
+                                        user['contactNo'],
+                                        style: TextStyle(color: Colors.grey),
+                                      ),
+                                      trailing: currentSelection == user['displayName']
+                                          ? Icon(Icons.check, color: Colors.yellow)
+                                          : null,
+                                      onTap: () {
+                                        Navigator.pop(context, user);
+                                      },
+                                    );
                                   },
-                                );
-                              },
-                            ),
+                                ),
                     ),
-
+                    
                     SizedBox(height: 16),
                     Row(
                       children: [
@@ -1304,10 +1145,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                               backgroundColor: Colors.grey.shade800,
                             ),
                             onPressed: () => Navigator.pop(context),
-                            child: Text(
-                              'Cancel',
-                              style: TextStyle(color: Colors.white),
-                            ),
+                            child: Text('Cancel', style: TextStyle(color: Colors.white)),
                           ),
                         ),
                         SizedBox(width: 12),
@@ -1317,10 +1155,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                               backgroundColor: Colors.yellow[600],
                             ),
                             onPressed: () => Navigator.pop(context, null),
-                            child: Text(
-                              'Clear',
-                              style: TextStyle(color: Colors.black),
-                            ),
+                            child: Text('Clear', style: TextStyle(color: Colors.black)),
                           ),
                         ),
                       ],
@@ -1335,306 +1170,77 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
     );
   }
 
-  Future<void> _bookTrip() async {
-    // Prevent multiple bookings
-    if (_isBooking || _bookedTrip != null) {
-      return;
-    }
-
+  void _validateAndProceed() {
     // Validate schedule
     if (_startDate == null) {
-      _showMessage('Please select start date', false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please select start date')),
+      );
       return;
     }
 
     if (_startTime == null) {
-      _showMessage('Please select start time', false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please select start time')),
+      );
       return;
     }
 
     // Validate passengers based on type
     if (_passengerType == 'other_individual' && _selectedIndividual == null) {
-      _showMessage('Please select a passenger', false);
-      return;
-    }
-
-    if (_passengerType == 'group' &&
-        _selectedGroupUsers.isEmpty &&
-        !_includeMeInGroup) {
-      _showMessage('Please add at least one passenger to the group', false);
-      return;
-    }
-
-    try {
-      setState(() => _isBooking = true);
-
-      final locationData = Map<String, dynamic>.from(widget.locationData);
-
-      // Prepare data for next screen
-      final scheduleData = {
-        'startDate': _startDate,
-        'validTillDate': _validTillDate,
-        'startTime': _startTime,
-        'repetition': _repetition,
-        'includeWeekends': _includeWeekends,
-        'repeatAfterDays': _repeatAfterDays,
-      };
-
-      final passengerData = {
-        'passengerType': _passengerType,
-        'selectedIndividual': _selectedIndividual,
-        'selectedGroupUsers': _selectedGroupUsers,
-        'selectedOthers': _selectedOthers,
-        'includeMeInGroup': _includeMeInGroup,
-        'currentUser': _currentUser,
-      };
-
-      final tripRequest = TripRequest(
-        locationData: locationData,
-        scheduleData: scheduleData,
-        passengerData: passengerData,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please select a passenger')),
       );
-
-      final response = await ApiService.bookTripAsDraft(tripRequest);
-
-      print("Booking response received: ${response.success}");
-
-      if (response.success) {
-        setState(() {
-          _bookedTrip = response.trip;
-        });
-
-        // Show success message and navigate back after delay
-        _showMessage(
-          'Trip booked successfully!',
-          true,
-          onSuccess: () {
-            // Navigate back to previous screen (create trip screen)
-            Navigator.pop(context, true); // Pass success flag back
-          },
-        );
-      } else {
-        _showMessage(response.message ?? 'Failed to book trip', false);
-      }
-    } catch (e) {
-      print('Error booking trip: $e');
-      _showMessage('Failed to book trip: ${e.toString()}', false);
-    } finally {
-      setState(() => _isBooking = false);
-    }
-  }
-
-  // Improved message function with colored overlay
-  void _showMessage(String message, bool isSuccess, {VoidCallback? onSuccess}) {
-    // Clear any existing dialogs first
-    if (Navigator.canPop(context)) {
-      Navigator.of(context).pop();
+      return;
     }
 
-    showDialog(
-      context: context,
-      barrierDismissible: false, // Prevent closing by tapping outside
-      builder: (context) {
-        // Auto-close after delay for success messages
-        if (isSuccess) {
-          Timer(const Duration(seconds: 2), () {
-            //Navigator.of(context).pop();
-            Navigator.of(context).popUntil((route) => route.isFirst);
-            if (onSuccess != null) onSuccess();
-          });
-        }
+    if (_passengerType == 'group' && _selectedGroupUsers.isEmpty && !_includeMeInGroup) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please add at least one passenger to the group')),
+      );
+      return;
+    }
 
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: EdgeInsets.all(20),
-          child: Container(
-            width: double.infinity,
-            padding: EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isSuccess
-                    ? [
-                        Color(0xFFE8F5E9), // Very light green
-                        Color(0xFFC8E6C9), // Light green
-                        Colors.white,
-                      ]
-                    : [
-                        Color(0xFFFFEBEE), // Very light red
-                        Color(0xFFFFCDD2), // Light red
-                        Colors.white,
-                      ],
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: isSuccess
-                      ? Colors.green.withOpacity(0.3)
-                      : Colors.red.withOpacity(0.3),
-                  blurRadius: 20,
-                  spreadRadius: 5,
-                ),
-              ],
-              border: Border.all(
-                color: isSuccess ? Colors.green.shade300 : Colors.red.shade300,
-                width: 2,
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Icon with colored background
-                Container(
-                  padding: EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isSuccess
-                        ? Colors.green.shade50
-                        : Colors.red.shade50,
-                    border: Border.all(
-                      color: isSuccess
-                          ? Colors.green.shade200
-                          : Colors.red.shade200,
-                      width: 3,
-                    ),
-                  ),
-                  child: Icon(
-                    isSuccess ? Icons.check_circle : Icons.error,
-                    size: 48,
-                    color: isSuccess
-                        ? Colors.green.shade600
-                        : Colors.red.shade600,
-                  ),
-                ),
-                SizedBox(height: 20),
+    // Prepare data for next screen
+    final scheduleData = {
+      'startDate': _startDate,
+      'validTillDate': _validTillDate,
+      'startTime': _startTime,
+      'repetition': _repetition,
+      'includeWeekends': _includeWeekends,
+      'repeatAfterDays': _repeatAfterDays,
+    };
 
-                // Title
-                Text(
-                  isSuccess ? 'Success!' : 'Error',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: isSuccess
-                        ? Colors.green.shade800
-                        : Colors.red.shade800,
-                  ),
-                ),
-                SizedBox(height: 12),
+    final passengerData = {
+      'passengerType': _passengerType,
+      'selectedIndividual': _selectedIndividual,
+      'selectedGroupUsers': _selectedGroupUsers,
+      'selectedOthers': _selectedOthers,
+      'includeMeInGroup': _includeMeInGroup,
+      'currentUser': _currentUser,
+    };
 
-                // Message
-                Text(
-                  message,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.black87,
-                    height: 1.4,
-                  ),
-                ),
-                SizedBox(height: 24),
+    // Combine all data
+    final tripData = {
+      'locationData': widget.locationData,
+      'scheduleData': scheduleData,
+      'passengerData': passengerData,
+    };
 
-                // Button for error messages
-                if (!isSuccess)
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red.shade600,
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 3,
-                      ),
-                      child: Text(
-                        'OK',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
+    print('Proceeding with trip data:');
+    print('Location: ${widget.locationData}');
+    print('Schedule: $scheduleData');
+    print('Passengers: $passengerData');
 
-                // Loading indicator for success (auto-closing)
-                if (isSuccess)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Redirecting...',
-                        style: TextStyle(
-                          color: Colors.green.shade700,
-                          fontSize: 14,
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.green.shade700,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  // Alternative: Simple colored snackbar version
-  void _showSimpleMessage(String message, bool isSuccess) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Container(
-          padding: EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: isSuccess ? Colors.green.shade800 : Colors.red.shade800,
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: [
-              BoxShadow(
-                color: isSuccess ? Colors.green.shade300 : Colors.red.shade300,
-                blurRadius: 10,
-                spreadRadius: 2,
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Icon(
-                isSuccess ? Icons.check_circle : Icons.error,
-                color: Colors.white,
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  message,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
+    // Navigate to next screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => VehicleSelectionScreen(
+          tripData: tripData,
         ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: isSuccess ? 3 : 4),
       ),
     );
   }
+
 }
