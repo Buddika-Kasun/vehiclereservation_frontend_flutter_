@@ -1,5 +1,4 @@
-// lib/main.dart - FULL FIXED
-
+// lib/main.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -7,7 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/config/api_config.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/config/websocket_config.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/shared/screens/splash_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/welcome/welcome_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/login_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
@@ -22,7 +21,7 @@ import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/n
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. Load environment variables
+  // Load environment variables
   try {
     await dotenv.load(fileName: "assets/.env");
     if (kDebugMode) {
@@ -34,10 +33,10 @@ void main() async {
     if (kDebugMode) print('❌ Env load error: $e\n$st');
   }
 
-  // 2. Request permissions (location, storage, internet)
+  // Request permissions
   await _requestPermissions();
 
-  // 3. Initialize configs safely
+  // Initialize configs safely
   try {
     await ApiConfig.init();
   } catch (e, st) {
@@ -50,21 +49,21 @@ void main() async {
     if (kDebugMode) print('❌ WebSocket Config init error: $e\n$st');
   }
 
-  // 4. Initialize storage
+  // Initialize storage
   try {
     await StorageService.init();
   } catch (e, st) {
     if (kDebugMode) print('❌ StorageService init error: $e\n$st');
   }
 
-  // 5. Initialize secure storage
+  // Initialize secure storage
   try {
     await SecureStorageService().init();
   } catch (e, st) {
     if (kDebugMode) print('❌ SecureStorage init error: $e\n$st');
   }
 
-  // 6. Initialize Firebase
+  // Initialize Firebase notifications
   try {
     await FirebaseNotificationService().initialize();
   } catch (e, st) {
@@ -223,43 +222,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ),
       ),
       debugShowCheckedModeBanner: false,
-      home: FutureBuilder<Map<String, dynamic>>(
-        future: _checkAndInitializeSession(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const SplashScreen();
-          }
-
-          if (snapshot.hasError) {
-            if (kDebugMode) print('Session check error: ${snapshot.error}');
-            return const LoginScreen();
-          }
-
-          if (snapshot.hasData) {
-            final data = snapshot.data!;
-            final hasSession = data['hasSession'] as bool;
-
-            if (hasSession) {
-              final user = data['user'] as Map<String, dynamic>?;
-
-              if (user == null) return const LoginScreen();
-
-              final token = data['token'] as String?;
-              if (token == null) return const LoginScreen();
-
-              final userId = user['id'].toString();
-
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                _initializeWebSocketForUser(token, userId);
-              });
-            }
-
-            return hasSession ? HomeScreen() : const LoginScreen();
-          }
-
-          return const LoginScreen();
-        },
-      ),
+      //home: const WelcomeScreen(),
       builder: (context, child) {
         return GestureDetector(
           onTap: () {
@@ -273,36 +236,5 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         );
       },
     );
-  }
-
-  Future<Map<String, dynamic>> _checkAndInitializeSession() async {
-    try {
-      final hasSession = await StorageService.hasValidSession;
-
-      if (hasSession) {
-        final user = StorageService.userData;
-        final token = await SecureStorageService().accessToken;
-
-        if (token == null || user == null) {
-          if (kDebugMode)
-            print('⚠️ Session exists but token or user data is missing');
-          return {'hasSession': false};
-        }
-
-        if (kDebugMode) {
-          print('🔑 Session check successful');
-          print('User ID: ${user.id}');
-          print('Username: ${user.username}');
-        }
-
-        return {'hasSession': true, 'user': user.toJson(), 'token': token};
-      }
-
-      if (kDebugMode) print('🔑 No valid session found');
-      return {'hasSession': false};
-    } catch (e, st) {
-      if (kDebugMode) print('❌ Session check error: $e\n$st');
-      return {'hasSession': false};
-    }
   }
 }
