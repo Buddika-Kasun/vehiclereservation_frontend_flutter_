@@ -75,6 +75,12 @@ void main() async {
 
 // Permissions helper
 Future<void> _requestPermissions() async {
+
+  if (kIsWeb) {
+    debugPrint('Web platform detected. Skipping permissions.');
+    return;
+  }
+  
   final permissions = [
     Permission.location,
     Permission.locationWhenInUse,
