@@ -445,7 +445,9 @@ class EmployeeTopPanel extends StatelessWidget {
       child: Column(
         children: [
           Text(
-            'Employee Dashboard',
+            (user?.role == UserRole.supervisor)
+            ? 'Supervisor Dashboard'
+            : 'Employee Dashboard',
             style: TextStyle(
               color: Colors.white,
               fontSize: 20,

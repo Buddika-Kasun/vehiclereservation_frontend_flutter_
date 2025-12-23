@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/utils/optional_permission_manager.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/dashboard_stats.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/role_widgets/admin_dashboard.dart';
@@ -282,14 +283,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onNearbyVehicles: () {
               print('Nearby Vehicles clicked');
             },
-            onGoOnline: () {
-              print('Go Online clicked');
+            // When driver goes online/offline
+            onGoOnline: () async {
+                final hasBackgroundLocation =
+                    await OptionalPermissionManager.requestBackgroundLocationPermission(
+                      context: context,
+                      rationaleMessage:
+                          'Background location is required to track your trips even when the app is in background.',
+                    );
+
+                if (hasBackgroundLocation) {
+                  print('Go Online clicked - Background location enabled');
+                  // Start location tracking
+                } else {
+                  // Fallback to foreground location
+                  print('Go Online clicked - Using foreground location only');
+                }
             },
             onGoOffline: () {
               print('Go Offline clicked');
             },
-            onQuickScan: () {
-              print('Quick Scan clicked');
+            // In your DashboardTopPanel onQuickScan callback
+            onQuickScan: () async {
+              // Check camera permission before scanning
+              final hasCameraPermission =
+                  await OptionalPermissionManager.requestCameraPermission(
+                    context: context,
+                    rationaleMessage:
+                        'We need camera access to scan QR codes for vehicle verification.',
+                  );
+
+              if (hasCameraPermission) {
+                print('Quick Scan clicked - Permission granted');
+                // Proceed with QR scanning
+                // Navigator.push(context, MaterialPageRoute(builder: (_) => QrScanScreen()));
+              } else {
+                // Show message that feature is unavailable
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Camera permission is required for QR scanning',
+                    ),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
             },
           ),
           // Role-based dashboard content

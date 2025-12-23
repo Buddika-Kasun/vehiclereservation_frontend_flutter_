@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/config/api_config.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/config/websocket_config.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/connectivity_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/server_health_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/welcome/welcome_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/login_screen.dart';
@@ -17,6 +19,7 @@ import 'package:permission_handler/permission_handler.dart';
 // WebSocket
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/websocket_manager.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/notification_handler.dart';
+import 'package:vehiclereservation_frontend_flutter_/shared/widgets/connection_overlay.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -70,6 +73,22 @@ void main() async {
     if (kDebugMode) print('❌ Firebase init error: $e\n$st');
   }
 
+  // Initialize connectivity service
+  try {
+    await ConnectivityService().initialize();
+    if (kDebugMode) print('✅ ConnectivityService initialized');
+  } catch (e, st) {
+    if (kDebugMode) print('❌ ConnectivityService init error: $e\n$st');
+  }
+
+  // Initialize server health service
+  try {
+    ServerHealthService().startHealthMonitoring();
+    if (kDebugMode) print('✅ ServerHealthService initialized');
+  } catch (e, st) {
+    if (kDebugMode) print('❌ ServerHealthService init error: $e\n$st');
+  }
+
   runApp(const MyApp());
 }
 
@@ -82,9 +101,26 @@ Future<void> _requestPermissions() async {
   }
   
   final permissions = [
-    Permission.location,
+    //Permission.location,
     Permission.locationWhenInUse,
+    //Permission.locationAlways, // If you need background location
+
     Permission.notification,
+
+    // Camera/Scan permissions (for quick scan, QR code scanning)
+    //Permission.camera,
+
+    // Storage permissions (for file uploads, profile pictures)
+    //Permission.photos, // For iOS
+    //Permission.mediaLibrary, // For iOS
+    //Permission.storage, // For Android
+    //Permission.accessMediaLocation, // For Android 11+
+
+    // Network permissions (implicitly granted but good to check)
+    //Permission.accessNotificationPolicy,
+
+    // For making phone calls (if you have call driver feature)
+    Permission.phone,
   ];
 
   for (var permission in permissions) {
@@ -120,6 +156,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _cleanupSubscriptions();
     _cleanupWebSocket();
+    // Dispose connectivity services
+    ConnectivityService().dispose();
+    ServerHealthService().dispose();
     super.dispose();
   }
 
@@ -230,15 +269,17 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       debugShowCheckedModeBanner: false,
       home: const WelcomeScreen(),
       builder: (context, child) {
-        return GestureDetector(
-          onTap: () {
-            FocusScopeNode currentFocus = FocusScope.of(context);
-            if (!currentFocus.hasPrimaryFocus &&
-                currentFocus.focusedChild != null) {
-              currentFocus.focusedChild?.unfocus();
-            }
-          },
-          child: child,
+        return ConnectionOverlay(
+          child: GestureDetector(
+            onTap: () {
+              FocusScopeNode currentFocus = FocusScope.of(context);
+              if (!currentFocus.hasPrimaryFocus &&
+                  currentFocus.focusedChild != null) {
+                currentFocus.focusedChild?.unfocus();
+              }
+            },
+            child: child,
+          ),
         );
       },
     );

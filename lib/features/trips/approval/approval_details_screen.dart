@@ -1075,14 +1075,20 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _buildMetricCard(
-                Icons.edit_road,
-                '${_tripDetails?.details.route.metrics.distance ?? 0} km',
-                '${_tripDetails?.details.route.metrics.estimatedDuration ?? 0} min',
+                //Icons.route,
+                Icons.swap_vert,
+                '${(double.parse(_tripDetails!.details.route.metrics.distance) * 2).toStringAsFixed(1)} km',
+                _formatDurationToHoursMinutes(
+                  double.parse(
+                        _tripDetails!.details.route.metrics.estimatedDuration,
+                      ) *
+                      2,
+                ),
               ),
               _buildMetricCard(
                 Icons.calendar_month,
-                _tripDetails?.startDate ?? 'N/A',
-                _tripDetails != null && _tripDetails!.startTime.isNotEmpty
+                _tripDetails != null ? '${_tripDetails!.startDate} ' : 'N/A',
+                _tripDetails != null
                     ? DateFormat('hh:mm a').format(
                         DateFormat('HH:mm').parse(_tripDetails!.startTime),
                       )
@@ -1100,13 +1106,72 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
                 '${_tripDetails?.passengerCount ?? 0}',
               ),
               _buildMetricCard(
-                Icons.directions_car,
-                _tripDetails?.vehicle.regNo ?? 'N/A',
-                _tripDetails?.vehicle.model ?? 'N/A',
+                Icons.sledding,
+                'Resting Time',
+                _formatDurationToHoursMinutes(
+                  _tripDetails?.details.route.metrics.estimatedRestingMinutes !=
+                          null
+                      ? double.parse(
+                          _tripDetails!
+                              .details
+                              .route
+                              .metrics
+                              .estimatedRestingMinutes!,
+                        )
+                      : 0.0,
+                ),
               ),
             ],
           ),
           SizedBox(height: 16),
+          /*
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              Expanded(
+                child: Container(
+                  //width: double.infinity,
+                  margin: EdgeInsets.symmetric(horizontal: 0),
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[800],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.directions_car,
+                        color: Color(0xFFF9C80E),
+                        size: 24,
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        _tripDetails?.vehicle.regNo != null &&
+                                _tripDetails!.vehicle.regNo!.isNotEmpty
+                            ? '${_tripDetails!.vehicle.regNo}'
+                            : 'Vehicle',
+                        style: TextStyle(color: Colors.grey[300], fontSize: 12),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        _tripDetails?.vehicle.model != null &&
+                                _tripDetails!.vehicle.model!.isNotEmpty
+                            ? '${_tripDetails!.vehicle.model}'
+                            : 'Assigning...',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),*/
+
           _buildInfoRow(
             'Requested At',
             DateFormat(
@@ -1234,6 +1299,18 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
         ],
       ),
     );
+  }
+
+  String _formatDurationToHoursMinutes(double minutes) {
+    int totalMinutes = minutes.round();
+    int hours = totalMinutes ~/ 60;
+    int remainingMinutes = totalMinutes % 60;
+
+    if (hours > 0) {
+      return '${hours}h ${remainingMinutes}min';
+    } else {
+      return '${remainingMinutes}min';
+    }
   }
 
   Widget _buildInfoRow(String label, String value) {
@@ -2191,6 +2268,7 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
       ],
     );
   }
+  
   /*
   Widget _buildScheduleSection() {
     // Only show if it's a scheduled trip

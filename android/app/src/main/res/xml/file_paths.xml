@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- External storage -->
+    <external-path name="external_storage_root" path="." />
+    <external-path name="external_files" path="." />
+    <external-path name="downloads" path="Download" />
+    <external-path name="pictures" path="Pictures" />
+    <external-path name="dcim" path="DCIM" />
+    <external-path name="movies" path="Movies" />
+    <external-path name="music" path="Music" />
+    
+    <!-- App-specific directories -->
+    <external-files-path name="external_app_files" path="." />
+    <external-cache-path name="external_app_cache" path="." />
+    <files-path name="internal_app_files" path="." />
+    <cache-path name="internal_app_cache" path="." />
+    
+    <!-- Root of external storage -->
+    <root-path name="root" path="." />
+</paths>

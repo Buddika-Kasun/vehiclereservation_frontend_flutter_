@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/utils/optional_permission_manager.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/vehicle_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
@@ -125,60 +126,157 @@ class _VehicleScreenState extends State<VehicleScreen> {
   Future<void> _downloadQRCode(String regNo, String? qrCodeBase64) async {
     if (qrCodeBase64 == null || qrCodeBase64.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No QR code available for download')),
+        SnackBar(
+          content: Text('No QR code available for download'),
+          backgroundColor: Colors.orange,
+        ),
       );
       return;
     }
 
     try {
+      // Show loading dialog
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => Center(
-          child: CircularProgressIndicator(),
+        builder: (context) => AlertDialog(
+          backgroundColor: Colors.white.withOpacity(0.9),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: Colors.blue, strokeWidth: 3),
+              SizedBox(height: 16),
+              Text(
+                'Preparing QR Code...',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
         ),
       );
 
-      var status = await Permission.storage.request();
-      if (!status.isGranted) {
+      // DIRECT PERMISSION REQUEST - No intermediate dialog
+      final hasPermission =
+          await OptionalPermissionManager.requestDownloadPermission(
+            context: context,
+            rationaleMessage:
+                'Storage access is required to save QR codes to your device gallery.',
+            isMedia: true,
+          );
+
+      if (!hasPermission) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Storage permission is required to download QR code')),
+          SnackBar(
+            content: Text('Permission denied. Cannot download QR code.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
+          ),
         );
         return;
       }
 
+      // Convert base64 to image bytes
       final bytes = _base64ToImage(qrCodeBase64);
-      
+
+      // Generate filename with timestamp
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final fileName = '${regNo}_qrcode_$timestamp.png';
+
+      // Save to gallery using ImageGallerySaverPlus
       final result = await ImageGallerySaverPlus.saveImage(
         bytes,
-        name: '${regNo}_qrcode',
+        name: fileName,
         quality: 100,
       );
 
       Navigator.pop(context);
 
       if (result['isSuccess'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('QR code saved to gallery successfully!'),
-            backgroundColor: Colors.green,
-          ),
+        // Success dialog
+        _showSuccessDialog(
+          title: 'QR Code Saved!',
+          message: 'QR code has been saved to your device gallery.',
+          fileName: fileName,
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save QR code to gallery')),
+          SnackBar(
+            content: Text('Failed to save QR code to gallery'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
         );
       }
-      
     } catch (e) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to download QR code: $e')),
-      );
+      if (context.mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to download QR code: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
-
+  // Helper method to show success dialog
+  void _showSuccessDialog({
+    required String title,
+    required String message,
+    required String fileName,
+  }) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green),
+            SizedBox(width: 10),
+            Text(title),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(message),
+            SizedBox(height: 10),
+            Text(
+              'File: $fileName',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+            ),
+            SizedBox(height: 15),
+            Text(
+              'You can find it in your device gallery.',
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('OK'),
+          ),
+          /*
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Optional: Open gallery app
+              // openGalleryApp();
+            },
+            child: Text('View in Gallery'),
+          ),
+          */
+        ],
+      ),
+    );
+  }
+  
   IconData _getVehicleIcon(String? vehicleType) {
     if (vehicleType == null) return Icons.directions_car;
     switch (vehicleType.toLowerCase()) {
@@ -202,7 +300,9 @@ class _VehicleScreenState extends State<VehicleScreen> {
         title: Padding(
           padding: EdgeInsets.fromLTRB(6, 0, 6, 0), 
           child: Text(
-            'My Vehicles',
+            (widget.user.role == UserRole.sysadmin)
+                ? 'All Vehicles'
+                : 'My Vehicles',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -228,7 +328,10 @@ class _VehicleScreenState extends State<VehicleScreen> {
         slivers: [
           // Primary Vehicles Section
           if (_primaryVehicles.isNotEmpty) ...[
-            _buildSectionHeader('Primary Assigned Vehicles', _primaryVehicles.length),
+            _buildSectionHeader(
+              (widget.user.role == UserRole.sysadmin) 
+              ? 'Vehicles'
+              : 'Primary Assigned Vehicles', _primaryVehicles.length),
             _buildVehiclesList(_primaryVehicles, 'primary'),
             // Add gap between sections
             SliverToBoxAdapter(

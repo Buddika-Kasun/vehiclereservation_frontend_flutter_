@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/assigned/ride_details_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/ride/trip_details_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/driver_trip_response.dart';
@@ -195,7 +196,7 @@ class _AssignedRidesScreenState extends State<AssignedRidesScreen> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => TripDetailsScreen(tripId: trip.id),
+        builder: (context) => RideDetailsScreen(tripId: trip.id),
       ),
     );
 

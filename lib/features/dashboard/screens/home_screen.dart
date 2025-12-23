@@ -331,6 +331,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _navigateToDashboard();
         break;
       case 'My Vehicles':
+      case 'All Vehicles':
         _navigateToVehicles();
         break;
       case 'My Rides':

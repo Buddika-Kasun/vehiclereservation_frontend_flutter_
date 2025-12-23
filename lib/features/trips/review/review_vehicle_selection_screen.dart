@@ -492,6 +492,28 @@ class _ReviewVehicleSelectionScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Recommendation badge
+              if (availableVehicle.isRecommended)
+                Container(
+                  margin: EdgeInsets.only(bottom: 8),
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.star, color: Colors.green, size: 12),
+                      SizedBox(width: 4),
+                      Text(
+                        'Recommended',
+                        style: TextStyle(color: Colors.green, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+
               // Header row with model and selection indicator
               Row(
                 children: [
@@ -527,6 +549,7 @@ class _ReviewVehicleSelectionScreenState
                     '${availableSeats > 0 ? availableSeats : 0} seats available',
               ),
 
+              /*
               _buildDetailRow(
                 icon: Icons.location_on,
                 text:
@@ -538,6 +561,7 @@ class _ReviewVehicleSelectionScreenState
                 text:
                     '${availableVehicle.estimatedArrivalTime.toStringAsFixed(0)} min ETA',
               ),
+              */
 
               // Driver info if available
               if (vehicle.assignedDriverPrimaryName != null)
@@ -565,28 +589,6 @@ class _ReviewVehicleSelectionScreenState
                           'Schedule conflict',
                           style: TextStyle(color: Colors.orange, fontSize: 12),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              // Recommendation badge
-              if (availableVehicle.isRecommended)
-                Container(
-                  margin: EdgeInsets.only(top: 8),
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.star, color: Colors.green, size: 12),
-                      SizedBox(width: 4),
-                      Text(
-                        'Recommended',
-                        style: TextStyle(color: Colors.green, fontSize: 12),
                       ),
                     ],
                   ),
