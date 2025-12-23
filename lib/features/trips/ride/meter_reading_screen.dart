@@ -892,60 +892,37 @@ class _RidesApprovalScreenState extends State<RidesApprovalScreen> {
     return null;
   }
 
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(24, 0, 24, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Meter Reading',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: Row(
-          children: [
-            Text(
-              'Meter Reading',
-              style: TextStyle(color: Colors.white, fontSize: 20),
-            ),
-            SizedBox(width: 8),
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _isConnected ? Colors.green : Colors.red,
-                boxShadow: [
-                  BoxShadow(
-                    color: (_isConnected ? Colors.green : Colors.red)
-                        .withOpacity(0.3),
-                    blurRadius: 4,
-                    spreadRadius: 1,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          if (_isInitializing)
-            Padding(
-              padding: EdgeInsets.only(right: 16),
-              child: SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.yellow[600],
-                ),
-              ),
-            ),
-          IconButton(
-            onPressed: _refreshTrips,
-            icon: Icon(Icons.refresh, color: Colors.white),
-          ),
-        ],
-      ),
       body: Stack(
         children: [
           Column(
             children: [
+              // Header
+              _buildHeader(),
+              
               // Time filter buttons
               _buildTimeFilterRow(),
 

@@ -48,6 +48,7 @@ class UserCreation {
         //case 'sysadmin': return UserRole.sysadmin;
         case 'security': return UserRole.security;
         case 'driver': return UserRole.driver;
+        case 'supervisor': return UserRole.supervisor;
         default: return UserRole.employee;
       }
     } else if (role is Map<String, dynamic>) {

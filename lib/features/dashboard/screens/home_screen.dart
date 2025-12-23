@@ -17,7 +17,7 @@ import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/login
 
 // Import all the screens
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/dashboard_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/ride/rides_approval_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/ride/meter_reading_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/creations/user_creations_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/approval/approvals_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/company_management_screen.dart';

@@ -81,104 +81,114 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final double statusBarHeight = MediaQuery.of(context).padding.top;
+    final double appBarHeight = 60.0; // Base height for app bar content
+
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      body: SafeArea(
         child: Column(
           children: [
-            _buildHeader(),
+            // Fixed Header
+            Container(
+              height: appBarHeight,
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.black,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 10,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      padding: EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Color(0xFFF9C80E),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.arrow_back_ios_rounded,
+                        color: Colors.black,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 16),
+                  Text(
+                    "Schedule & Passengers",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Main Content
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    // Schedule Section
-                    _buildScheduleSection(),
-                    SizedBox(height: 16),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      // Schedule Section
+                      _buildScheduleSection(),
+                      SizedBox(height: 16),
 
-                    // Passengers Section
-                    _buildPassengersSection(),
+                      // Passengers Section
+                      _buildPassengersSection(),
 
-                    // Selected Users Display
-                    if (_shouldShowSelectedUsers())
-                      _buildSelectedUsersSection(),
-                  ],
+                      // Selected Users Display
+                      if (_shouldShowSelectedUsers())
+                        _buildSelectedUsersSection(),
+                    ],
+                  ),
                 ),
               ),
             ),
 
             // Next Button
             Container(
-              width: double.infinity,
-              height: 50,
-              margin: EdgeInsets.only(top: 16),
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.yellow[600],
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.black,
+                border: Border(top: BorderSide(color: Colors.grey.shade800)),
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.yellow[600],
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                ),
-                onPressed: (_isBooking || _bookedTrip != null)
-                    ? null
-                    : _bookTrip,
-                child: Text(
-                  'Confirm',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                  onPressed: (_isBooking || _bookedTrip != null)
+                      ? null
+                      : _bookTrip,
+                  child: Text(
+                    'Confirm',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Container(
-      height: 80,
-      padding: EdgeInsets.symmetric(horizontal: 0),
-      decoration: BoxDecoration(
-        color: Colors.black,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 10,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              padding: EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Color(0xFFF9C80E),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                Icons.arrow_back_ios_rounded,
-                color: Colors.black,
-                size: 20,
-              ),
-            ),
-          ),
-          SizedBox(width: 16),
-          Text(
-            "Schedule & Passengers",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -196,230 +206,264 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
   }
 
   Widget _buildScheduleSection() {
-    return Card(
-      color: Colors.grey[900],
-      child: ExpansionTile(
-        initiallyExpanded: true,
-        title: Text(
-          'Schedule',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade700, width: 1),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          dividerColor: Colors.transparent, // Remove divider color
         ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-            child: Column(
-              children: [
-                // Start Date
-                _buildDateField(
-                  'Start Date',
-                  _startDate,
-                  (date) => setState(() => _startDate = date),
-                  isStartDate: true,
-                ),
-                SizedBox(height: 16),
-
-                // Valid Till Date
-                _buildDateField(
-                  'Valid Till Date',
-                  _validTillDate,
-                  (date) => setState(() => _validTillDate = date),
-                  isStartDate: false,
-                ),
-                SizedBox(height: 16),
-
-                // Start Time
-                _buildTimeField(
-                  'Start Time',
-                  _startTime,
-                  () => _selectTime(
-                    context,
-                    (time) => setState(() => _startTime = time),
+        child: ExpansionTile(
+          tilePadding: EdgeInsets.symmetric(horizontal: 16),
+          //contentPadding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          collapsedShape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          initiallyExpanded: true,
+          title: Text(
+            'Schedule',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+              child: Column(
+                children: [
+                  // Start Date
+                  _buildDateField(
+                    'Start Date',
+                    _startDate,
+                    (date) => setState(() => _startDate = date),
+                    isStartDate: true,
                   ),
-                  onClear: _startTime != null
-                      ? () => setState(() => _startTime = null)
-                      : null,
-                ),
-                SizedBox(height: 16),
+                  SizedBox(height: 16),
 
-                // Repetition Dropdown
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Repetition',
-                      style: TextStyle(color: Colors.grey, fontSize: 14),
+                  // Valid Till Date
+                  _buildDateField(
+                    'Valid Till Date',
+                    _validTillDate,
+                    (date) => setState(() => _validTillDate = date),
+                    isStartDate: false,
+                  ),
+                  SizedBox(height: 16),
+
+                  // Start Time
+                  _buildTimeField(
+                    'Start Time',
+                    _startTime,
+                    () => _selectTime(
+                      context,
+                      (time) => setState(() => _startTime = time),
+                    ),
+                    onClear: _startTime != null
+                        ? () => setState(() => _startTime = null)
+                        : null,
+                  ),
+                  SizedBox(height: 16),
+
+                  // Repetition Dropdown
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Repetition',
+                        style: TextStyle(color: Colors.grey, fontSize: 14),
+                      ),
+                      SizedBox(height: 4),
+                      DropdownButtonFormField<String>(
+                        dropdownColor: Colors.grey[800],
+                        style: TextStyle(color: Colors.yellow),
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                        ),
+                        value: _repetition,
+                        items: [
+                          DropdownMenuItem(
+                            value: 'once',
+                            child: Text(
+                              'Once',
+                              style: TextStyle(color: Colors.yellow),
+                            ),
+                          ),
+                          DropdownMenuItem(
+                            value: 'daily',
+                            child: Text(
+                              'Daily',
+                              style: TextStyle(color: Colors.yellow),
+                            ),
+                          ),
+                          DropdownMenuItem(
+                            value: 'weekly',
+                            child: Text(
+                              'Weekly',
+                              style: TextStyle(color: Colors.yellow),
+                            ),
+                          ),
+                          DropdownMenuItem(
+                            value: 'monthly',
+                            child: Text(
+                              'Monthly',
+                              style: TextStyle(color: Colors.yellow),
+                            ),
+                          ),
+                          DropdownMenuItem(
+                            value: 'custom',
+                            child: Text(
+                              'Custom',
+                              style: TextStyle(color: Colors.yellow),
+                            ),
+                          ),
+                        ],
+                        onChanged: (value) =>
+                            setState(() => _repetition = value!),
+                      ),
+                    ],
+                  ),
+
+                  // Custom Repetition Fields
+                  if (_repetition == 'custom') ...[
+                    SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Text(
+                          'Include weekends?',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                        Spacer(),
+                        Transform.scale(
+                          scale: 0.8,
+                          child: Switch(
+                            value: _includeWeekends,
+                            onChanged: (value) =>
+                                setState(() => _includeWeekends = value),
+                            activeColor: Colors.yellow[600],
+                          ),
+                        ),
+                      ],
                     ),
                     SizedBox(height: 4),
-                    DropdownButtonFormField<String>(
-                      dropdownColor: Colors.grey[800],
-                      style: TextStyle(color: Colors.yellow),
+                    TextField(
+                      style: TextStyle(color: Colors.yellow, fontSize: 14),
                       decoration: InputDecoration(
+                        labelText: 'Repeat after (days)',
+                        labelStyle: TextStyle(color: Colors.grey),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
                         contentPadding: EdgeInsets.symmetric(
                           horizontal: 12,
-                          vertical: 4,
+                          vertical: 2,
                         ),
                       ),
-                      value: _repetition,
-                      items: [
-                        DropdownMenuItem(
-                          value: 'once',
-                          child: Text(
-                            'Once',
-                            style: TextStyle(color: Colors.yellow),
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: 'daily',
-                          child: Text(
-                            'Daily',
-                            style: TextStyle(color: Colors.yellow),
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: 'weekly',
-                          child: Text(
-                            'Weekly',
-                            style: TextStyle(color: Colors.yellow),
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: 'monthly',
-                          child: Text(
-                            'Monthly',
-                            style: TextStyle(color: Colors.yellow),
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: 'custom',
-                          child: Text(
-                            'Custom',
-                            style: TextStyle(color: Colors.yellow),
-                          ),
-                        ),
-                      ],
-                      onChanged: (value) =>
-                          setState(() => _repetition = value!),
+                      keyboardType: TextInputType.number,
+                      onChanged: (value) => setState(
+                        () => _repeatAfterDays = int.tryParse(value) ?? 1,
+                      ),
                     ),
                   ],
-                ),
-
-                // Custom Repetition Fields
-                if (_repetition == 'custom') ...[
-                  SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Text(
-                        'Include weekends?',
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                      Spacer(),
-                      Transform.scale(
-                        scale:
-                            0.8, // Adjust this value (0.7 = 70%, 1.2 = 120%, etc.)
-                        child: Switch(
-                          value: _includeWeekends,
-                          onChanged: (value) =>
-                              setState(() => _includeWeekends = value),
-                          activeColor: Colors.yellow[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 4),
-                  TextField(
-                    style: TextStyle(color: Colors.yellow, fontSize: 14),
-                    decoration: InputDecoration(
-                      labelText: 'Repeat after (days)',
-                      labelStyle: TextStyle(color: Colors.grey),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 2,
-                      ),
-                    ),
-                    keyboardType: TextInputType.number,
-                    onChanged: (value) => setState(
-                      () => _repeatAfterDays = int.tryParse(value) ?? 1,
-                    ),
-                  ),
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildPassengersSection() {
-    return Card(
-      color: Colors.grey[900],
-      child: ExpansionTile(
-        title: Text(
-          'Select Passenger',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+    return Container(
+      margin: EdgeInsets.only(top: 16),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade700, width: 1),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          dividerColor: Colors.transparent, // Remove divider color
         ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                // Passenger Type Radio
-                Column(
-                  children: [
-                    RadioListTile<String>(
-                      title: Text('Own', style: TextStyle(color: Colors.white)),
-                      value: 'own',
-                      groupValue: _passengerType,
-                      onChanged: (value) => _handlePassengerTypeChange(value!),
-                      activeColor: Colors.yellow[600],
-                    ),
-                    RadioListTile<String>(
-                      title: Text(
-                        'Other Individual',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      value: 'other_individual',
-                      groupValue: _passengerType,
-                      onChanged: (value) => _handlePassengerTypeChange(value!),
-                      activeColor: Colors.yellow[600],
-                    ),
-                    RadioListTile<String>(
-                      title: Text(
-                        'Group',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      value: 'group',
-                      groupValue: _passengerType,
-                      onChanged: (value) => _handlePassengerTypeChange(value!),
-                      activeColor: Colors.yellow[600],
-                    ),
-                  ],
-                ),
-
-                // Other Individual Section
-                if (_passengerType == 'other_individual')
-                  _buildOtherIndividualSection(),
-
-                // Group Section
-                if (_passengerType == 'group') _buildGroupSection(),
-              ],
+        child: ExpansionTile(
+          tilePadding: EdgeInsets.symmetric(horizontal: 16),
+          //contentPadding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          collapsedShape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: Text(
+            'Select Passenger',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
             ),
           ),
-        ],
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  // Passenger Type Radio
+                  Column(
+                    children: [
+                      RadioListTile<String>(
+                        title: Text('Own', style: TextStyle(color: Colors.white)),
+                        value: 'own',
+                        groupValue: _passengerType,
+                        onChanged: (value) => _handlePassengerTypeChange(value!),
+                        activeColor: Colors.yellow[600],
+                      ),
+                      RadioListTile<String>(
+                        title: Text(
+                          'Other Individual',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        value: 'other_individual',
+                        groupValue: _passengerType,
+                        onChanged: (value) => _handlePassengerTypeChange(value!),
+                        activeColor: Colors.yellow[600],
+                      ),
+                      RadioListTile<String>(
+                        title: Text(
+                          'Group',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        value: 'group',
+                        groupValue: _passengerType,
+                        onChanged: (value) => _handlePassengerTypeChange(value!),
+                        activeColor: Colors.yellow[600],
+                      ),
+                    ],
+                  ),
+
+                  // Other Individual Section
+                  if (_passengerType == 'other_individual')
+                    _buildOtherIndividualSection(),
+
+                  // Group Section
+                  if (_passengerType == 'group') _buildGroupSection(),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -730,54 +774,57 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
         ? 1
         : 0;
 
-    return Card(
-      color: Colors.grey[900],
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionHeader(
-              'Selected Passengers',
-              _getTotalPassengerCount(),
+    return Container(
+      margin: EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade700, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader(
+            'Selected Passengers',
+            _getTotalPassengerCount(),
+          ),
+          SizedBox(height: 12),
+
+          // Own User Card
+          if (_passengerType == 'own' ||
+              (_passengerType == 'group' && _includeMeInGroup))
+            _buildUserCard(_currentUser, 'own'),
+
+          // Individual User Card
+          if (_passengerType == 'other_individual' &&
+              _selectedIndividual != null)
+            _buildUserCard(_selectedIndividual!, 'individual'),
+
+          // Company Users
+          if (_selectedGroupUsers.isNotEmpty) ...[
+            SizedBox(height: 8),
+            Text(
+              'Company Users ($companyUsersCount):',
+              style: TextStyle(color: Colors.grey),
             ),
-            SizedBox(height: 12),
-
-            // Own User Card
-            if (_passengerType == 'own' ||
-                (_passengerType == 'group' && _includeMeInGroup))
-              _buildUserCard(_currentUser, 'own'),
-
-            // Individual User Card
-            if (_passengerType == 'other_individual' &&
-                _selectedIndividual != null)
-              _buildUserCard(_selectedIndividual!, 'individual'),
-
-            // Company Users
-            if (_selectedGroupUsers.isNotEmpty) ...[
-              SizedBox(height: 8),
-              Text(
-                'Company Users ($companyUsersCount):',
-                style: TextStyle(color: Colors.grey),
-              ),
-              SizedBox(height: 8),
-              ..._selectedGroupUsers.map(
-                (user) => _buildUserCard(user, 'company'),
-              ),
-            ],
-
-            // Others
-            if (_selectedOthers.isNotEmpty) ...[
-              SizedBox(height: 16),
-              Text(
-                'Others ($othersCount):',
-                style: TextStyle(color: Colors.grey),
-              ),
-              SizedBox(height: 8),
-              ..._selectedOthers.map((user) => _buildUserCard(user, 'other')),
-            ],
+            SizedBox(height: 8),
+            ..._selectedGroupUsers.map(
+              (user) => _buildUserCard(user, 'company'),
+            ),
           ],
-        ),
+
+          // Others
+          if (_selectedOthers.isNotEmpty) ...[
+            SizedBox(height: 16),
+            Text(
+              'Others ($othersCount):',
+              style: TextStyle(color: Colors.grey),
+            ),
+            SizedBox(height: 8),
+            ..._selectedOthers.map((user) => _buildUserCard(user, 'other')),
+          ],
+        ],
       ),
     );
   }
@@ -1409,8 +1456,8 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
           'Trip booked successfully!',
           true,
           onSuccess: () {
-            // Navigate back to previous screen (create trip screen)
-            Navigator.pop(context, true); // Pass success flag back
+            //Navigator.pop(context);
+            Navigator.of(context).popUntil((route) => route.isFirst);
           },
         );
       } else {
@@ -1438,8 +1485,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
         // Auto-close after delay for success messages
         if (isSuccess) {
           Timer(const Duration(seconds: 2), () {
-            //Navigator.of(context).pop();
-            Navigator.of(context).popUntil((route) => route.isFirst);
+            Navigator.of(context).pop();
             if (onSuccess != null) onSuccess();
           });
         }

@@ -629,9 +629,17 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   }
 
   Widget _buildHeader() {
+    final double statusBarHeight = MediaQuery.of(context).padding.top;
+    final double appBarHeight = 60.0; // Base height for app bar content
+  
     return Container(
-      height: 80,
-      padding: EdgeInsets.symmetric(horizontal: 20),
+      height: statusBarHeight + appBarHeight,
+      padding: EdgeInsets.only(
+        top: statusBarHeight,
+        left: 16,
+        right: 16,
+        bottom: 0,
+      ),
       decoration: BoxDecoration(
         color: Colors.black,
         boxShadow: [

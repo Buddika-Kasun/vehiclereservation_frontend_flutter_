@@ -431,6 +431,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
     'hr',
     'security',
     'driver',
+    'supervisor',
   ];
 
   Future<void> _loadDepartments() async {

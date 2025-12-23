@@ -11,13 +11,17 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final double statusBarHeight = MediaQuery.of(context).padding.top;
+    final double appBarHeight = 80.0; // Base height for app bar content
+
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 204, 204, 204),
       body: Column(
         children: [
-          // Top Bar with Black Background - ORIGINAL DESIGN
+          // Top Bar with Black Background - FIXED VERSION
           Container(
-            height: 80,
+            // Dynamic height based on status bar + app bar content
+            height: statusBarHeight + appBarHeight,
             decoration: BoxDecoration(
               color: Colors.black,
               borderRadius: const BorderRadius.only(
@@ -32,85 +36,103 @@ class ProfileScreen extends StatelessWidget {
                 ),
               ],
             ),
-            child: Padding(
-              padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 10,
-                left: 16,
-                right: 16,
-                bottom: 10,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Back Button with YELLOW background
-                  Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.yellow[600],
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.black),
-                      onPressed: () => Navigator.pop(context),
-                      padding: const EdgeInsets.all(10),
-                      iconSize: 24,
-                    ),
-                  ),
+            child: Column(
+              children: [
+                // Status bar spacer
+                SizedBox(height: statusBarHeight),
 
-                  // Title in WHITE
-                  Text(
-                    'PROFILE',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 1.5,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black.withOpacity(0.5),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+                // Main app bar content
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
                     ),
-                  ),
-
-                  // Edit Button with YELLOW background
-                  Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.yellow[600],
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: IconButton(
-                      icon: const Icon(Icons.edit, color: Colors.black),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => EditProfileScreen(user: user),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Back Button with YELLOW background
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.yellow[600],
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.3),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
-                        );
-                      },
-                      padding: const EdgeInsets.all(10),
-                      iconSize: 24,
+                          child: IconButton(
+                            icon: const Icon(
+                              Icons.arrow_back,
+                              color: Colors.black,
+                            ),
+                            onPressed: () => Navigator.pop(context),
+                            padding: const EdgeInsets.all(10),
+                            iconSize: 24,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ),
+
+                        // Title in WHITE
+                        Expanded(
+                          child: Center(
+                            child: Text(
+                              'PROFILE',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                letterSpacing: 1.5,
+                                shadows: [
+                                  Shadow(
+                                    color: Colors.black.withOpacity(0.5),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        // Edit Button with YELLOW background
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.yellow[600],
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.3),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.black),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      EditProfileScreen(user: user),
+                                ),
+                              );
+                            },
+                            padding: const EdgeInsets.all(10),
+                            iconSize: 24,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
 
@@ -155,6 +177,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+  // All other methods remain the same...
   Widget _buildModernProfileCard() {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -877,4 +900,3 @@ class ProfileScreen extends StatelessWidget {
     return 'U';
   }
 }
-

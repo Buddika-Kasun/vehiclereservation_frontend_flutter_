@@ -757,9 +757,17 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
   }
 
   Widget _buildHeader() {
+    final double statusBarHeight = MediaQuery.of(context).padding.top;
+    final double appBarHeight = 60.0; // Base height for app bar content
+
     return Container(
-      height: 80,
-      padding: EdgeInsets.symmetric(horizontal: 20),
+      height: statusBarHeight + appBarHeight,
+      padding: EdgeInsets.only(
+        top: statusBarHeight,
+        left: 16,
+        right: 16,
+        bottom: 0,
+      ),
       decoration: BoxDecoration(
         color: Colors.black,
         boxShadow: [
@@ -795,8 +803,8 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
               widget.fromConflictNavigation
                   ? "Joined Trip #${_tripDetails?.id ?? widget.tripId}"
                   : widget.fromInstanceNavigation
-                    ? "Instance Trip #${_tripDetails?.id ?? widget.tripId}"
-                    : "Trip #${_tripDetails?.id ?? widget.tripId}",
+                  ? "Instance Trip #${_tripDetails?.id ?? widget.tripId}"
+                  : "Trip #${_tripDetails?.id ?? widget.tripId}",
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 18,
@@ -824,7 +832,7 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
       ),
     );
   }
-
+  
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'pending':

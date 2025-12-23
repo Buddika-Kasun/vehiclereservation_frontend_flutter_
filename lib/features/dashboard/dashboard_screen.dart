@@ -56,20 +56,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _loadUserData() async {
     try {
       final user = StorageService.userData;
-      
+
       if (user == null) {
         setState(() {
           _isLoading = false;
         });
         return;
       }
-      
+
       setState(() {
         _user = user;
         _userRole = user.role;
         _isLoading = false;
       });
-      
+
       // Load stats after user data is ready
       _loadDashboardData();
     } catch (e) {
@@ -88,17 +88,183 @@ class _DashboardScreenState extends State<DashboardScreen> {
     switch (role) {
       case UserRole.admin:
       case UserRole.sysadmin:
-        return AdminDashboardContent(user: _user, stats: _dashboardStats?.admin);
+        return AdminDashboardContent(
+          user: _user,
+          stats: _dashboardStats?.admin,
+        );
       case UserRole.driver:
-        return DriverDashboardContent(user: _user); // TODO: Add driver stats
+        return DriverDashboardContent(user: _user);
       case UserRole.security:
         return SecurityDashboardContent(user: _user);
       case UserRole.hr:
       case UserRole.manager:
         return HrDashboardContent(user: _user, stats: _dashboardStats?.manager);
       case UserRole.employee:
+      case UserRole.supervisor:
       default:
-        return EmployeeDashboardContent(user: _user, stats: _dashboardStats?.employee);
+        return EmployeeDashboardContent(
+          user: _user,
+          stats: _dashboardStats?.employee,
+        );
+    }
+  }
+
+  // Method to show gradient error dialog
+  void _showErrorDialog({
+    required String title,
+    required String message,
+    bool isSuccess = false,
+  }) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black54,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.all(20),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isSuccess
+                  ? [
+                      Colors.green.withOpacity(0.85),
+                      Colors.lightGreen.withOpacity(0.85),
+                    ]
+                  : [
+                      Colors.red.withOpacity(0.85),
+                      Colors.orange.withOpacity(0.85),
+                    ],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 15,
+                spreadRadius: 2,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Icon
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isSuccess ? Icons.check_circle : Icons.error_outline,
+                    size: 40,
+                    color: Colors.white,
+                  ),
+                ),
+
+                SizedBox(height: 20),
+
+                // Title
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: 0.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+
+                SizedBox(height: 12),
+
+                // Message
+                Text(
+                  message,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.white.withOpacity(0.95),
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+
+                SizedBox(height: 24),
+
+                // Button
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: isSuccess ? Colors.green : Colors.red,
+                    padding: EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 3,
+                    shadowColor: Colors.black26,
+                  ),
+                  child: Text(
+                    'OK',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Method to handle trip creation with error dialog
+  Future<void> _handleCreateTrip() async {
+    try {
+      final response = await ApiService.checkTripCreationEligibility();
+
+      print('Response: $response');
+
+      if (response.containsKey('success')) {
+        if (response['success'] == true) {
+          if (response['data'] != null &&
+              response['data']['canCreateTrip'] == true) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => CreateTripScreen()),
+            );
+          } else {
+            _showErrorDialog(
+              title: 'Cannot Create Trip',
+              message: response['message'] ?? 'Cannot create trip at this time',
+              isSuccess: false,
+            );
+          }
+        } else {
+          _showErrorDialog(
+            title: 'Error',
+            message: response['message'] ?? 'Failed to create trip',
+            isSuccess: false,
+          );
+        }
+      } else {
+        _showErrorDialog(
+          title: 'Server Error',
+          message: 'Invalid response from server',
+          isSuccess: false,
+        );
+      }
+    } catch (e) {
+      print('Error in onCreateTrip: $e');
+      _showErrorDialog(
+        title: 'Network Error',
+        message: 'Connection failed: ${e.toString()}',
+        isSuccess: false,
+      );
     }
   }
 
@@ -112,12 +278,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             user: _user,
             userRole: _userRole,
             isLoading: _isLoading,
-            onCreateTrip: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => CreateTripScreen()),
-              );
-            },
+            onCreateTrip: _handleCreateTrip,
             onNearbyVehicles: () {
               print('Nearby Vehicles clicked');
             },
@@ -131,11 +292,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               print('Quick Scan clicked');
             },
           ),
-          
           // Role-based dashboard content
-          Expanded(
-            child: _buildRoleBasedDashboard(_userRole),
-          ),
+          Expanded(child: _buildRoleBasedDashboard(_userRole)),
         ],
       ),
     );

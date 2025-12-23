@@ -644,9 +644,17 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
   }
 
   Widget _buildHeader() {
+    final double statusBarHeight = MediaQuery.of(context).padding.top;
+    final double appBarHeight = 60.0;
+
     return Container(
-      height: 80,
-      padding: EdgeInsets.symmetric(horizontal: 20),
+      height: statusBarHeight + appBarHeight,
+      padding: EdgeInsets.only(
+        top: statusBarHeight,
+        left: 16,
+        right: 16,
+        bottom: 0,
+      ),
       decoration: BoxDecoration(
         color: Colors.black,
         boxShadow: [
@@ -660,7 +668,7 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
       child: Row(
         children: [
           GestureDetector(
-            onTap: () => Navigator.pop(context),
+            onTap: () => Navigator.of(context).pop(true),
             child: Container(
               padding: EdgeInsets.all(10),
               decoration: BoxDecoration(
@@ -2350,7 +2358,12 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Trip confirmed successfully'),
+            content: Text(
+              'Trip confirmed successfully',
+              style: TextStyle(
+                color: Colors.white,
+              ),
+              ),
             backgroundColor: Colors.green,
           ),
         );
@@ -2420,8 +2433,13 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
       if (response['success'] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Trip cancelled successfully'),
-            backgroundColor: Colors.orange,
+            content: Text(
+              'Trip cancelled successfully',
+              style: TextStyle(
+                color: Colors.white
+              ),
+              ),
+            backgroundColor: Colors.green,
           ),
         );
 

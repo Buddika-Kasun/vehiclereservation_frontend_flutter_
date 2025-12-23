@@ -114,14 +114,35 @@ class _ReviewVehicleSelectionScreenState
       );
 
       if (success) {
-        _showMessage('Vehicle booked successfully!');
+        //_showMessage('Vehicle booked successfully!');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Vehicle booked successfully!',
+              style: TextStyle(color: Colors.white),
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
         Navigator.of(context).pop(true); // Return success with reload flag
       } else {
-        _showMessage('Failed to book vehicle');
+        //_showMessage('Failed to book vehicle');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to book vehicle'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } catch (e) {
       print('Error booking vehicle: $e');
-      _showMessage('Error booking vehicle');
+      //_showMessage('Error booking vehicle');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error booking vehicle'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
       setState(() => _isBooking = false);
     }
@@ -199,9 +220,17 @@ class _ReviewVehicleSelectionScreenState
   }
   
   Widget _buildHeader() {
+    final double statusBarHeight = MediaQuery.of(context).padding.top;
+    final double appBarHeight = 60.0; // Base height for app bar content
+
     return Container(
-      height: 80,
-      padding: EdgeInsets.symmetric(horizontal: 20),
+      height: statusBarHeight + appBarHeight,
+      padding: EdgeInsets.only(
+        top: statusBarHeight,
+        left: 16,
+        right: 16,
+        bottom: 0,
+      ),
       decoration: BoxDecoration(
         color: Colors.black,
         boxShadow: [

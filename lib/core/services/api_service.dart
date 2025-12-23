@@ -458,6 +458,15 @@ class ApiService {
     );
   }
 
+  // Enhanced trip_service.dart
+  static Future<Map<String, dynamic>> checkTripCreationEligibility() async {
+    final response = await authenticatedApiCall(
+      'user/can-create-trip',
+      method: 'GET',
+    );
+    return response;
+  }
+
   static Future<Map<String, dynamic>> searchUsers(String query) async {
     return await authenticatedApiCall(
       'user/search?query=$query',
