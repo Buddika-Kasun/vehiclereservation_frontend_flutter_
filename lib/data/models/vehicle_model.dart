@@ -57,7 +57,7 @@ class Vehicle {
       dailyInspectionChecklist: json['dailyInspectionChecklist'] ?? json['daily_inspection_checklist'],
       vehicleTypeId: json['vehicleType']?['id'],
       vehicleType: json['vehicleType']?['vehicleType'],
-      costPerKm: json['vehicleType']['costPerKm'],
+      costPerKm: json['vehicleType']?['costPerKm'],
       assignedDriverPrimaryId: json['assignedDriverPrimary']?['id'],
       assignedDriverPrimaryName: json['assignedDriverPrimary']?['displayname'],
       assignedDriverSecondaryId: json['assignedDriverSecondary']?['id'],
