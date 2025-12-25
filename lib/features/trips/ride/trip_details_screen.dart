@@ -953,6 +953,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                 '${_tripDetails!.details.route.metrics.distance} km',
                 '${_tripDetails!.details.route.metrics.estimatedDuration} min',
               ),
+              SizedBox(width: 16),
               _buildMetricCard(
                 Icons.calendar_month,
                 _tripDetails != null
@@ -976,6 +977,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                 'Passengers',
                 '${_tripDetails?.passengerCount ?? 0}',
               ),
+              SizedBox(width: 16),
               _buildMetricCard(
                 Icons.directions_car,
                 _tripDetails?.vehicle.regNo != null &&
@@ -1963,31 +1965,33 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   }
 
   Widget _buildMetricCard(IconData icon, String title, String value) {
-    return Container(
-      width: 120,
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[800],
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: Color(0xFFF9C80E), size: 24),
-          SizedBox(height: 8),
-          Text(
-            title,
-            style: TextStyle(color: Colors.grey[300], fontSize: 12),
-          ),
-          SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+    return Expanded(
+      //width: 120,
+      child: Container(
+        padding: EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.grey[800],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: Color(0xFFF9C80E), size: 24),
+            SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(color: Colors.grey[300], fontSize: 12),
             ),
-          ),
-        ],
+            SizedBox(height: 4),
+            Text(
+              value,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

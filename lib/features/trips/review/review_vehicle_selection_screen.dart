@@ -2,11 +2,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/available_vehicles_response.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
+import 'package:intl/intl.dart';
 
 class ReviewVehicleSelectionScreen extends StatefulWidget {
   final String tripId;
+  final double distance;
 
-  const ReviewVehicleSelectionScreen({Key? key, required this.tripId})
+  const ReviewVehicleSelectionScreen({Key? key, required this.tripId, required this.distance})
     : super(key: key);
 
   @override
@@ -466,6 +468,8 @@ class _ReviewVehicleSelectionScreenState
     );
   }
 
+  final formatter = NumberFormat('#,##0', 'en_US');
+
   Widget _buildVehicleCard(AvailableVehicle availableVehicle, bool isSelected) {
     final vehicle = availableVehicle.vehicle;
     final availableSeats = vehicle.seatingAvailability ?? 0;
@@ -492,27 +496,66 @@ class _ReviewVehicleSelectionScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Recommendation badge
-              if (availableVehicle.isRecommended)
-                Container(
-                  margin: EdgeInsets.only(bottom: 8),
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  
+                  Container(
+                    margin: EdgeInsets.only(bottom: 8),
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.cyanAccent.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.currency_exchange, color: Colors.cyanAccent, size: 12),
+                        SizedBox(width: 4),
+                        Text(
+                          'Est. Cost: ',
+                          style: TextStyle(color: Colors.cyanAccent, fontSize: 12),
+                        ),
+                        Text(
+                          'LKR ${formatter.format((double.parse(availableVehicle.vehicle.costPerKm.toString()) * widget.distance).round())}',
+                          style: TextStyle(
+                            color: Colors.cyanAccent, 
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.star, color: Colors.green, size: 12),
-                      SizedBox(width: 4),
-                      Text(
-                        'Recommended',
-                        style: TextStyle(color: Colors.green, fontSize: 12),
+
+                  // Recommendation badge
+                  if (availableVehicle.isRecommended)
+                    Container(
+                      margin: EdgeInsets.only(bottom: 8),
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.greenAccent.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
                       ),
-                    ],
-                  ),
-                ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          //Icon(Icons.star, color: Colors.green, size: 12),
+                          SizedBox(width: 4),
+                          Text(
+                            'Recommended',
+                            style: TextStyle(
+                              color: Colors.greenAccent, 
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600  
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                ]
+              ),
 
               // Header row with model and selection indicator
               Row(

@@ -11,6 +11,7 @@ class Vehicle {
   final Map<String, dynamic>? dailyInspectionChecklist;
   final int? vehicleTypeId;
   final String? vehicleType;
+  final String? costPerKm;
   final int? assignedDriverPrimaryId;
   final String? assignedDriverPrimaryName;
   final int? assignedDriverSecondaryId;
@@ -32,6 +33,7 @@ class Vehicle {
     this.dailyInspectionChecklist,
     this.vehicleTypeId,
     this.vehicleType,
+    this.costPerKm,
     this.assignedDriverPrimaryId,
     this.assignedDriverPrimaryName,
     this.assignedDriverSecondaryId,
@@ -55,6 +57,7 @@ class Vehicle {
       dailyInspectionChecklist: json['dailyInspectionChecklist'] ?? json['daily_inspection_checklist'],
       vehicleTypeId: json['vehicleType']?['id'],
       vehicleType: json['vehicleType']?['vehicleType'],
+      costPerKm: json['vehicleType']['costPerKm'],
       assignedDriverPrimaryId: json['assignedDriverPrimary']?['id'],
       assignedDriverPrimaryName: json['assignedDriverPrimary']?['displayname'],
       assignedDriverSecondaryId: json['assignedDriverSecondary']?['id'],

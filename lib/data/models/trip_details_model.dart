@@ -482,19 +482,25 @@ class IntermediateStop {
 
 class Metrics {
   final String distance;
+  final String? actualDistance;
   final String estimatedDuration;
+  final String? actualDuration;
   final String estimatedRestingMinutes;
 
   Metrics({
     required this.distance,
+    this.actualDistance,
     required this.estimatedDuration,
+    this.actualDuration,
     required this.estimatedRestingMinutes,
   });
 
   factory Metrics.fromJson(Map<String, dynamic> json) {
     return Metrics(
       distance: json['distance'] ?? '0',
+      actualDistance: json['actualDistance'],
       estimatedDuration: json['estimatedDuration'] ?? '0',
+      actualDuration: json['actualDuration'],
       estimatedRestingMinutes: json['estimatedRestingMinutes'] ?? '0',
     );
   }

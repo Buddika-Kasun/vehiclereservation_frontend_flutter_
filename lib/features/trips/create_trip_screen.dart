@@ -38,6 +38,10 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
   bool _isPanelVisible = true;
   final ScrollController _scrollController = ScrollController();
 
+  double _totalDistance = 0.0;
+  double _totalDuration = 0.0;
+  bool _showRoutePanel = false;
+
   @override
   void initState() {
     super.initState();
@@ -309,7 +313,13 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
   if (_isLoading) return;
   
   try {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _totalDistance = 0.0;
+      _totalDuration = 0.0;
+      _showRoutePanel = false;
+      //routeSegments.clear();
+    });
     
     List<LatLng> points = [];
     List<String> invalidStops = [];
@@ -355,11 +365,15 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
 
       for (int i = 0; i < points.length - 1; i++) {
         try {
-          final segmentPoints = await OSRMService.getRoute([points[i], points[i + 1]]);
-          if (segmentPoints.isNotEmpty) {
+          final data = await OSRMService.getRoute([points[i], points[i + 1]]);
+          if (data.route.isNotEmpty) {
+            // Accumulate totals
+            _totalDistance += data.distance / 1000;
+            _totalDuration += data.duration / 60;
+
             routeSegments.add(
               Polyline(
-                points: segmentPoints,
+                points: data.route,
                 color: _getRouteSegmentColor(i),
                 strokeWidth: 5,
               ),
@@ -377,9 +391,163 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
     print("Error calculating route: $e");
     _showMessage('Error calculating route');
   } finally {
-    setState(() => _isLoading = false);
+    setState(() {
+      _isLoading = false;
+      _showRoutePanel = true;
+    });
   }
 }
+
+  Widget _buildRouteInfoPanel() {
+    if (!_showRoutePanel || _isLoading) return SizedBox.shrink();
+
+    return Positioned(
+      bottom: 20,
+      right: 45,
+      child: Container(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.5,
+        ),
+        child: Container(
+          padding: EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.65),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[700]!),
+            /*
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 10,
+                spreadRadius: 2,
+              ),
+            ],
+            */
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Distance row
+              Row(
+                children: [
+                  Icon(Icons.route, color: Colors.blue[400], size: 16),
+                  SizedBox(width: 8),
+                  Text(
+                    'Distance:',
+                    style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                  ),
+                  SizedBox(width: 4),
+                  Text(
+                    '${_totalDistance.toStringAsFixed(2)} km',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+
+              SizedBox(height: 6),
+
+              // Duration row
+              Row(
+                children: [
+                  Icon(Icons.timer, color: Colors.green[400], size: 16),
+                  SizedBox(width: 8),
+                  Text(
+                    'Duration:',
+                    style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                  ),
+                  SizedBox(width: 4),
+                  Text(
+                    _formatDurationToHoursMinutes(_totalDuration),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRouteInfoSection() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Distance row
+        _buildMetricRow(
+          icon: Icons.route,
+          label: 'Distance',
+          value: '${_totalDistance.toStringAsFixed(2)} km',
+          color: Colors.blue[400]!,
+        ),
+
+        SizedBox(height: 8),
+
+        // Duration row
+        _buildMetricRow(
+          icon: Icons.timer,
+          label: 'Duration',
+          value: _formatDurationToHoursMinutes(_totalDuration),
+          color: Colors.green[400]!,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMetricRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: color, size: 18),
+        SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(color: Colors.grey[400], fontSize: 12),
+            ),
+            SizedBox(height: 2),
+            Text(
+              value,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+    // Helper method to format duration
+  String _formatDurationToHoursMinutes(double minutes) {
+    final intHours = minutes ~/ 60;
+    final intMinutes = (minutes % 60).round();
+
+    if (intHours > 0) {
+      return '${intHours}h ${intMinutes}m';
+    } else {
+      return '${intMinutes}min';
+    }
+  }
   
   String _getStopName(StopType type) {
     switch (type) {
@@ -527,6 +695,8 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
       'type': stop.type.toString(),
     }).toList(),
     'totalStops': stops.length,
+    'totalDistance': _totalDistance,
+    'totalDuration': _totalDuration,
     // Add route data
     'routeData': {
       'routeSegments': routeSegments.map((segment) => {
@@ -571,6 +741,12 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
                   child: Stack(
                     children: [
                       _buildMap(),
+                      // Route info panel (only shown when _showRoutePanel is true)
+                      _buildRouteInfoPanel(),
+
+                      // Route toggle button (separate from floating buttons)
+                      _buildRouteToggleButton(),
+
                       if (_isPanelVisible) _buildStopBox(),
                       _buildFloatingButtons(),
                       _buildPanelControlButtons(),
@@ -584,6 +760,29 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
         ),
       ),
       bottomNavigationBar: _buildBottomButton(),
+    );
+  }
+
+  Widget _buildRouteToggleButton() {
+    return Positioned(
+      bottom: 20,
+      right: 16,
+      width: 25,
+      height: 70,
+      child: FloatingActionButton(
+        heroTag: 'route_toggle_btn',
+        backgroundColor: Colors.black.withOpacity(0.6),
+        onPressed: () {
+          setState(() {
+            _showRoutePanel = !_showRoutePanel;
+          });
+        },
+        child: Icon(
+          _showRoutePanel ? Icons.arrow_right : Icons.arrow_left,
+          color: Colors.white,
+          size: 24,
+        ),
+      ),
     );
   }
 
@@ -977,7 +1176,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
       ),
     );
   }
-
+/*
   Widget _buildFloatingButtons() {
     return Positioned(
       bottom: 10,
@@ -1001,6 +1200,39 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
           ),
         ],
       ),
+    );
+  }
+*/
+
+Widget _buildFloatingButtons() {
+    return Positioned(
+      bottom: 20,
+      left: 20,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // Buttons column
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FloatingActionButton(
+                heroTag: 'route_btn',
+                backgroundColor: Color(0xFFF9C80E),
+                onPressed: _calculateRoute,
+                child: Icon(Icons.route, color: Colors.black, size: 24),
+              ),
+              SizedBox(height: 12),
+              FloatingActionButton(
+                heroTag: 'location_btn',
+                backgroundColor: Color(0xFFF9C80E),
+                onPressed: _getCurrentLocation,
+                child: Icon(Icons.my_location, color: Colors.black, size: 24),
+              ),
+            ],
+          ),
+        ],
+      )
     );
   }
 

@@ -939,6 +939,205 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
     );
   }
 
+  String _formatCurrency(num value, {bool includeDecimals = true}) {
+    final pattern = includeDecimals ? '#,##0.00' : '#,##0';
+    final formatter = NumberFormat(pattern, 'en_US');
+    return formatter.format(value);
+  }
+
+  Widget _buildMetricsComparisonTable() {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[700]!, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildTableHeader('Estimated'),
+                    _buildTableHeader('Actual'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          Divider(color: Colors.grey[700], height: 20),
+
+          // Time Row
+          _buildComparisonRow(
+            label: 'Duration',
+            estimatedValue: _formatDurationToHoursMinutes(
+              double.parse(
+                    _tripDetails!.details.route.metrics.estimatedDuration,
+                  ) *
+                  2,
+            ),
+            actualValue: _tripDetails?.status.toLowerCase() == 'completed'
+                ? _formatDurationToHoursMinutes(
+                    double.parse(_tripDetails!.details.route.metrics.actualDuration.toString()),
+                  )
+                : '--',
+          ),
+
+          SizedBox(height: 12),
+
+          // Distance Row
+          _buildComparisonRow(
+            label: 'Distance (km)',
+            estimatedValue:
+                '${(double.parse(_tripDetails!.details.route.metrics.distance) * 2).toStringAsFixed(1)}',
+            actualValue: _tripDetails?.status.toLowerCase() == 'completed'
+                ? '${_tripDetails!.details.route.metrics.actualDistance}'
+                : '--',
+          ),
+
+          SizedBox(height: 12),
+
+          // Cost Row
+          _buildComparisonRow(
+            label: 'Cost (LKR)',
+            estimatedValue: _formatCurrency(
+              double.parse(_tripDetails!.details.route.metrics.distance) *
+                  2 *
+                  (//_tripDetails?.costPerKm ?? 
+                  0),
+            ),
+            actualValue: _tripDetails?.status.toLowerCase() == 'completed'
+                ? _formatCurrency(_tripDetails!.cost ?? 0)
+                : '--',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTableHeader(String text) {
+    return Expanded(
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: Color(0xFFF9C80E), // Yellow color
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildComparisonRow({
+    required String label,
+    required String estimatedValue,
+    required String actualValue,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Label row
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.fromLTRB(0,0,0,4),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.6),
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+
+        // Values row
+        Container(
+          decoration: BoxDecoration(
+            //border: Border.all(color: Colors.grey[700]!),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              // Estimated value
+              Expanded(
+                child: Container(
+                  padding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.lightBlueAccent.withOpacity(0.2),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(8),
+                      bottomLeft: Radius.circular(8),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        estimatedValue,
+                        style: TextStyle(
+                          color: Colors.lightBlueAccent,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Separator with decoration
+              Container(
+                width: 2,
+              ),          
+
+              // Actual value
+              Expanded(
+                child: Container(
+                  padding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: _tripDetails?.status.toLowerCase() == 'completed'
+                        ? Colors.greenAccent.withOpacity(0.2)
+                        : Colors.grey[800]!.withOpacity(0.5),
+                    borderRadius: BorderRadius.only(
+                      topRight: Radius.circular(8),
+                      bottomRight: Radius.circular(8),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        actualValue,
+                        style: TextStyle(
+                          color:
+                              _tripDetails?.status.toLowerCase() == 'completed'
+                              ? Colors.greenAccent
+                              : Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildTripInfoSection() {
     return Container(
       padding: EdgeInsets.all(16),
@@ -961,7 +1160,7 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
           ),
           SizedBox(height: 16),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _buildMetricCard(
                 //Icons.route,
@@ -974,6 +1173,7 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
                       2,
                 ),
               ),
+              SizedBox(width: 16),
               _buildMetricCard(
                 Icons.calendar_month,
                 _tripDetails != null
@@ -997,6 +1197,7 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
                 'Passengers',
                 '${_tripDetails?.passengerCount ?? 0}',
               ),
+              SizedBox(width: 16),
               _buildMetricCard(
                 Icons.sledding,
                 'Resting Time',
@@ -1015,6 +1216,11 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
               ),
             ],
           ),
+
+          //======
+          SizedBox(height: 16),
+          _buildMetricsComparisonTable(),
+
           SizedBox(height: 16),
           _buildInfoRow('Requested At', DateFormat('yyyy-MM-dd hh:mm a')
             .format(_tripDetails!.createdAt.toLocal())),
@@ -1641,7 +1847,7 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
                               ],
                             ),
                           ),
-                          if (_isDraftTrip)
+                          if (_isCancelableTrip)
                             IconButton(
                               onPressed: _navigateToVehicleSelection,
                               icon: Icon(Icons.edit, color: Colors.yellow[600]),
@@ -2010,32 +2216,34 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
   }
 
   Widget _buildMetricCard(IconData icon, String title, String value) {
-    return Container(
-      width: 120,
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[800],
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: Color(0xFFF9C80E), size: 24),
-          SizedBox(height: 8),
-          Text(
-            title,
-            style: TextStyle(color: Colors.grey[300], fontSize: 12),
-          ),
-          SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+    return Expanded(
+      //width: 120,
+      child: Container(
+        padding: EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.grey[800],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: Color(0xFFF9C80E), size: 24),
+            SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(color: Colors.grey[300], fontSize: 12),
             ),
-          ),
-        ],
-      ),
+            SizedBox(height: 4),
+            Text(
+              value,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      )
     );
   }
 
@@ -2328,7 +2536,10 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
       context,
       MaterialPageRoute(
         builder: (context) =>
-            ReviewVehicleSelectionScreen(tripId: widget.tripId.toString()),
+            ReviewVehicleSelectionScreen(
+              tripId: widget.tripId.toString(), 
+              distance: double.parse(_tripDetails!.details.route.metrics.estimatedDuration) * 2,
+        ),
       ),
     );
 
@@ -2468,12 +2679,18 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
     }
   }
 
-  // Add this method to check if trip is draft:
+  // Add this method to check button visibility conditions:
   bool get _isDraftTrip => _tripDetails?.status.toLowerCase() == 'draft';
+  bool get _isCancelableTrip {
+    final status = _tripDetails?.status.toLowerCase();
+    return status == 'draft' || status == 'pending' || status == 'approved';
+  }
 
   // Add this method to build the button row:
   Widget _buildActionButtons() {
-    if (!_isDraftTrip) {
+
+    // Don't show any buttons if trip is not in a relevant state
+    if (!_isCancelableTrip && !_isDraftTrip) {
       return SizedBox.shrink();
     }
 
@@ -2490,18 +2707,74 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          // Cancel Button
-          Expanded(
-            child: ElevatedButton(
+      child: _isDraftTrip
+          ? Row(
+              children: [
+                // Cancel Button (for draft trips - part of row)
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _cancelTrip,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 12),
+                // Confirm Button (only for draft trips)
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _confirmTrip,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 3,
+                    ),
+                    child: _isLoading
+                        ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            'Confirm',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
+            )
+          : // For pending/approved trips - only cancel button full width
+            ElevatedButton(
               onPressed: _isLoading ? null : _cancelTrip,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
-                padding: EdgeInsets.symmetric(vertical: 8),
+                padding: EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
+                minimumSize: Size(double.infinity, 0), // Full width
               ),
               child: Text(
                 'Cancel',
@@ -2512,41 +2785,6 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
                 ),
               ),
             ),
-          ),
-          SizedBox(width: 12),
-          // Confirm Button
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _isLoading ? null : _confirmTrip,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                padding: EdgeInsets.symmetric(vertical: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 3,
-              ),
-              child: _isLoading
-                  ? SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : Text(
-                      'Confirm',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 

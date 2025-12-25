@@ -104,18 +104,36 @@ class OSRMService {
 import 'package:latlong2/latlong.dart';
 import 'api_service.dart';
 
+class RouteResult {
+  final List<LatLng> route;
+  final double distance; // in km
+  final double duration; // in minutes
+
+  RouteResult({
+    required this.route,
+    required this.distance,
+    required this.duration,
+  });
+}
+
 class OSRMService {
-  static Future<List<LatLng>> getRoute(List<LatLng> points) async {
-    if (points.length < 2) return [];
+  static Future<RouteResult> getRoute(List<LatLng> points) async {
+    if (points.length < 2) {
+      return RouteResult(route: [], distance: 0, duration: 0);
+    }
 
     try {
-      final coordinates = points.map((p) => {
-        'latitude': p.latitude,
-        'longitude': p.longitude
-      }).toList();
+      final coordinates = points
+          .map((p) => {'latitude': p.latitude, 'longitude': p.longitude})
+          .toList();
 
       final data = await ApiService.calculateRoute(coordinates);
-      return _parseRouteResponse(data);
+
+      final route = _parseRouteResponse(data);
+      final distance = _parseDistance(data);
+      final duration = _parseDuration(data);
+
+      return RouteResult(route: route, distance: distance, duration: duration);
     } catch (e) {
       print('Error getting route from backend: $e');
       rethrow;
@@ -125,16 +143,39 @@ class OSRMService {
   static List<LatLng> _parseRouteResponse(Map<String, dynamic> data) {
     if (data['route'] is List) {
       final routeData = data['route'] as List;
-      return routeData.map((point) => 
-        LatLng(point['latitude'], point['longitude'])
-      ).toList();
+      return routeData
+          .map((point) => LatLng(point['latitude'], point['longitude']))
+          .toList();
     } else if (data['coordinates'] is List) {
       final coordinates = data['coordinates'] as List;
-      return coordinates.map((coord) => 
-        LatLng(coord[1].toDouble(), coord[0].toDouble())
-      ).toList();
+      return coordinates
+          .map((coord) => LatLng(coord[1].toDouble(), coord[0].toDouble()))
+          .toList();
     } else {
       throw Exception('Unexpected route format from backend: $data');
     }
+  }
+
+  static double _parseDistance(Map<String, dynamic> data) {
+    // Try different possible keys
+    final distance =
+        data['distance'] ??
+        data['totalDistance'] ??
+        data['metrics']?['distance'] ??
+        0;
+
+    return double.parse(distance.toString());
+  }
+
+  static double _parseDuration(Map<String, dynamic> data) {
+    // Try different possible keys
+    final duration =
+        data['duration'] ??
+        data['estimatedDuration'] ??
+        data['metrics']?['duration'] ??
+        data['metrics']?['estimatedDuration'] ??
+        0;
+
+    return double.parse(duration.toString());
   }
 }
