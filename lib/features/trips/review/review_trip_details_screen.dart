@@ -1010,9 +1010,8 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
             label: 'Cost (LKR)',
             estimatedValue: _formatCurrency(
               double.parse(_tripDetails!.details.route.metrics.distance) *
-                  2 *
-                  (//_tripDetails?.costPerKm ?? 
-                  0),
+              2 *
+              double.parse(_tripDetails?.vehicle.costPerKm ?? '0'),
             ),
             actualValue: _tripDetails?.status.toLowerCase() == 'completed'
                 ? _formatCurrency(_tripDetails!.cost ?? 0)
@@ -2538,7 +2537,7 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
         builder: (context) =>
             ReviewVehicleSelectionScreen(
               tripId: widget.tripId.toString(), 
-              distance: double.parse(_tripDetails!.details.route.metrics.estimatedDuration) * 2,
+              distance: double.parse(_tripDetails!.details.route.metrics.distance) * 2,
         ),
       ),
     );

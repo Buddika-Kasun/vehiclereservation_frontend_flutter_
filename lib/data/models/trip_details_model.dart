@@ -103,6 +103,7 @@ class Vehicle {
   final String model;
   final String regNo;
   final String vehicleType;
+  final String costPerKm;
   final int seatingCapacity;
   final int seatingAvailability;
 
@@ -111,6 +112,7 @@ class Vehicle {
     required this.model,
     required this.regNo,
     required this.vehicleType,
+    required this.costPerKm,
     required this.seatingCapacity,
     required this.seatingAvailability,
   });
@@ -121,6 +123,7 @@ class Vehicle {
       model: json['model'] ?? '',
       regNo: json['regNo'] ?? '',
       vehicleType: json['vehicleType'] ?? '',
+      costPerKm: json['costPerKm'] ?? '',
       seatingCapacity: json['seatingCapacity'] ?? 0,
       seatingAvailability: json['seatingAvailability'] ?? 0,
     );
