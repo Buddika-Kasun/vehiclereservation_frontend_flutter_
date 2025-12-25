@@ -249,13 +249,15 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                   SizedBox(height: 16),
 
                   // Valid Till Date
-                  _buildDateField(
-                    'Valid Till Date',
-                    _validTillDate,
-                    (date) => setState(() => _validTillDate = date),
-                    isStartDate: false,
-                  ),
-                  SizedBox(height: 16),
+                  if (_repetition != 'once') ...[
+                    _buildDateField(
+                      'Valid Till Date',
+                      _validTillDate,
+                      (date) => setState(() => _validTillDate = date),
+                      isStartDate: false,
+                    ),
+                    SizedBox(height: 16),
+                  ],
 
                   // Start Time
                   _buildTimeField(
@@ -336,8 +338,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                     ],
                   ),
 
-                  // Custom Repetition Fields
-                  if (_repetition == 'custom') ...[
+                  if (_repetition != 'once') ...[
                     SizedBox(height: 8),
                     Row(
                       children: [
@@ -357,6 +358,10 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                         ),
                       ],
                     ),
+                  ],
+
+                  // Custom Repetition Fields
+                  if (_repetition == 'custom') ...[
                     SizedBox(height: 4),
                     TextField(
                       style: TextStyle(color: Colors.yellow, fontSize: 14),
@@ -1399,6 +1404,11 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
       return;
     }
 
+    if (_repetition != 'once') {
+      _showMessage('Please select valid till time', false);
+      return;
+    }
+
     // Validate passengers based on type
     if (_passengerType == 'other_individual' && _selectedIndividual == null) {
       _showMessage('Please select a passenger', false);
@@ -1474,9 +1484,9 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
   // Improved message function with colored overlay
   void _showMessage(String message, bool isSuccess, {VoidCallback? onSuccess}) {
     // Clear any existing dialogs first
-    if (Navigator.canPop(context)) {
-      Navigator.of(context).pop();
-    }
+    //if (Navigator.canPop(context)) {
+    //  Navigator.of(context).pop();
+    //}
 
     showDialog(
       context: context,
