@@ -1077,6 +1077,8 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
             ],
           ),*/
 
+          SizedBox(height: 4),
+          _buildMetricsComparisonTable(),
           SizedBox(height: 16),
           _buildInfoRow(
             'Requested At',
@@ -1384,6 +1386,7 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
                       ),
                     ],
                   ),
+                  /*
                   SizedBox(height: 12),
                   Wrap(
                     spacing: 12,
@@ -1419,6 +1422,7 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
                         ),
                     ],
                   ),
+                  */
                   SizedBox(height: 12),
                   if (_tripDetails
                           ?.details
@@ -1704,6 +1708,206 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMetricsComparisonTable() {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[700]!, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildTableHeader('Estimated'),
+                    _buildTableHeader('Actual'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          Divider(color: Colors.grey[700], height: 20),
+
+          // Time Row
+          _buildComparisonRow(
+            label: 'Duration',
+            estimatedValue: _formatDurationToHoursMinutes(
+              double.parse(
+                    _tripDetails!.details.route.metrics.estimatedDuration,
+                  ) *
+                  2,
+            ),
+            actualValue: _tripDetails?.status.toLowerCase() == 'completed'
+                ? _formatDurationToHoursMinutes(
+                    double.parse(_tripDetails!.details.route.metrics.actualDuration.toString()),
+                  )
+                : '--',
+          ),
+
+          SizedBox(height: 12),
+
+          // Distance Row
+          _buildComparisonRow(
+            label: 'Distance (km)',
+            estimatedValue:
+                '${(double.parse(_tripDetails!.details.route.metrics.distance) * 2).toStringAsFixed(1)}',
+            actualValue: _tripDetails?.status.toLowerCase() == 'completed'
+                ? '${_tripDetails!.details.route.metrics.actualDistance}'
+                : '--',
+          ),
+
+          /*
+          SizedBox(height: 12),
+
+          // Cost Row
+          _buildComparisonRow(
+            label: 'Cost (LKR)',
+            estimatedValue: _formatCurrency(
+              double.parse(_tripDetails!.details.route.metrics.distance) *
+              2 *
+              double.parse(_tripDetails?.vehicle.costPerKm ?? '0'),
+            ),
+            actualValue: _tripDetails?.status.toLowerCase() == 'completed'
+                ? _formatCurrency(_tripDetails!.cost ?? 0)
+                : '--',
+          ),
+          */
+        ],
+      ),
+    );
+  }
+
+  String _formatCurrency(num value, {bool includeDecimals = true}) {
+    final pattern = includeDecimals ? '#,##0.00' : '#,##0';
+    final formatter = NumberFormat(pattern, 'en_US');
+    return formatter.format(value);
+  }
+
+  Widget _buildTableHeader(String text) {
+    return Expanded(
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: Color(0xFFF9C80E), // Yellow color
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildComparisonRow({
+    required String label,
+    required String estimatedValue,
+    required String actualValue,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Label row
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.fromLTRB(0,0,0,4),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.6),
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+
+        // Values row
+        Container(
+          decoration: BoxDecoration(
+            //border: Border.all(color: Colors.grey[700]!),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              // Estimated value
+              Expanded(
+                child: Container(
+                  padding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.lightBlueAccent.withOpacity(0.2),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(8),
+                      bottomLeft: Radius.circular(8),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        estimatedValue,
+                        style: TextStyle(
+                          color: Colors.lightBlueAccent,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Separator with decoration
+              Container(
+                width: 2,
+              ),          
+
+              // Actual value
+              Expanded(
+                child: Container(
+                  padding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: _tripDetails?.status.toLowerCase() == 'completed'
+                        ? Colors.greenAccent.withOpacity(0.2)
+                        : Colors.grey[800]!.withOpacity(0.5),
+                    borderRadius: BorderRadius.only(
+                      topRight: Radius.circular(8),
+                      bottomRight: Radius.circular(8),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        actualValue,
+                        style: TextStyle(
+                          color:
+                              _tripDetails?.status.toLowerCase() == 'completed'
+                              ? Colors.greenAccent
+                              : Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -2600,78 +2804,243 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
   }
 
   Future<void> _showEndTripConfirmation() async {
+    final passengerController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool isLoading = false;
+
     final result = await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color.fromARGB(215, 83, 83, 83),
-        title: Text('End Trip', style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Are you sure you want to end the trip?',
-              style: TextStyle(color: Colors.grey[300]),
-            ),
-            SizedBox(height: 8),
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Trip Summary:',
-                    style: TextStyle(
-                      color: Colors.blue,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Trip ID: #${_tripDetails?.id}',
-                    style: TextStyle(color: Colors.grey[300]),
-                  ),
-                  if (_tripDetails?.details.route.metrics.distance != null)
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: const Color.fromARGB(215, 83, 83, 83),
+              title: Text('End Trip', style: TextStyle(color: Colors.white)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      'Distance: ${_tripDetails!.details.route.metrics.distance} km',
+                      'Please confirm ending the trip and enter passenger count:',
                       style: TextStyle(color: Colors.grey[300]),
                     ),
-                  if (_tripDetails?.details.route.metrics.estimatedDuration !=
-                      null)
-                    Text(
-                      'Duration: ${_tripDetails!.details.route.metrics.estimatedDuration} min',
-                      style: TextStyle(color: Colors.grey[300]),
+                    SizedBox(height: 16),
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.people_outline,
+                                color: Colors.blue,
+                                size: 18,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Total Passenger Count',
+                                style: TextStyle(
+                                  color: Colors.blue,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 8),
+                          Form(
+                            key: formKey,
+                            child: TextFormField(
+                              controller: passengerController,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
+                              decoration: InputDecoration(
+                                labelText: 'Number of passengers',
+                                labelStyle: TextStyle(color: Colors.grey[400]),
+                                hintText: 'Enter total passenger count',
+                                hintStyle: TextStyle(color: Colors.grey[500]),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                    color: Color(0xFFF9C80E),
+                                    width: 2,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                    color: Colors.grey[600]!,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                filled: true,
+                                fillColor: Colors.grey[800],
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                                prefixIcon: Icon(
+                                  Icons.person,
+                                  color: Colors.grey[400],
+                                ),
+                                suffixText: 'persons',
+                                suffixStyle: TextStyle(color: Colors.grey[400]),
+                              ),
+                              keyboardType: TextInputType.number,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please enter passenger count';
+                                }
+                                final count = int.tryParse(value);
+                                if (count == null) {
+                                  return 'Please enter a valid number';
+                                }
+                                if (count <= 0) {
+                                  return 'Count must be greater than 0';
+                                }
+                                if (count > 50) {
+                                  // Adjust max limit as needed
+                                  return 'Count seems too high';
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                ],
+                    SizedBox(height: 12),
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Colors.orange.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.warning_amber,
+                            color: Colors.orange,
+                            size: 18,
+                          ),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Ending the trip will complete the journey and stop all tracking.',
+                              style: TextStyle(
+                                color: Colors.orange,
+                                fontSize: 12,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (isLoading) ...[
+                      SizedBox(height: 16),
+                      Center(
+                        child: Column(
+                          children: [
+                            CircularProgressIndicator(color: Color(0xFFF9C80E)),
+                            SizedBox(height: 12),
+                            Text(
+                              'Ending trip...',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-            ),
-            SizedBox(height: 12),
-            Text(
-              'Ending the trip will complete the journey and stop tracking.',
-              style: TextStyle(color: Colors.orange, fontSize: 12),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel', style: TextStyle(color: Colors.white)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-            child: Text('End Trip', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+              actions: [
+                if (!isLoading)
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, null),
+                    style: TextButton.styleFrom(foregroundColor: Colors.white),
+                    child: Text('Cancel'),
+                  ),
+                ElevatedButton(
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          if (formKey.currentState!.validate()) {
+                            setState(() => isLoading = true);
+
+                            // Delay to show loading state
+                            await Future.delayed(Duration(milliseconds: 100));
+
+                            try {
+                              final passengerCount = int.parse(
+                                passengerController.text,
+                              );
+                              Navigator.pop(context, passengerCount);
+                            } catch (e) {
+                              Navigator.pop(context, null);
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    disabledBackgroundColor: Colors.grey[600],
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: isLoading
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.done_all, size: 18),
+                            SizedBox(width: 8),
+                            Text(
+                              'End Trip',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
 
-    if (result == true) {
-      await _endTrip();
+    // Handle the result
+    if (result != null && result is int) {
+      await _endTrip(result);
     }
   }
 
@@ -2714,13 +3083,13 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
     }
   }
 
-  Future<void> _endTrip() async {
+  Future<void> _endTrip(int passengerCount) async {
     try {
       setState(() {
         _isLoading = true;
       });
 
-      final response = await ApiService.endTrip(widget.tripId);
+      final response = await ApiService.endTrip(widget.tripId, passengerCount);
 
       if (response['success'] == true) {
         // Show success message

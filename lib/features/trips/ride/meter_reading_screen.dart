@@ -351,31 +351,34 @@ class _RidesApprovalScreenState extends State<RidesApprovalScreen> {
                     );
 
                     if (response['success'] == true) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Odometer recorded successfully'),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                      _refreshTrips();
+                      // Close the dialog first
                       Navigator.pop(context);
+
+                      // Show success message
+                      _showMessage(
+                        'Odometer reading recorded successfully!',
+                        true,
+                        onSuccess: () {
+                          _refreshTrips();
+                        },
+                      );
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            response['message'] ?? 'Failed to record odometer',
-                          ),
-                          backgroundColor: Colors.red,
-                        ),
+                      // Close the dialog first
+                      Navigator.pop(context);
+
+                      // Show error message
+                      _showMessage(
+                        response['message'] ??
+                            'Failed to record odometer reading',
+                        false,
                       );
                     }
                   } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Error: $e'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
+                    // Close the dialog first
+                    Navigator.pop(context);
+
+                    // Show error message
+                    _showMessage('Error: ${e.toString()}', false);
                   }
                 }
               },
@@ -385,6 +388,174 @@ class _RidesApprovalScreenState extends State<RidesApprovalScreen> {
               child: Text('OK', style: TextStyle(color: Colors.black)),
             ),
           ],
+        );
+      },
+    );
+  }
+
+  void _showMessage(String message, bool isSuccess, {VoidCallback? onSuccess}) {
+    // Clear any existing dialogs first
+    //if (Navigator.canPop(context)) {
+    //  Navigator.of(context).pop();
+    //}
+
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Prevent closing by tapping outside
+      builder: (context) {
+        // Auto-close after delay for success messages
+        if (isSuccess) {
+          Timer(const Duration(seconds: 2), () {
+            Navigator.of(context).pop();
+            if (onSuccess != null) onSuccess();
+          });
+        }
+
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.all(20),
+          child: Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isSuccess
+                    ? [
+                        Color.fromARGB(255, 68, 255, 83), // Very light green
+                        Color.fromARGB(255, 136, 255, 140), // Light green
+                        const Color.fromARGB(255, 231, 255, 216),
+                      ]
+                    : [
+                        Color.fromARGB(255, 255, 99, 123), // Very light red
+                        Color.fromARGB(255, 244, 145, 155), // Light red
+                        const Color.fromARGB(255, 255, 215, 215),
+                      ],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: isSuccess
+                      ? Colors.green.withOpacity(0.3)
+                      : Colors.red.withOpacity(0.3),
+                  blurRadius: 20,
+                  spreadRadius: 5,
+                ),
+              ],
+              border: Border.all(
+                color: isSuccess ? Colors.green.shade300 : Colors.red.shade300,
+                width: 2,
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Icon with colored background
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isSuccess
+                        ? const Color.fromARGB(255, 203, 237, 206)
+                        : const Color.fromARGB(255, 252, 205, 212),
+                    border: Border.all(
+                      color: isSuccess
+                          ? Colors.green.shade200
+                          : Colors.red.shade200,
+                      width: 3,
+                    ),
+                  ),
+                  child: Icon(
+                    isSuccess ? Icons.check_circle : Icons.error,
+                    size: 48,
+                    color: isSuccess
+                        ? Colors.green.shade600
+                        : Colors.red.shade600,
+                  ),
+                ),
+                SizedBox(height: 20),
+
+                // Title
+                Text(
+                  isSuccess ? 'Success!' : 'Error',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: isSuccess
+                        ? Colors.green.shade800
+                        : Colors.red.shade800,
+                  ),
+                ),
+                SizedBox(height: 12),
+
+                // Message
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black87,
+                    height: 1.4,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 24),
+
+                // Button for error messages
+                if (!isSuccess)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.shade600,
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 3,
+                      ),
+                      child: Text(
+                        'OK',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                // Loading indicator for success (auto-closing)
+                if (isSuccess)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Redirecting...',
+                        style: TextStyle(
+                          color: Colors.green.shade700,
+                          fontSize: 14,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.green.shade700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
         );
       },
     );
@@ -1156,4 +1327,5 @@ class _RidesApprovalScreenState extends State<RidesApprovalScreen> {
       ),
     );
   }
+
 }

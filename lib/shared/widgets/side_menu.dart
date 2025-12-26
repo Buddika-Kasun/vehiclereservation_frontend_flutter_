@@ -92,7 +92,9 @@ class SideMenu extends StatelessWidget {
       case UserRole.supervisor:
         items.addAll([
           //MenuItem(Icons.home, 'Home'),
-          //MenuItem(Icons.directions_car, 'My Rides'),
+          MenuItem(Icons.directions_car, 'My Rides'),
+          MenuItem(Icons.car_rental_sharp, 'My Vehicles'),
+          MenuItem(Icons.directions_car, 'Assigned Rides'),
           MenuItem(Icons.verified, 'Review Trips'),
         ]);
         break;

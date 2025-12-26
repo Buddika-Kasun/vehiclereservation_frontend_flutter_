@@ -1217,7 +1217,7 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
           ),
 
           //======
-          SizedBox(height: 16),
+          SizedBox(height: 4),
           _buildMetricsComparisonTable(),
 
           SizedBox(height: 16),

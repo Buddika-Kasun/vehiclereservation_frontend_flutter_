@@ -1077,8 +1077,12 @@ class ApiService {
     return await authenticatedApiCall('trips/start/$tripId', method: 'POST');
   }
 
-  static Future<Map<String, dynamic>> endTrip(int tripId) async {
-    return await authenticatedApiCall('trips/end/$tripId', method: 'POST');
+  static Future<Map<String, dynamic>> endTrip(int tripId, int passengerCount) async {
+    return await authenticatedApiCall(
+      'trips/end/$tripId',
+      method: 'POST',
+      body: {'passengerCount': passengerCount},
+    );
   }
 
 

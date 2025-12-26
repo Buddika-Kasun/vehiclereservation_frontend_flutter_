@@ -1174,6 +1174,10 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
             ],
           ),*/
 
+          SizedBox(height: 4),
+          _buildMetricsComparisonTable(),
+          SizedBox(height: 16),
+
           _buildInfoRow(
             'Requested At',
             DateFormat(
@@ -1413,6 +1417,7 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
                     ),
                   ],
                 ),
+                /*
                 SizedBox(height: 12),
                 Wrap(
                   spacing: 12,
@@ -1442,6 +1447,7 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
                       ),
                   ],
                 ),
+                */
                 SizedBox(height: 12),
                 if (_tripDetails
                         ?.details
@@ -1492,6 +1498,204 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
             ),
         ],
       ),
+    );
+  }
+
+  String _formatCurrency(num value, {bool includeDecimals = true}) {
+    final pattern = includeDecimals ? '#,##0.00' : '#,##0';
+    final formatter = NumberFormat(pattern, 'en_US');
+    return formatter.format(value);
+  }
+
+  Widget _buildMetricsComparisonTable() {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[700]!, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildTableHeader('Estimated'),
+                    _buildTableHeader('Actual'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          Divider(color: Colors.grey[700], height: 20),
+
+          // Time Row
+          _buildComparisonRow(
+            label: 'Duration',
+            estimatedValue: _formatDurationToHoursMinutes(
+              double.parse(
+                    _tripDetails!.details.route.metrics.estimatedDuration,
+                  ) *
+                  2,
+            ),
+            actualValue: _tripDetails?.status.toLowerCase() == 'completed'
+                ? _formatDurationToHoursMinutes(
+                    double.parse(
+                      _tripDetails!.details.route.metrics.actualDuration
+                          .toString(),
+                    ),
+                  )
+                : '--',
+          ),
+
+          SizedBox(height: 12),
+
+          // Distance Row
+          _buildComparisonRow(
+            label: 'Distance (km)',
+            estimatedValue:
+                '${(double.parse(_tripDetails!.details.route.metrics.distance) * 2).toStringAsFixed(1)}',
+            actualValue: _tripDetails?.status.toLowerCase() == 'completed'
+                ? '${_tripDetails!.details.route.metrics.actualDistance}'
+                : '--',
+          ),
+
+          SizedBox(height: 12),
+
+          // Cost Row
+          _buildComparisonRow(
+            label: 'Cost (LKR)',
+            estimatedValue: _formatCurrency(
+              double.parse(_tripDetails!.details.route.metrics.distance) *
+                  2 *
+                  double.parse(_tripDetails?.vehicle.costPerKm ?? '0'),
+            ),
+            actualValue: _tripDetails?.status.toLowerCase() == 'completed'
+                ? _formatCurrency(_tripDetails!.cost ?? 0)
+                : '--',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTableHeader(String text) {
+    return Expanded(
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: Color(0xFFF9C80E), // Yellow color
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildComparisonRow({
+    required String label,
+    required String estimatedValue,
+    required String actualValue,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Label row
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.fromLTRB(0, 0, 0, 4),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.6),
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+
+        // Values row
+        Container(
+          decoration: BoxDecoration(
+            //border: Border.all(color: Colors.grey[700]!),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              // Estimated value
+              Expanded(
+                child: Container(
+                  padding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.lightBlueAccent.withOpacity(0.2),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(8),
+                      bottomLeft: Radius.circular(8),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        estimatedValue,
+                        style: TextStyle(
+                          color: Colors.lightBlueAccent,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Separator with decoration
+              Container(width: 2),
+
+              // Actual value
+              Expanded(
+                child: Container(
+                  padding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: _tripDetails?.status.toLowerCase() == 'completed'
+                        ? Colors.greenAccent.withOpacity(0.2)
+                        : Colors.grey[800]!.withOpacity(0.5),
+                    borderRadius: BorderRadius.only(
+                      topRight: Radius.circular(8),
+                      bottomRight: Radius.circular(8),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        actualValue,
+                        style: TextStyle(
+                          color:
+                              _tripDetails?.status.toLowerCase() == 'completed'
+                              ? Colors.greenAccent
+                              : Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
