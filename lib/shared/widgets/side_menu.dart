@@ -33,8 +33,10 @@ class SideMenu extends StatelessWidget {
 
     final items = <MenuItem>[];
     
-    final hasUserCreationAuthority = AuthorityService.hasUserCreationAuthority(user);
-    final hasTripApprovalAuthority = AuthorityService.hasTripApprovalAuthority(user);
+    //final hasUserCreationAuthority = AuthorityService.hasUserCreationAuthority(user);
+    final hasUserCreationAuthority = user.canUserCreate;
+    //final hasTripApprovalAuthority = AuthorityService.hasTripApprovalAuthority(user);
+    final hasTripApprovalAuthority = user.canTripApprove;
     
     items.addAll([
       MenuItem(Icons.home, 'Home'),
@@ -134,8 +136,10 @@ class SideMenu extends StatelessWidget {
       case UserRole.driver:
         return 'Driver';
       case UserRole.employee:
-        final hasUserCreation = AuthorityService.hasUserCreationAuthority(user);
-        final hasTripApproval = AuthorityService.hasTripApprovalAuthority(user);
+        //final hasUserCreation = AuthorityService.hasUserCreationAuthority(user);
+        final hasUserCreation = user.canUserCreate;
+        //final hasTripApproval = AuthorityService.hasTripApprovalAuthority(user);
+        final hasTripApproval = user.canTripApprove;
         
         if (hasUserCreation && hasTripApproval) {
           return 'Employee (Both Authorities)';
