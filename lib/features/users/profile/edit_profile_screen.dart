@@ -35,13 +35,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Get the status bar height
+    final statusBarHeight = MediaQuery.of(context).padding.top;
+
     return Scaffold(
       backgroundColor: Colors.grey[900],
       body: Column(
         children: [
           // Top Bar with Black Background
           Container(
-            height: 80,
+            // Fixed height that includes status bar height
+            height: 80 + statusBarHeight,
             decoration: BoxDecoration(
               color: Colors.black,
               borderRadius: BorderRadius.only(
@@ -56,78 +60,82 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
               ],
             ),
-            child: Padding(
-              padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 10,
-                left: 16,
-                right: 16,
-                bottom: 10,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Back Button with YELLOW background
-                  Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.yellow[600],
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
-                          blurRadius: 6,
-                          offset: Offset(0, 2),
+            child: Column(
+              children: [
+                // Status bar spacer
+                SizedBox(height: statusBarHeight),
+                // Content area
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Back Button with YELLOW background
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.yellow[600],
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.3),
+                                blurRadius: 6,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: IconButton(
+                            icon: Icon(Icons.arrow_back, color: Colors.black),
+                            onPressed: () => Navigator.pop(context),
+                            padding: EdgeInsets.all(10),
+                            iconSize: 24,
+                          ),
                         ),
-                      ],
-                    ),
-                    child: IconButton(
-                      icon: Icon(Icons.arrow_back, color: Colors.black),
-                      onPressed: () => Navigator.pop(context),
-                      padding: EdgeInsets.all(10),
-                      iconSize: 24,
-                    ),
-                  ),
 
-                  // Title in WHITE
-                  Text(
-                    'EDIT PROFILE',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 1.5,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black.withOpacity(0.5),
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
+                        // Title in WHITE
+                        Text(
+                          'EDIT PROFILE',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 1.5,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black.withOpacity(0.5),
+                                blurRadius: 4,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
-                    ),
-                  ),
 
-                  // Save Button with YELLOW background
-                  Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.yellow[600],
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
-                          blurRadius: 6,
-                          offset: Offset(0, 2),
+                        // Save Button with YELLOW background
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.yellow[600],
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.3),
+                                blurRadius: 6,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: IconButton(
+                            icon: Icon(Icons.save, color: Colors.black),
+                            onPressed: _saveChanges,
+                            padding: EdgeInsets.all(10),
+                            iconSize: 24,
+                          ),
                         ),
                       ],
                     ),
-                    child: IconButton(
-                      icon: Icon(Icons.save, color: Colors.black),
-                      onPressed: _saveChanges,
-                      padding: EdgeInsets.all(10),
-                      iconSize: 24,
-                    ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
 
@@ -309,4 +317,3 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     Navigator.pop(context);
   }
 }
-

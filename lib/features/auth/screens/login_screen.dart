@@ -343,7 +343,11 @@ class _LoginScreenState extends State<LoginScreen> {
               // Username Field
               TextField(
                 controller: _usernameController,
-                style: const TextStyle(color: Colors.yellow),
+                style: TextStyle(
+                  color: const Color.fromARGB(255, 255, 222, 59),
+                  fontSize: 16, 
+                  letterSpacing: 2.0,
+                ),
                 decoration: InputDecoration(
                   labelText: 'User Name',
                   labelStyle: const TextStyle(color: Colors.grey),
@@ -369,7 +373,17 @@ class _LoginScreenState extends State<LoginScreen> {
               TextField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
-                style: const TextStyle(color: Colors.yellow),
+                obscuringCharacter: '●', // Custom dot character (optional)
+                style: TextStyle(
+                  color: const Color.fromARGB(255, 255, 206, 59),
+                  fontSize: _obscurePassword
+                      ? 11
+                      : 16, // Larger font size for dots
+                  letterSpacing: _obscurePassword
+                      ? 4.0
+                      : 2.0, // Add spacing between dots
+                ),
+                //style: const TextStyle(color: Colors.yellow),
                 decoration: InputDecoration(
                   labelText: 'Password',
                   labelStyle: const TextStyle(color: Colors.grey),

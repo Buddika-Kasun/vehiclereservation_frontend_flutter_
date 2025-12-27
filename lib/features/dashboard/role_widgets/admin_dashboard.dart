@@ -14,6 +14,14 @@ class AdminDashboardContent extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            'Preview mode - Coming soon in future update',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.black.withOpacity(0.6),
+            ),
+          ),
+          SizedBox(height: 8),
           // System Overview Cards
           Row(
             children: [
@@ -42,6 +50,7 @@ class AdminDashboardContent extends StatelessWidget {
           
           SizedBox(height: 20),
           
+          /*
           // System Health
           Text(
             'System Health',
@@ -72,6 +81,7 @@ class AdminDashboardContent extends StatelessWidget {
           ),
           
           SizedBox(height: 20),
+          */
           
           // Quick Admin Actions
           Text(
@@ -80,6 +90,10 @@ class AdminDashboardContent extends StatelessWidget {
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
+          ),
+          Text(
+            'Preview mode - Coming soon in future update',
+            style: TextStyle(fontSize: 12, color: Colors.black.withOpacity(0.6)),
           ),
           SizedBox(height: 12),
           GridView.count(
@@ -113,11 +127,18 @@ class AdminDashboardContent extends StatelessWidget {
             ),
           ),
           SizedBox(height: 12),
+          _buildActivityItem(
+            'Feature in Development',
+            'Coming soon in future update',
+            Icons.developer_board,
+          ),
+          /*
           _buildActivityItem('New vehicle registered', '10:45 AM', Icons.directions_car),
           _buildActivityItem('User "John Doe" created trip', '10:30 AM', Icons.add),
           _buildActivityItem('System backup completed', '09:15 AM', Icons.cloud_done),
           _buildActivityItem('Security alert resolved', 'Yesterday', Icons.security),
           _buildActivityItem('Database optimized', '2 days ago', Icons.storage),
+          */
         ],
       ),
     );

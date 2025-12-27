@@ -48,7 +48,7 @@ class DashboardTopPanel extends StatelessWidget {
         return SecurityTopPanel(user: user, onQuickScan: onQuickScan);
       case UserRole.hr:
       case UserRole.manager:
-        return HrTopPanel(user: user);
+        return HrTopPanel(user: user, onCreateTrip: onCreateTrip, onNearbyVehicles: onNearbyVehicles);
       case UserRole.admin:
       case UserRole.sysadmin:
         return AdminTopPanel(user: user, onCreateTrip: onCreateTrip, onNearbyVehicles: onNearbyVehicles);
@@ -75,7 +75,7 @@ class DriverTopPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(top: 20, bottom: 26, left: 20, right: 20),
+      padding: const EdgeInsets.only(top: 0, bottom: 26, left: 20, right: 20),
       decoration: BoxDecoration(
         color: Colors.black,
         borderRadius: BorderRadius.only(
@@ -253,16 +253,20 @@ class SecurityTopPanel extends StatelessWidget {
 // HR Top Panel
 class HrTopPanel extends StatelessWidget {
   final User? user;
+  final VoidCallback onCreateTrip;
+  final VoidCallback onNearbyVehicles;
 
   const HrTopPanel({
     Key? key,
     required this.user,
+    required this.onCreateTrip,
+    required this.onNearbyVehicles,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(top: 20, bottom: 26, left: 20, right: 20),
+      padding: const EdgeInsets.only(top: 0, bottom: 26, left: 20, right: 20),
       decoration: BoxDecoration(
         color: Colors.black,
         borderRadius: BorderRadius.only(
@@ -273,7 +277,7 @@ class HrTopPanel extends StatelessWidget {
       child: Column(
         children: [
           Text(
-            'HR Approval Dashboard',
+            'HR Dashboard',
             style: TextStyle(
               color: Colors.white,
               fontSize: 20,
@@ -284,27 +288,62 @@ class HrTopPanel extends StatelessWidget {
           if (user != null)
             Text(
               'Welcome, ${user!.displayname}',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Colors.white70, fontSize: 14),
             ),
           SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () {
-              // Navigate to approvals screen
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
-              padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-            ),
-            child: Text(
-              'View Pending Approvals',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: onCreateTrip,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.yellow, Colors.orange],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Text(
+                        'Create New Trip',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ),
+              SizedBox(width: 16),
+              Expanded(
+                child: GestureDetector(
+                  onTap: onNearbyVehicles,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Nearby Vehicles',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          SizedBox(width: 8),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -434,7 +473,7 @@ class EmployeeTopPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(top: 20, bottom: 26, left: 20, right: 20),
+      padding: const EdgeInsets.only(top: 0, bottom: 26, left: 20, right: 20),
       decoration: BoxDecoration(
         color: Colors.black,
         borderRadius: BorderRadius.only(

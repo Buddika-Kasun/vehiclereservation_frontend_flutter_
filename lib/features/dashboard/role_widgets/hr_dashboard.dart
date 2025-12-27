@@ -5,7 +5,8 @@ class HrDashboardContent extends StatelessWidget {
   final User? user;
   final Map<String, dynamic>? stats;
 
-  const HrDashboardContent({Key? key, required this.user, this.stats}) : super(key: key);
+  const HrDashboardContent({Key? key, required this.user, this.stats})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -14,6 +15,33 @@ class HrDashboardContent extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Preview Mode Info
+          Container(
+            padding: EdgeInsets.all(12),
+            margin: EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: Colors.blue[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue[300]!),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info, color: Colors.blue[800], size: 18),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Preview Mode - Coming soon in future updates',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.blue[800],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           // Approval Stats
           Container(
             padding: EdgeInsets.all(16),
@@ -40,7 +68,7 @@ class HrDashboardContent extends StatelessWidget {
                 ),
                 SizedBox(height: 12),
                 Text(
-                  'You have ${stats?['pendingTripApprovals'] ?? 0} trip requests waiting for approval',
+                  'Approval features are under development',
                   style: TextStyle(color: Colors.grey[700]),
                 ),
                 SizedBox(height: 16),
@@ -55,84 +83,92 @@ class HrDashboardContent extends StatelessWidget {
                     children: [
                       Icon(Icons.visibility, size: 20),
                       SizedBox(width: 8),
-                      Text('Review Requests'),
+                      Text('Preview Feature'),
                     ],
                   ),
                 ),
               ],
             ),
           ),
-          
+
           SizedBox(height: 20),
-          
+
           // Approval Statistics
           Text(
             'Approval Statistics',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 12),
           Row(
             children: [
-              _buildApprovalStat('Active', '${stats?['departmentActiveTrips'] ?? 0}', Colors.blue),
+              _buildApprovalStat('Active', 'Preview', Colors.blue),
               SizedBox(width: 12),
-              _buildApprovalStat('Total Users', '${stats?['departmentTotalUsers'] ?? 0}', Colors.green),
+              _buildApprovalStat('Total Users', 'Preview', Colors.green),
               SizedBox(width: 12),
-              _buildApprovalStat('Pending', '${stats?['pendingTripApprovals'] ?? 0}', Colors.orange),
+              _buildApprovalStat('Pending', 'Preview', Colors.orange),
             ],
           ),
-          
+
           SizedBox(height: 20),
-          
+
           // Recent Approvals
           Text(
             'Recent Approvals',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 12),
-          _buildApprovalItem('John Doe', 'Colombo → Kandy', 'Approved', '10:30 AM'),
-          _buildApprovalItem('Jane Smith', 'Galle → Colombo', 'Rejected', 'Yesterday'),
-          _buildApprovalItem('Bob Wilson', 'Colombo → Negombo', 'Approved', '2 days ago'),
-          _buildApprovalItem('Alice Johnson', 'Kandy → Galle', 'Pending', 'Pending'),
-          
+          Column(
+            children: [
+              _buildApprovalItem(
+                'Preview User 1',
+                'Route preview',
+                'Preview',
+                'Time',
+              ),
+              SizedBox(height: 8),
+              _buildApprovalItem(
+                'Preview User 2',
+                'Route preview',
+                'Preview',
+                'Time',
+              ),
+              SizedBox(height: 8),
+              _buildApprovalItem(
+                'Preview User 3',
+                'Route preview',
+                'Preview',
+                'Time',
+              ),
+            ],
+          ),
+
           SizedBox(height: 20),
-          
+
           // Quick Filters
           Text(
             'Quick Filters',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 12),
           Wrap(
             spacing: 12,
             runSpacing: 12,
             children: [
-              _buildFilterChip('Pending Review', Icons.pending),
-              _buildFilterChip('Urgent', Icons.warning),
-              _buildFilterChip('High Cost', Icons.attach_money),
-              _buildFilterChip('Overtime', Icons.access_time),
-              _buildFilterChip('Weekend Trips', Icons.weekend),
-              _buildFilterChip('Long Distance', Icons.place),
+              _buildFilterChip('Pending Review', Icons.pending, 'Preview'),
+              _buildFilterChip('Urgent', Icons.warning, 'Preview'),
+              _buildFilterChip('High Cost', Icons.attach_money, 'Preview'),
+              _buildFilterChip('Overtime', Icons.access_time, 'Preview'),
+              _buildFilterChip('Weekend Trips', Icons.weekend, 'Preview'),
+              _buildFilterChip('Long Distance', Icons.place, 'Preview'),
             ],
           ),
-          
+
           SizedBox(height: 20),
-          
+
           // HR Actions
           Text(
             'HR Actions',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 12),
           GridView.count(
@@ -143,24 +179,51 @@ class HrDashboardContent extends StatelessWidget {
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
             children: [
-              _buildHrAction('Budget Reports', Icons.pie_chart, Colors.blue, () {}),
-              _buildHrAction('Employee Trips', Icons.people, Colors.green, () {}),
-              _buildHrAction('Cost Analysis', Icons.analytics, Colors.purple, () {}),
-              _buildHrAction('Policy Rules', Icons.rule, Colors.orange, () {}),
-              _buildHrAction('Travel History', Icons.history, Colors.teal, () {}),
-              _buildHrAction('Department Stats', Icons.business, Colors.red, () {}),
+              _buildHrAction(
+                'Budget Reports',
+                Icons.pie_chart,
+                Colors.blue,
+                'Preview',
+              ),
+              _buildHrAction(
+                'Employee Trips',
+                Icons.people,
+                Colors.green,
+                'Preview',
+              ),
+              _buildHrAction(
+                'Cost Analysis',
+                Icons.analytics,
+                Colors.purple,
+                'Preview',
+              ),
+              _buildHrAction(
+                'Policy Rules',
+                Icons.rule,
+                Colors.orange,
+                'Preview',
+              ),
+              _buildHrAction(
+                'Travel History',
+                Icons.history,
+                Colors.teal,
+                'Preview',
+              ),
+              _buildHrAction(
+                'Department Stats',
+                Icons.business,
+                Colors.red,
+                'Preview',
+              ),
             ],
           ),
-          
+
           SizedBox(height: 20),
-          
+
           // Approval Queue
           Text(
             'Approval Queue',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 12),
           Container(
@@ -172,11 +235,49 @@ class HrDashboardContent extends StatelessWidget {
             ),
             child: Column(
               children: [
-                _buildQueueItem('Trip #1234', 'High Priority', 'Over budget limit', Colors.red),
+                _buildQueueItem(
+                  'Trip #---',
+                  'Preview Priority',
+                  'Preview reason',
+                  Colors.yellow,
+                ),
                 SizedBox(height: 12),
-                _buildQueueItem('Trip #1235', 'Medium Priority', 'Weekend travel', Colors.orange),
+                _buildQueueItem(
+                  'Trip #---',
+                  'Preview Priority',
+                  'Preview reason',
+                  Colors.yellow,
+                ),
                 SizedBox(height: 12),
-                _buildQueueItem('Trip #1236', 'Low Priority', 'Regular trip', Colors.green),
+                _buildQueueItem(
+                  'Trip #---',
+                  'Preview Priority',
+                  'Preview reason',
+                  Colors.yellow,
+                ),
+              ],
+            ),
+          ),
+
+          // Coming Soon Note
+          Container(
+            padding: EdgeInsets.all(12),
+            margin: EdgeInsets.only(top: 20),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[300]!),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.access_time, color: Colors.grey[600], size: 16),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Full HR dashboard features coming soon in future updates',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                ),
               ],
             ),
           ),
@@ -219,9 +320,13 @@ class HrDashboardContent extends StatelessWidget {
     );
   }
 
-  Widget _buildApprovalItem(String employee, String route, String status, String time) {
+  Widget _buildApprovalItem(
+    String employee,
+    String route,
+    String status,
+    String time,
+  ) {
     return Container(
-      margin: EdgeInsets.only(bottom: 8),
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey[200]!),
@@ -230,11 +335,11 @@ class HrDashboardContent extends StatelessWidget {
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: _getStatusColor(status).withOpacity(0.2),
+            backgroundColor: Colors.yellow.withOpacity(0.2),
             child: Text(
               employee[0],
               style: TextStyle(
-                color: _getStatusColor(status),
+                color: Colors.yellow[800],
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -246,17 +351,14 @@ class HrDashboardContent extends StatelessWidget {
               children: [
                 Text(
                   employee,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
                 ),
                 SizedBox(height: 4),
                 Text(
                   route,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -266,21 +368,15 @@ class HrDashboardContent extends StatelessWidget {
             children: [
               Chip(
                 label: Text(status),
-                backgroundColor: _getStatusColor(status).withOpacity(0.2),
+                backgroundColor: Colors.yellow[100],
                 labelStyle: TextStyle(
-                  color: _getStatusColor(status),
+                  color: Colors.yellow[800],
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
                 ),
               ),
               SizedBox(height: 4),
-              Text(
-                time,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.grey,
-                ),
-              ),
+              Text(time, style: TextStyle(fontSize: 10, color: Colors.grey)),
             ],
           ),
         ],
@@ -288,45 +384,67 @@ class HrDashboardContent extends StatelessWidget {
     );
   }
 
-  Widget _buildFilterChip(String label, IconData icon) {
+  Widget _buildFilterChip(String label, IconData icon, String previewText) {
     return FilterChip(
       label: Text(label),
-      //icon: Icon(icon, size: 16),
       onSelected: (bool value) {},
       backgroundColor: Colors.grey[100],
       selectedColor: Colors.blue[100],
       checkmarkColor: Colors.blue,
+      labelStyle: TextStyle(fontSize: 11),
     );
   }
 
-  Widget _buildHrAction(String label, IconData icon, Color color, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 32),
-            SizedBox(height: 8),
-            Text(
-              label,
-              textAlign: TextAlign.center,
+  Widget _buildHrAction(
+    String label,
+    IconData icon,
+    Color color,
+    String previewText,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 32),
+          SizedBox(height: 8),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          SizedBox(height: 4),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+            decoration: BoxDecoration(
+              color: Colors.yellow[100],
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: Text(
+              previewText,
               style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
+                fontSize: 8,
+                color: Colors.yellow[800],
+                fontWeight: FontWeight.bold,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildQueueItem(String tripId, String priority, String reason, Color color) {
+  Widget _buildQueueItem(
+    String tripId,
+    String priority,
+    String reason,
+    Color color,
+  ) {
     return Container(
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -342,19 +460,11 @@ class HrDashboardContent extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  tripId,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                Text(tripId, style: TextStyle(fontWeight: FontWeight.bold)),
                 SizedBox(height: 4),
                 Text(
                   reason,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ],
             ),
@@ -377,18 +487,5 @@ class HrDashboardContent extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'approved':
-        return Colors.green;
-      case 'rejected':
-        return Colors.red;
-      case 'pending':
-        return Colors.orange;
-      default:
-        return Colors.grey;
-    }
   }
 }

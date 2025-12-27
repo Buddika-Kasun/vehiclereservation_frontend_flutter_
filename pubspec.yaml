@@ -46,5 +46,6 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/Icon.png
+    - assets/images/logo.png
     - assets/images/Icon_half.png
     - assets/.env

@@ -208,7 +208,7 @@ class _ReviewTripScreenState extends State<ReviewTripScreen> {
             ],
           ),
           
-          if (_isLoading && _trips.isEmpty) _buildLoadingOverlay(),
+          if (_isLoading) _buildLoadingOverlay(),
         ],
       ),
     );

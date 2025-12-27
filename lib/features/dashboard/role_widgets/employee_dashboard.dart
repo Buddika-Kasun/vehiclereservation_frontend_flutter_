@@ -5,83 +5,176 @@ class EmployeeDashboardContent extends StatelessWidget {
   final User? user;
   final Map<String, dynamic>? stats;
 
-  const EmployeeDashboardContent({Key? key, required this.user, this.stats}) : super(key: key);
+  const EmployeeDashboardContent({Key? key, required this.user, this.stats})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final itemWidth = (screenWidth - 44) / 2; // Calculate width for 2 columns
+
     return SingleChildScrollView(
       padding: EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Preview Mode Info
+          Container(
+            padding: EdgeInsets.all(12),
+            margin: EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: Colors.orange[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.orange[300]!),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info, color: Colors.orange[800], size: 18),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Preview Mode - Coming soon in future updates',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.orange[800],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           // Quick Stats
           Row(
             children: [
               _buildStatCard(
                 'Total Trips',
-                '${stats?['myTotalTrips'] ?? 0}',
+                'Preview',
                 Colors.orange,
                 Icons.history,
               ),
               SizedBox(width: 12),
               _buildStatCard(
                 'Upcoming',
-                '${stats?['myUpcomingTrips'] ?? 0}',
+                'Preview',
                 Colors.green,
                 Icons.upcoming,
               ),
               SizedBox(width: 12),
               _buildStatCard(
                 'Notifications',
-                '${stats?['myNotificationsCount'] ?? 0}',
+                'Preview',
                 Colors.blue,
                 Icons.notifications,
               ),
             ],
           ),
-          
+
           SizedBox(height: 24),
-          
+
           // Recent Trips
           Text(
             'Recent Trips',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 12),
-          _buildTripItem('Today', 'Colombo → Kandy', 'Approved'),
-          _buildTripItem('Yesterday', 'Galle → Colombo', 'Completed'),
-          _buildTripItem('2 days ago', 'Colombo → Negombo', 'Pending'),
-          
+          Column(
+            children: [
+              _buildTripItem('Preview Trip 1', 'Route preview', 'Preview'),
+              SizedBox(height: 8),
+              _buildTripItem('Preview Trip 2', 'Route preview', 'Preview'),
+              SizedBox(height: 8),
+              _buildTripItem('Preview Trip 3', 'Route preview', 'Preview'),
+            ],
+          ),
+
           SizedBox(height: 24),
-          
-          // Quick Actions
+
+          // Quick Actions - 2x2 Grid
           Text(
             'Quick Actions',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 12),
           Wrap(
             spacing: 12,
             runSpacing: 12,
             children: [
-              _buildQuickAction('Trip History', Icons.history, Colors.purple),
-              _buildQuickAction('Favorite Routes', Icons.favorite, Colors.pink),
-              _buildQuickAction('Track Vehicle', Icons.location_on, Colors.blue),
-              _buildQuickAction('My Profile', Icons.person, Colors.teal),
+              // Row 1
+              SizedBox(
+                width: itemWidth,
+                child: _buildQuickAction(
+                  'Trip History',
+                  Icons.history,
+                  Colors.purple,
+                  'Preview',
+                ),
+              ),
+              SizedBox(
+                width: itemWidth,
+                child: _buildQuickAction(
+                  'Favorite Routes',
+                  Icons.favorite,
+                  Colors.pink,
+                  'Preview',
+                ),
+              ),
+              // Row 2
+              SizedBox(
+                width: itemWidth,
+                child: _buildQuickAction(
+                  'Track Vehicle',
+                  Icons.location_on,
+                  Colors.blue,
+                  'Preview',
+                ),
+              ),
+              SizedBox(
+                width: itemWidth,
+                child: _buildQuickAction(
+                  'My Profile',
+                  Icons.person,
+                  Colors.teal,
+                  'Preview',
+                ),
+              ),
             ],
+          ),
+
+          // Coming Soon Note
+          Container(
+            padding: EdgeInsets.all(12),
+            margin: EdgeInsets.only(top: 20),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[300]!),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.access_time, color: Colors.grey[600], size: 16),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Full employee dashboard features coming soon',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStatCard(String title, String value, Color color, IconData icon) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    Color color,
+    IconData icon,
+  ) {
     return Expanded(
       child: Container(
         padding: EdgeInsets.all(12),
@@ -96,11 +189,11 @@ class EmployeeDashboardContent extends StatelessWidget {
               children: [
                 Icon(icon, color: color, size: 16),
                 SizedBox(width: 4),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[700],
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -109,7 +202,7 @@ class EmployeeDashboardContent extends StatelessWidget {
             Text(
               value,
               style: TextStyle(
-                fontSize: 24,
+                fontSize: 22,
                 fontWeight: FontWeight.bold,
                 color: color,
               ),
@@ -122,7 +215,6 @@ class EmployeeDashboardContent extends StatelessWidget {
 
   Widget _buildTripItem(String date, String route, String status) {
     return Container(
-      margin: EdgeInsets.only(bottom: 8),
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey[300]!),
@@ -136,18 +228,27 @@ class EmployeeDashboardContent extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(route, style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  route,
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  overflow: TextOverflow.ellipsis,
+                ),
                 SizedBox(height: 4),
-                Text(date, style: TextStyle(fontSize: 12, color: Colors.grey)),
+                Text(
+                  date,
+                  style: TextStyle(fontSize: 11, color: Colors.grey),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
           ),
-          Chip(
-            label: Text(status),
-            backgroundColor: _getStatusColor(status).withOpacity(0.2),
-            labelStyle: TextStyle(
-              color: _getStatusColor(status),
-              fontSize: 12,
+          SizedBox(width: 8),
+          Container(
+            constraints: BoxConstraints(minWidth: 60),
+            child: Chip(
+              label: Text(status, style: TextStyle(fontSize: 11)),
+              backgroundColor: Colors.yellow[100],
+              labelStyle: TextStyle(color: Colors.yellow[800]),
             ),
           ),
         ],
@@ -155,41 +256,48 @@ class EmployeeDashboardContent extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickAction(String label, IconData icon, Color color) {
+  Widget _buildQuickAction(
+    String label,
+    IconData icon,
+    Color color,
+    String previewText,
+  ) {
     return Container(
-      width: 100,
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: color, size: 32),
+          Icon(icon, color: color, size: 28),
           SizedBox(height: 8),
           Text(
             label,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          SizedBox(height: 4),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+            decoration: BoxDecoration(
+              color: Colors.yellow[100],
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: Text(
+              previewText,
+              style: TextStyle(
+                fontSize: 8,
+                color: Colors.yellow[800],
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
       ),
     );
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'approved':
-        return Colors.green;
-      case 'completed':
-        return Colors.blue;
-      case 'pending':
-        return Colors.orange;
-      default:
-        return Colors.grey;
-    }
   }
 }
