@@ -25,7 +25,7 @@ class _RidesApprovalScreenState extends State<RidesApprovalScreen> {
   bool _loadingMore = false;
   String _errorMessage = '';
   int _page = 1;
-  int _limit = 4;
+  int _limit = 5;
   bool _hasMore = true;
 
   // Filters

@@ -377,7 +377,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: TextStyle(
                   color: const Color.fromARGB(255, 255, 206, 59),
                   fontSize: _obscurePassword
-                      ? 11
+                      ? 16
                       : 16, // Larger font size for dots
                   letterSpacing: _obscurePassword
                       ? 4.0

@@ -1404,7 +1404,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
       return;
     }
 
-    if (_repetition != 'once') {
+    if (_repetition != 'once' && _validTillDate == null) {
       _showMessage('Please select valid till time', false);
       return;
     }

@@ -42,6 +42,13 @@ class TripCard {
   final String? startLocation;
   final String? endLocation;
 
+  // NEW FIELDS FOR SCHEDULED TRIPS
+  final bool isScheduled;
+  final bool isInstance;
+  final int? masterTripId;
+  final int? instanceCount;
+  final List<int>? instanceIds;
+
   TripCard({
     required this.id,
     required this.vehicleModel,
@@ -53,6 +60,13 @@ class TripCard {
     this.driverName,
     this.startLocation,
     this.endLocation,
+
+    // NEW: Scheduled trip fields with defaults
+    this.isScheduled = false,
+    this.isInstance = false,
+    this.masterTripId,
+    this.instanceCount = 0,
+    this.instanceIds,
   });
 
   factory TripCard.fromJson(Map<String, dynamic> json) {
@@ -67,6 +81,15 @@ class TripCard {
       driverName: json['driverName'],
       startLocation: json['startLocation'],
       endLocation: json['endLocation'],
+
+      // NEW: Parse scheduled trip fields
+      isScheduled: json['isScheduled'] ?? false,
+      isInstance: json['isInstance'] ?? false,
+      masterTripId: json['masterTripId'],
+      instanceCount: json['instanceCount'] ?? 0,
+      instanceIds: json['instanceIds'] != null
+          ? List<int>.from(json['instanceIds'])
+          : null,
     );
   }
 

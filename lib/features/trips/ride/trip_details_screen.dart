@@ -19,11 +19,13 @@ import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/t
 class TripDetailsScreen extends StatefulWidget {
   final int tripId;
   final bool fromConflictNavigation;
+  final bool fromInstanceNavigation;
 
   const TripDetailsScreen({
     Key? key,
     required this.tripId,
     this.fromConflictNavigation = false,
+    this.fromInstanceNavigation = false,
   }) : super(key: key);
 
   @override
@@ -672,8 +674,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
             child: Row(
               children: [
                 Text(
-                  widget.fromConflictNavigation 
-                      ? "Conflict Trip #${_tripDetails?.id ?? widget.tripId}"
+                  widget.fromConflictNavigation
+                      ? "Joined Trip #${_tripDetails?.id ?? widget.tripId}"
+                      : widget.fromInstanceNavigation
+                      ? "Instance Trip #${_tripDetails?.id ?? widget.tripId}"
                       : "Trip #${_tripDetails?.id ?? widget.tripId}",
                   style: TextStyle(
                     color: Colors.white,
@@ -1500,8 +1504,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
             estimatedValue: _formatDurationToHoursMinutes(
               double.parse(
                     _tripDetails!.details.route.metrics.estimatedDuration,
-                  ) *
-                  2,
+                  ) 
+                  //* 2,
             ),
             actualValue: _tripDetails?.status.toLowerCase() == 'completed'
                 ? _formatDurationToHoursMinutes(
@@ -1519,7 +1523,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
           _buildComparisonRow(
             label: 'Distance (km)',
             estimatedValue:
-                '${(double.parse(_tripDetails!.details.route.metrics.distance) * 2).toStringAsFixed(1)}',
+                '${(double.parse(_tripDetails!.details.route.metrics.distance)).toStringAsFixed(1)}',
             actualValue: _tripDetails?.status.toLowerCase() == 'completed'
                 ? '${_tripDetails!.details.route.metrics.actualDistance}'
                 : '--',
@@ -2755,6 +2759,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                     children: [
                       _buildMapSection(),
                       _buildTripInfoSection(),
+                      _buildScheduleSection(),
                       _buildVehicleSection(),
                       _buildLocationsSection(),
                       _buildPassengersSection(),
@@ -2771,6 +2776,338 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       ],
     );
   }
+
+  Widget _buildScheduleSection() {
+    // Only show if it's a scheduled trip
+    if (_tripDetails?.schedule.isScheduled == false &&
+        _tripDetails?.schedule.isInstance == false) {
+      return SizedBox.shrink();
+    }
+
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        border: Border(bottom: BorderSide(color: Colors.grey[800]!)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.repeat, color: Colors.blue, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Schedule Details',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(width: 8),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  _tripDetails!.schedule.isInstance ? 'INSTANCE' : 'MASTER',
+                  style: TextStyle(
+                    color: Colors.blue,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12),
+
+          // Master Trip Link (if instance)
+          if (_tripDetails!.schedule.isInstance &&
+              _tripDetails!.schedule.masterTripId != null)
+            Column(
+              children: [
+                _buildScheduleInfoRow(
+                  Icons.link,
+                  'Master Trip',
+                  'Trip ${_tripDetails!.schedule.masterTripId}',
+                  () => _navigateToTrip(
+                    _tripDetails!.schedule.masterTripId!,
+                    false,
+                  ),
+                ),
+                SizedBox(height: 8),
+              ],
+            ),
+
+          // Instance date (if instance)
+          if (_tripDetails!.schedule.isInstance &&
+              _tripDetails!.schedule.instanceDate != null)
+            Column(
+              children: [
+                _buildScheduleInfoRow(
+                  Icons.calendar_today,
+                  'Instance Date',
+                  _tripDetails!.schedule.instanceDate!,
+                  null,
+                ),
+                SizedBox(height: 8),
+              ],
+            ),
+
+          // For MASTER trips: Put Repetition and Valid Till in one row
+          if (!_tripDetails!.schedule.isInstance)
+            Row(
+              children: [
+                Expanded(
+                  child: _buildScheduleInfoRow(
+                    Icons.repeat,
+                    'Repetition',
+                    _tripDetails!.repetition,
+                    null,
+                  ),
+                ),
+                SizedBox(width: 12),
+                if (_tripDetails!.schedule.validTillDate != null)
+                  Expanded(
+                    child: _buildScheduleInfoRow(
+                      Icons.calendar_today,
+                      'Valid Till',
+                      _tripDetails!.schedule.validTillDate!,
+                      null,
+                    ),
+                  ),
+              ],
+            ),
+
+          SizedBox(height: 8),
+
+          // For MASTER trips: Put Include Weekends and Repeat After in one row
+          if (!_tripDetails!.schedule.isInstance)
+            Row(
+              children: [
+                Expanded(
+                  child: _buildScheduleInfoRow(
+                    Icons.weekend,
+                    'Include Weekends',
+                    _tripDetails!.schedule.includeWeekends ? 'Yes' : 'No',
+                    null,
+                  ),
+                ),
+                SizedBox(width: 12),
+                if (_tripDetails!.schedule.repeatAfterDays != null)
+                  Expanded(
+                    child: _buildScheduleInfoRow(
+                      Icons.timer,
+                      'Repeat After',
+                      '${_tripDetails!.schedule.repeatAfterDays} days',
+                      null,
+                    ),
+                  ),
+              ],
+            ),
+
+          SizedBox(height: 8),
+
+          // Instance count and list (for master trips)
+          if (!_tripDetails!.schedule.isInstance &&
+              _tripDetails!.schedule.instanceCount > 0)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildScheduleInfoRow(
+                  Icons.list,
+                  'Instances',
+                  '${_tripDetails!.schedule.instanceCount} instances',
+                  null,
+                ),
+                SizedBox(height: 8),
+
+                // Show instance IDs as clickable buttons
+                if (_tripDetails!.schedule.instanceIds != null &&
+                    _tripDetails!.schedule.instanceIds!.isNotEmpty)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Instance IDs:',
+                        style: TextStyle(color: Colors.grey[300], fontSize: 12),
+                      ),
+                      SizedBox(height: 4),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 2,
+                        children: _tripDetails!.schedule.instanceIds!.map((
+                          instanceId,
+                        ) {
+                          return ElevatedButton(
+                            onPressed: () =>
+                                _navigateToTrip(instanceId.id, true),
+                            //onPressed: () => print('tap trip id'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue.withOpacity(0.2),
+                              foregroundColor: Colors.blue,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                side: BorderSide(
+                                  color: Colors.blue.withOpacity(0.3),
+                                ),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.trip_origin, size: 14),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Trip ${_formatDateToMonthDay(instanceId.startDate)}',
+                                ),
+                                SizedBox(width: 4),
+                                Icon(Icons.arrow_forward_ios_rounded, size: 10),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+
+          SizedBox(height: 8),
+
+          // Instance list (if viewing an instance, show other instances)
+          if (_tripDetails!.schedule.isInstance &&
+              _tripDetails!.schedule.instanceIds != null &&
+              _tripDetails!.schedule.instanceIds!.isNotEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Other Instances:',
+                  style: TextStyle(color: Colors.grey[300], fontSize: 12),
+                ),
+                SizedBox(height: 4),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _tripDetails!.schedule.instanceIds!
+                      .where((id) => id.id != _tripDetails!.id)
+                      .map((instanceId) {
+                        return ElevatedButton(
+                          onPressed: () => _navigateToTrip(instanceId.id, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue.withOpacity(0.2),
+                            foregroundColor: Colors.blue,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              side: BorderSide(
+                                color: Colors.blue.withOpacity(0.3),
+                              ),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.trip_origin, size: 14),
+                              SizedBox(width: 4),
+                              Text('Trip #$instanceId'),
+                              SizedBox(width: 4),
+                              Icon(Icons.arrow_forward_ios_rounded, size: 10),
+                            ],
+                          ),
+                        );
+                      })
+                      .toList(),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDateToMonthDay(String dateString) {
+    try {
+      final date = DateTime.parse(dateString);
+      return '${date.month}/${date.day}';
+    } catch (e) {
+      return dateString;
+    }
+  }
+
+
+  Widget _buildScheduleInfoRow(
+    IconData icon,
+    String label,
+    String value,
+    VoidCallback? onTap,
+  ) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: onTap != null
+              ? Colors.blue.withOpacity(0.05)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.blue, size: 18),
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(color: Colors.grey[300], fontSize: 12),
+                  ),
+                  SizedBox(height: 0),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      color: onTap != null ? Colors.blue : Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (onTap != null)
+              Icon(Icons.arrow_forward_ios, color: Colors.blue, size: 14),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Add this navigation method
+  void _navigateToTrip(int tripId, bool isInstance) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TripDetailsScreen(
+          tripId: tripId,
+          fromInstanceNavigation: isInstance,
+        ),
+      ),
+    );
+  }
+
 
   Widget _buildLoadingState() {
     return Column(

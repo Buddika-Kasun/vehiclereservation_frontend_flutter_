@@ -19,7 +19,7 @@ class _ReviewTripScreenState extends State<ReviewTripScreen> {
   bool _loadingMore = false;
   String _errorMessage = '';
   int _page = 1;
-  int _limit = 3;
+  int _limit = 5;
   bool _hasMore = true;
 
   // Filters
@@ -436,6 +436,58 @@ class _ReviewTripScreenState extends State<ReviewTripScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+
+
+                  if (trip.isScheduled)
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.repeat, size: 12, color: Colors.blue),
+                          SizedBox(width: 4),
+                          Text(
+                            'Scheduled',
+                            style: TextStyle(
+                              color: Colors.blue,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  // NEW: Instance badge
+                  if (trip.isInstance)
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.event_note,
+                            size: 12,
+                            color: Colors.purple,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            'Instance',
+                            style: TextStyle(
+                              color: Colors.purple,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    
                   
                   //SizedBox(width: 12),
 

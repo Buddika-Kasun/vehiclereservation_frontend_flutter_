@@ -37,8 +37,6 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
     _scrollController.addListener(_scrollListener);
   }
 
-
-
   @override
   void handleScreenRefresh(Map<String, dynamic> data) {
     // Handle realtime approval updates
