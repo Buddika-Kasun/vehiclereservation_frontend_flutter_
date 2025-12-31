@@ -3065,15 +3065,15 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
         // Reload trip details to update status
         await _loadTripDetails();
       } else {
-        throw Exception(response['message'] ?? 'Failed to start trip');
+        throw response['message'] ?? 'Failed to start trip';
       }
     } catch (e) {
       print('Error starting trip: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error starting trip: ${e.toString()}'),
+          content: Text('${e.toString()}'),
           backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
+          duration: Duration(seconds: 5),
         ),
       );
     } finally {

@@ -20,27 +20,28 @@ class _ConnectionOverlayState extends State<ConnectionOverlay> {
   String _statusMessage = '';
   Color _overlayColor = Colors.red;
   IconData _overlayIcon = Icons.wifi_off;
-  bool _isCheckingServer = false;
-  bool _wasOffline = false;
+  bool _initialized = false;
 
   @override
   void initState() {
     super.initState();
-    _setupListeners();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupListeners();
+    });
   }
 
   void _setupListeners() {
+    if (_initialized) return;
+
+    _initialized = true;
+
+    _serverHealthService.serverCheckingNotifier.addListener(_updateStatus);
+
     // Listen to connectivity changes
     _connectivityService.connectionNotifier.addListener(_onConnectivityChanged);
-    _connectivityService.connectionStatusNotifier.addListener(
-      _onConnectivityChanged,
-    );
 
     // Listen to server health changes
     _serverHealthService.serverHealthNotifier.addListener(
-      _onServerHealthChanged,
-    );
-    _serverHealthService.serverStatusNotifier.addListener(
       _onServerHealthChanged,
     );
 
@@ -49,30 +50,21 @@ class _ConnectionOverlayState extends State<ConnectionOverlay> {
   }
 
   void _onConnectivityChanged() {
-    final isConnected = _connectivityService.isConnected;
+    _updateStatus();
 
-    if (!isConnected) {
-      _wasOffline = true;
-      _updateStatus(); // Show offline immediately
-    } else if (isConnected && _wasOffline) {
-      // Just came back online
-      _wasOffline = false;
-      _checkServerOnReconnect();
+    if (_connectivityService.isConnected) {
+      _serverHealthService.checkServerHealth();
     }
   }
 
   void _onServerHealthChanged() {
-    if (_connectivityService.isConnected) {
-      // Only update if we're online
-      _updateStatus();
-    }
+    _updateStatus();
   }
 
-  Future<void> _checkServerOnReconnect() async {
-    // Show checking message immediately
+  void _checkServerOnReconnect() {
+    // Just show checking message and let the ServerHealthService handle the actual check
     if (mounted) {
       setState(() {
-        _isCheckingServer = true;
         _showOverlay = true;
         _statusMessage = 'Checking server connection...';
         _overlayColor = Colors.blue.withOpacity(0.9);
@@ -80,52 +72,47 @@ class _ConnectionOverlayState extends State<ConnectionOverlay> {
       });
     }
 
-    try {
-      // Wait a moment for network to stabilize
-      await Future.delayed(Duration(milliseconds: 100));
-
-      // Check server health
-      await _serverHealthService.checkServerHealth();
-    } catch (e) {
-      // Ignore errors, status will update via listener
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isCheckingServer = false;
-        });
-      }
-    }
+    // The ServerHealthService will automatically check when connectivity changes
+    // via its _onConnectivityChanged listener
   }
 
   void _updateStatus() {
     if (!mounted) return;
 
+    final isChecking = _serverHealthService.serverCheckingNotifier.value;
+    final hasInitialCheck = _serverHealthService.hasCompletedInitialCheck;
+
     final isConnected = _connectivityService.isConnected;
-    final isServerHealthy = _serverHealthService.isServerHealthy;
+    final isHealthy = _serverHealthService.isServerHealthy;
 
     setState(() {
+      
       if (!isConnected) {
         _showOverlay = true;
         _statusMessage =
             'No Internet Connection\nPlease check your network settings';
         _overlayColor = Colors.red.withOpacity(0.9);
         _overlayIcon = Icons.wifi_off;
-      } else if (_isCheckingServer) {
-        // Keep showing checking message
+        return;
+      }
+
+      if (isChecking && hasInitialCheck) {
         _showOverlay = true;
         _statusMessage = 'Checking server connection...';
         _overlayColor = Colors.blue.withOpacity(0.9);
         _overlayIcon = Icons.refresh;
-      } else if (isServerHealthy != null && !isServerHealthy!) {
-        // Explicitly check for false (not null)
+        return;
+      }
+
+      if (!isHealthy) {
         _showOverlay = true;
         _statusMessage = 'Server Under Maintenance\nPlease try again later';
         _overlayColor = Colors.orange.withOpacity(0.9);
         _overlayIcon = Icons.cloud_off;
-      } else {
-        // Server is healthy OR status is unknown but we're connected
-        _showOverlay = false;
+        return;
       }
+
+      _showOverlay = false;
     });
   }
 
@@ -162,6 +149,7 @@ class _ConnectionOverlayState extends State<ConnectionOverlay> {
                     ],
                   ),
                   child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       // Icon or loading indicator
@@ -172,7 +160,7 @@ class _ConnectionOverlayState extends State<ConnectionOverlay> {
                           shape: BoxShape.circle,
                         ),
                         child:
-                            _isCheckingServer || _overlayIcon == Icons.refresh
+                            _overlayIcon == Icons.refresh
                             ? SizedBox(
                                 width: 40,
                                 height: 40,
@@ -182,7 +170,7 @@ class _ConnectionOverlayState extends State<ConnectionOverlay> {
                                 ),
                               )
                             : Icon(_overlayIcon, size: 40, color: Colors.white),
-                      ),
+                                            ),
 
                       SizedBox(height: 20),
 
@@ -223,13 +211,21 @@ class _ConnectionOverlayState extends State<ConnectionOverlay> {
 
                       // Retry button - Only for server issues when online
                       if (_overlayIcon == Icons.cloud_off &&
-                          isServerHealthy != null &&
-                          !isServerHealthy!)
+                          isServerHealthy == false)
                         Padding(
                           padding: EdgeInsets.only(top: 16),
                           child: ElevatedButton(
                             onPressed: () {
-                              _checkServerOnReconnect();
+                              // Reset checking state and let ServerHealthService handle it
+                              if (mounted) {
+                                setState(() {
+                                  _statusMessage =
+                                      'Checking server connection...';
+                                  _overlayColor = Colors.blue.withOpacity(0.9);
+                                  _overlayIcon = Icons.refresh;
+                                });
+                              }
+                              _serverHealthService.checkServerHealth();
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
@@ -264,16 +260,12 @@ class _ConnectionOverlayState extends State<ConnectionOverlay> {
 
   @override
   void dispose() {
+    _serverHealthService.serverCheckingNotifier.removeListener(_updateStatus);
+
     _connectivityService.connectionNotifier.removeListener(
       _onConnectivityChanged,
     );
-    _connectivityService.connectionStatusNotifier.removeListener(
-      _onConnectivityChanged,
-    );
     _serverHealthService.serverHealthNotifier.removeListener(
-      _onServerHealthChanged,
-    );
-    _serverHealthService.serverStatusNotifier.removeListener(
       _onServerHealthChanged,
     );
     super.dispose();

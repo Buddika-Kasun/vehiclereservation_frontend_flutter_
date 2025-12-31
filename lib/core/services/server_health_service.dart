@@ -21,46 +21,31 @@ class ServerHealthService {
   final ValueNotifier<String> serverStatusNotifier = ValueNotifier<String>(
     'Server Online',
   );
+  final ValueNotifier<bool> serverCheckingNotifier = ValueNotifier<bool>(false);
 
-  Future<bool> checkServerHealth() async {
-    // Don't check server if we're offline
-    if (!_connectivityService.isConnected) {
-      return false;
-    }
-
-    try {
-      final response = await _dio.get(
-        '${ApiConfig.baseUrl}/health',
-        options: Options(
-          receiveTimeout: Duration(seconds: 3), // Shorter timeout
-          sendTimeout: Duration(seconds: 3),
-        ),
-      );
-
-      final healthy = response.statusCode == 200;
-      _updateStatus(healthy, healthy ? 'Server Online' : 'Server Issues');
-      return healthy;
-    } catch (e) {
-      _updateStatus(false, 'Server Offline');
-      return false;
-    }
-  }
+  bool _isChecking = false; // Add flag to prevent duplicate checks
+  bool _hasCompletedInitialCheck = false;
+  bool get hasCompletedInitialCheck => _hasCompletedInitialCheck;
 
   void _updateStatus(bool isHealthy, String status) {
-    _isServerHealthy = isHealthy;
-    serverHealthNotifier.value = isHealthy;
-    serverStatusNotifier.value = status;
+    
+    // Only update if status changed to prevent unnecessary notifications
+    if (_isServerHealthy != isHealthy || serverStatusNotifier.value != status) {
+      _isServerHealthy = isHealthy;
+      serverHealthNotifier.value = isHealthy;
+      serverStatusNotifier.value = status;
+      debugPrint('Server status updated: $status (Healthy: $isHealthy)');
+    }
   }
 
   void startHealthMonitoring({int intervalSeconds = 30}) {
     // Listen to connectivity changes
     _connectivityService.connectionNotifier.addListener(_onConnectivityChanged);
 
-    // Set initial status based on connectivity
+    // Set initial status
     if (_connectivityService.isConnected) {
       checkServerHealth();
     } else {
-      // When offline, reset to healthy state so it doesn't show "Server Maintenance"
       _updateStatus(true, 'Offline - Connection Required');
     }
 
@@ -69,18 +54,62 @@ class ServerHealthService {
       timer,
     ) async {
       if (_connectivityService.isConnected) {
-        await checkServerHealth();
+        await checkServerHealth(silent: true);
       }
     });
   }
 
   void _onConnectivityChanged() {
     if (_connectivityService.isConnected) {
-      // Just came online, check server immediately
-      checkServerHealth();
+      debugPrint('Connectivity changed: Online, checking server...');
+      checkServerHealth(); // This will trigger notifier when done
     } else {
-      // Went offline, reset to healthy state
+      debugPrint('Connectivity changed: Offline');
       _updateStatus(true, 'Offline - Connection Required');
+    }
+  }
+
+  Future<bool> checkServerHealth({bool silent = false}) async {
+    if (_isChecking) return _isServerHealthy;
+
+    if (!_connectivityService.isConnected) {
+      return true;
+    }
+
+    _isChecking = true;
+
+    if (!silent) {
+      serverCheckingNotifier.value = true;
+    }
+
+    try {
+      final response = await _dio.get(
+        '${ApiConfig.baseUrl}/health',
+        options: Options(
+          receiveTimeout: Duration(seconds: 3),
+          sendTimeout: Duration(seconds: 3),
+        ),
+      );
+
+      bool isHealthy = true;
+
+      if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
+        final status = response.data['status']?.toString().toUpperCase();
+        isHealthy = status == 'UP' || status == 'HEALTHY' || status == 'OK';
+      }
+
+      _updateStatus(isHealthy, isHealthy ? 'Server Online' : 'Server Issues');
+      return isHealthy;
+    } catch (_) {
+      _updateStatus(false, 'Server Offline');
+      return false;
+    } finally {
+      _isChecking = false;
+      _hasCompletedInitialCheck = true;
+
+      if (!silent) {
+        serverCheckingNotifier.value = false;
+      }
     }
   }
 
@@ -99,4 +128,5 @@ class ServerHealthService {
     serverHealthNotifier.dispose();
     serverStatusNotifier.dispose();
   }
+
 }

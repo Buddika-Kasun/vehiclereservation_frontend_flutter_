@@ -105,7 +105,7 @@ class SideMenu extends StatelessWidget {
       case UserRole.security:
         return 'Security';
       case UserRole.supervisor:
-        return 'Supervisor';
+        return 'Transport Supervisor';
       case UserRole.driver:
         return 'Driver';
       case UserRole.employee:

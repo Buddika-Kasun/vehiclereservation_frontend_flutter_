@@ -1,130 +1,248 @@
 # ============================================
-# FLUTTER DEBUG BUILD SCRIPT FOR WINDOWS
+# OPTIMIZED FLUTTER DEBUG BUILD SCRIPT
 # ============================================
 
-Write-Host "╔══════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║    Flutter Debug Build Script                ║" -ForegroundColor Cyan
-Write-Host "║    Starting build process...                 ║" -ForegroundColor Cyan
-Write-Host "╚══════════════════════════════════════════════╝" -ForegroundColor Cyan
+param(
+    [switch]$QuickBuild,
+    [switch]$NoPrompt,
+    [switch]$BuildOnly,
+    [string]$Target = "apk"
+)
 
 # ============================================
-# STEP 1: KILL ALL RUNNING PROCESSES
+# FUNCTION DEFINITIONS
 # ============================================
-Write-Host "`n[1/8] Killing running processes..." -ForegroundColor Yellow
-
-$processes = @("java", "javaw", "gradle", "adb", "dart", "flutter", "AndroidStudio")
-foreach ($proc in $processes) {
-    Get-Process $proc* -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-    Write-Host "  ✓ Killed $proc processes" -ForegroundColor Green
-}
-Start-Sleep -Seconds 2
-
-# ============================================
-# STEP 2: CLEAN FLUTTER CACHE
-# ============================================
-Write-Host "`n[2/8] Cleaning Flutter cache..." -ForegroundColor Yellow
-
-# Clean Flutter cache
-Write-Host "  Running flutter clean..." -ForegroundColor Gray
-flutter clean
-
-# Clean Pub cache
-Write-Host "  Running flutter pub cache repair..." -ForegroundColor Gray
-flutter pub cache repair
-
-# ============================================
-# STEP 3: CLEAN GRADLE CACHE
-# ============================================
-Write-Host "`n[3/8] Cleaning Gradle cache..." -ForegroundColor Yellow
-
-# Try to clean Gradle cache
-$gradleCache = "$env:USERPROFILE\.gradle\caches"
-if (Test-Path $gradleCache) {
-    Write-Host "  Deleting Gradle cache..." -ForegroundColor Gray
-    Remove-Item -Path $gradleCache -Recurse -Force -ErrorAction SilentlyContinue
-    Write-Host "  ✓ Gradle cache cleaned" -ForegroundColor Green
-} else {
-    Write-Host "  Gradle cache not found" -ForegroundColor Gray
+function Write-Step {
+    param([string]$Message, [int]$Step, [int]$Total, [string]$Color = "Yellow")
+    Write-Host "`n[$Step/$Total] $Message" -ForegroundColor $Color
 }
 
-# ============================================
-# STEP 4: CLEAN ANDROID BUILD CACHE
-# ============================================
-Write-Host "`n[4/8] Cleaning Android build cache..." -ForegroundColor Yellow
+function Write-Info {
+    param([string]$Message, [string]$Indent = "  ")
+    Write-Host "$Indent$Message" -ForegroundColor "Gray"
+}
 
-# Clean Android build directories
-$buildDirs = @("build", ".gradle", ".idea")
-foreach ($dir in $buildDirs) {
-    $path = "android/$dir"
-    if (Test-Path $path) {
-        Remove-Item -Path $path -Recurse -Force -ErrorAction SilentlyContinue
-        Write-Host "  ✓ Cleaned $dir" -ForegroundColor Green
+function Write-Success {
+    param([string]$Message, [string]$Indent = "  ")
+    Write-Host "$Indent$Message" -ForegroundColor "Green"
+}
+
+function Write-Warning {
+    param([string]$Message, [string]$Indent = "  ")
+    Write-Host "$Indent$Message" -ForegroundColor "Yellow"
+}
+
+function Get-StorageInfo {
+    try {
+        $drive = Get-PSDrive C -ErrorAction Stop
+        $freeGB = [math]::Round($drive.Free / 1GB, 2)
+        $usedGB = [math]::Round($drive.Used / 1GB, 2)
+        $totalGB = [math]::Round(($drive.Free + $drive.Used) / 1GB, 2)
+        return @{ Free = $freeGB; Used = $usedGB; Total = $totalGB }
+    } catch {
+        return @{ Free = 0; Used = 0; Total = 0 }
     }
 }
 
 # ============================================
-# STEP 5: GET DEPENDENCIES
+# HEADER
 # ============================================
-Write-Host "`n[5/8] Getting dependencies..." -ForegroundColor Yellow
+Write-Host "============================================" -ForegroundColor Cyan
+if ($QuickBuild) {
+    Write-Host "    QUICK DEBUG BUILD                    " -ForegroundColor Cyan
+} else {
+    Write-Host "    FULL DEBUG BUILD                    " -ForegroundColor Cyan
+}
+Write-Host "    Target: $Target" -ForegroundColor Cyan
+Write-Host "============================================" -ForegroundColor Cyan
 
-# Get Flutter packages
-Write-Host "  Running flutter pub get..." -ForegroundColor Gray
-flutter pub get
+# ============================================
+# QUICK BUILD PATH
+# ============================================
+if ($QuickBuild -or $BuildOnly) {
+    Write-Step -Message "Quick Debug Build" -Step 1 -Total 3
+    
+    if (-not $BuildOnly) {
+        Write-Info "Cleaning project..."
+        flutter clean 2>$null
+        flutter pub get
+    }
+    
+    Write-Info "Building debug $Target..."
+    $startTime = Get-Date
+    
+    try {
+        if ($Target -eq "apk") {
+            flutter build apk --debug --no-track-widget-creation
+        } elseif ($Target -eq "aab") {
+            flutter build appbundle --debug --no-track-widget-creation
+        } else {
+            flutter build apk --debug --no-track-widget-creation
+        }
+        
+        $endTime = Get-Date
+        $duration = $endTime - $startTime
+        Write-Success "Build completed in $($duration.TotalSeconds.ToString('0.00')) seconds"
+        
+        # Show output
+        if ($Target -eq "apk") {
+            $outputPath = "build\app\outputs\flutter-apk\app-debug.apk"
+        } else {
+            $outputPath = "build\app\outputs\bundle\debug\app-debug.aab"
+        }
+        
+        if (Test-Path $outputPath) {
+            $size = [math]::Round((Get-Item $outputPath).Length / 1MB, 2)
+            Write-Success "Output: $outputPath ($size MB)"
+        }
+    } catch {
+        Write-Host "  Build failed: $_" -ForegroundColor Red
+        exit 1
+    }
+    
+    Write-Host "`n============================================" -ForegroundColor Cyan
+    Write-Host "    Quick Build Complete!                " -ForegroundColor Cyan
+    Write-Host "============================================" -ForegroundColor Cyan
+    if (-not $NoPrompt) { pause }
+    exit 0
+}
 
-# Get Android dependencies
-Write-Host "  Getting Android dependencies..." -ForegroundColor Gray
+# ============================================
+# FULL DEBUG BUILD (YOUR ORIGINAL SCRIPT)
+# ============================================
+Write-Step -Message "Stopping build processes" -Step 1 -Total 7
+
+$processes = @("java", "javaw", "gradle", "dart")
+foreach ($proc in $processes) {
+    $running = Get-Process $proc* -ErrorAction SilentlyContinue | Measure-Object
+    if ($running.Count -gt 0) {
+        Get-Process $proc* -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+        Write-Info "Stopped $proc ($($running.Count) processes)"
+    }
+}
+Start-Sleep -Seconds 1
+
+# ============================================
+Write-Step -Message "Selective cleaning" -Step 2 -Total 7
+
+Write-Info "Running flutter clean (project only)..."
+flutter clean
+
+$projectBuildDirs = @("build", ".gradle")
+foreach ($dir in $projectBuildDirs) {
+    $path = "android/$dir"
+    if (Test-Path $path) {
+        Remove-Item -Path $path -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Success "Cleaned project $dir"
+    }
+}
+
+# ============================================
+Write-Step -Message "Checking Gradle cache" -Step 3 -Total 7
+
+$transformsPath = "$env:USERPROFILE\.gradle\caches\transforms-*"
+if (Test-Path $transformsPath) {
+    $transformsSize = [math]::Round((Get-ChildItem $transformsPath -Recurse -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum / 1MB, 2)
+    Write-Info "Found transforms cache: ~$transformsSize MB"
+    
+    if (-not $NoPrompt) {
+        $cleanTransforms = Read-Host "  Clean transforms metadata? (y/N)"
+        if ($cleanTransforms -eq 'y') {
+            Remove-Item -Path $transformsPath -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Success "Cleaned transforms metadata"
+        }
+    }
+}
+
+# ============================================
+Write-Step -Message "Getting dependencies" -Step 4 -Total 7
+
+Write-Info "Running flutter pub get (offline first)..."
+flutter pub get --offline 2>$null
+if ($LASTEXITCODE -ne 0) {
+    Write-Warning "Offline failed, trying online..."
+    flutter pub get
+}
+
+Write-Info "Cleaning Android project..."
 Set-Location android
-./gradlew clean
+./gradlew clean 2>$null
 Set-Location ..
 
 # ============================================
-# STEP 6: RUN FLUTTER DOCTOR
-# ============================================
-Write-Host "`n[6/8] Checking Flutter environment..." -ForegroundColor Yellow
-flutter doctor -v
+Write-Step -Message "Storage check" -Step 5 -Total 7
+
+$storage = Get-StorageInfo
+Write-Info "Disk C: Free $($storage.Free) GB / Used $($storage.Used) GB / Total $($storage.Total) GB"
+
+if ($storage.Free -lt 2) {
+    Write-Warning "Less than 2GB free space!"
+    if (-not $NoPrompt) {
+        $continue = Read-Host "  Continue anyway? (y/N)"
+        if ($continue -ne 'y') {
+            Write-Host "  Build cancelled" -ForegroundColor Yellow
+            exit 1
+        }
+    }
+}
 
 # ============================================
-# STEP 7: BUILD DEBUG APK
-# ============================================
-Write-Host "`n[7/8] Building Debug APK..." -ForegroundColor Yellow
+Write-Step -Message "Building Debug $Target" -Step 6 -Total 7
 
-# Build with verbose logging
-Write-Host "  Starting build process..." -ForegroundColor Gray
+Write-Info "Starting build..."
 $startTime = Get-Date
 
-# Build debug APK
 try {
-    flutter build apk --debug --verbose
+    if ($Target -eq "apk") {
+        flutter build apk --debug --no-track-widget-creation
+    } else {
+        flutter build appbundle --debug --no-track-widget-creation
+    }
+    
     $endTime = Get-Date
     $duration = $endTime - $startTime
-    Write-Host "  ✓ Build completed in $($duration.TotalSeconds.ToString('0.00')) seconds" -ForegroundColor Green
+    Write-Success "Build completed in $($duration.TotalSeconds.ToString('0.00')) seconds"
 } catch {
-    Write-Host "  ✗ Build failed!" -ForegroundColor Red
-    Write-Host "  Error: $_" -ForegroundColor Red
-    exit 1
+    Write-Warning "Build failed! Trying alternative..."
+    
+    try {
+        Write-Info "Trying alternative build..."
+        flutter build apk --debug --no-track-widget-creation
+        Write-Success "Alternative build successful"
+    } catch {
+        Write-Host "  All builds failed: $_" -ForegroundColor Red
+        exit 1
+    }
 }
 
 # ============================================
-# STEP 8: DISPLAY BUILD INFO
-# ============================================
-Write-Host "`n[8/8] Build Information" -ForegroundColor Yellow
+Write-Step -Message "Build Information" -Step 7 -Total 7
 
-# Show APK location
-$apkPath = "build\app\outputs\flutter-apk\app-debug.apk"
-if (Test-Path $apkPath) {
-    $apkSize = (Get-Item $apkPath).Length / 1MB
-    Write-Host "  APK Location: $apkPath" -ForegroundColor Green
-    Write-Host "  APK Size: $($apkSize.ToString('0.00')) MB" -ForegroundColor Green
-    Write-Host "  Build successful! ✓" -ForegroundColor Green
+if ($Target -eq "apk") {
+    $outputPath = "build\app\outputs\flutter-apk\app-debug.apk"
 } else {
-    Write-Host "  APK not found!" -ForegroundColor Red
+    $outputPath = "build\app\outputs\bundle\debug\app-debug.aab"
+}
+
+if (Test-Path $outputPath) {
+    $size = [math]::Round((Get-Item $outputPath).Length / 1MB, 2)
+    Write-Success "Debug $($Target.ToUpper()): $outputPath"
+    Write-Info "Size: $($size.ToString('0.00')) MB"
+    Write-Success "Build successful!"
+} else {
+    Write-Host "  No output file found!" -ForegroundColor Red
+}
+
+# Final storage check
+$finalStorage = Get-StorageInfo
+$storageUsed = [math]::Round(($storage.Free - $finalStorage.Free), 2)
+if ($storageUsed -gt 0) {
+    Write-Info "Storage used by build: $storageUsed GB"
 }
 
 # ============================================
-# COMPLETION MESSAGE
-# ============================================
-Write-Host "`n╔═══════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║    Build Process Complete!                    ║" -ForegroundColor Cyan
-Write-Host "╚═══════════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "`n============================================" -ForegroundColor Cyan
+Write-Host "    Debug Build Complete!                  " -ForegroundColor Cyan
+Write-Host "============================================" -ForegroundColor Cyan
 
-pause
+if (-not $NoPrompt) { pause }
