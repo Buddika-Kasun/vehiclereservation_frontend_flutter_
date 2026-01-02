@@ -341,17 +341,28 @@ class ApiService {
   }
 
   // CostCenter API methods
-  static Future<Map<String, dynamic>> getCostCenters([int? companyId]) async {
+  static Future<Map<String, dynamic>> getCostCenters({
+    int? companyId,
+    int page = 1,
+    int limit = 10,
+  }) async {
     String url = 'cost-center/get-all';
-    
+
+    List<String> params = [];
+
     if (companyId != null) {
-      url += '?companyId=$companyId';
+      params.add('companyId=$companyId');
     }
-    
-    return await authenticatedApiCall(
-      url,
-      method: 'GET',
-    );
+
+    // Add pagination parameters
+    params.add('page=$page');
+    params.add('limit=$limit');
+
+    if (params.isNotEmpty) {
+      url += '?${params.join('&')}';
+    }
+
+    return await authenticatedApiCall(url, method: 'GET');
   }
 
   static Future<Map<String, dynamic>> createCostCenter(Map<String, dynamic> data) async {
@@ -378,17 +389,28 @@ class ApiService {
   }
 
   // Department API methods
-  static Future<Map<String, dynamic>> getDepartments([int? companyId]) async {
+  static Future<Map<String, dynamic>> getDepartments({
+    int? companyId,
+    int page = 1,
+    int limit = 10,
+  }) async {
     String url = 'department/get-all';
-    
+
+    List<String> params = [];
+
     if (companyId != null) {
-      url += '?companyId=$companyId';
+      params.add('companyId=$companyId');
     }
-    
-    return await authenticatedApiCall(
-      url,
-      method: 'GET',
-    );
+
+    // Add pagination parameters
+    params.add('page=$page');
+    params.add('limit=$limit');
+
+    if (params.isNotEmpty) {
+      url += '?${params.join('&')}';
+    }
+
+    return await authenticatedApiCall(url, method: 'GET');
   }
 
   static Future<Map<String, dynamic>> getDepartmentsForReg([int? companyId]) async {
@@ -1235,6 +1257,20 @@ class ApiService {
       );
     } catch (e) {
       print('Error fetching unread count: $e');
+      rethrow;
+    }
+  }
+
+
+  static Future<Map<String, dynamic>> getAdminDashboardStats() async {
+    try {
+      // Replace with your actual API endpoint
+      return await authenticatedApiCall(
+        'dashboard/admin/stats', // Your API endpoint
+        method: 'GET',
+      );
+    } catch (e) {
+      print('Error fetching dashboard stats: $e');
       rethrow;
     }
   }

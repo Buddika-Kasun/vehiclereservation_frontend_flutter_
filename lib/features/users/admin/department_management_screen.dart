@@ -15,20 +15,41 @@ class DepartmentsManagementScreen extends StatefulWidget {
 
 class _DepartmentsManagementScreenState extends State<DepartmentsManagementScreen> {
   List<Department> _departments = [];
-  //List<User> _users = [];
   List<ShortUser> _departmentUsers = [];
   List<CostCenter> _costCenters = [];
+  Map<String, dynamic>? _pagination;
   int? _expandedIndex;
   bool _isLoading = true;
   bool _hasCompany = false;
   bool _hasCostCenter = false;
   bool _hasError = false;
   String _errorMessage = '';
+  bool _isLoadingMore = false;
+  int _currentPage = 1;
+  bool _hasMoreData = true;
+  final ScrollController _scrollController = ScrollController();
+  final int _limit = 10;
 
   @override
   void initState() {
     super.initState();
     _checkCompanyAndLoadData();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels ==
+        _scrollController.position.maxScrollExtent) {
+      if (_hasMoreData && !_isLoadingMore) {
+        _loadMoreDepartments();
+      }
+    }
   }
 
   Future<void> _checkCompanyAndLoadData() async {
@@ -56,13 +77,9 @@ class _DepartmentsManagementScreenState extends State<DepartmentsManagementScree
           if (_hasCompany && _hasCostCenter) {
             // Load all data only if company exists
             await Future.wait([
-              _loadDepartments(),
-              //_loadUsers(),
+              _loadDepartments(reset: true),
               _loadCostCenters(),
             ]);
-            setState(() {
-              _isLoading = false;
-            });
           } else {
             setState(() {
               _isLoading = false;
@@ -84,48 +101,99 @@ class _DepartmentsManagementScreenState extends State<DepartmentsManagementScree
     }
   }
 
-  Future<void> _loadDepartments() async {
+  Future<void> _loadDepartments({bool reset = false}) async {
     try {
-      final response = await ApiService.getDepartments();
+      if (reset) {
+        setState(() {
+          _currentPage = 1;
+          _hasMoreData = true;
+        });
+      }
+
+      final response = await ApiService.getDepartments(
+        page: _currentPage,
+        limit: _limit,
+      );
       
       if (response['success'] == true) {
         final List<dynamic> departmentsData = response['data']['departments'] ?? [];
+        final pagination = response['data']['pagination'] ?? {};
         setState(() {
-          _departments = departmentsData.map((data) => Department.fromJson(data)).toList();
+          if (reset) {
+            _departments = departmentsData.map((data) => Department.fromJson(data)).toList();
+          } else {
+            _departments.addAll(departmentsData.map((data) => Department.fromJson(data)).toList());
+          }
+          _pagination = pagination;
+          _isLoading = false;
+          _isLoadingMore = false;
+          
+          // Check if there are more pages
+          final int totalPages = pagination['totalPages'] ?? 1;
+          final int currentPage = pagination['page'] ?? 1;
+          _hasMoreData = currentPage < totalPages;
+          if (!reset && departmentsData.isNotEmpty) {
+            _currentPage = currentPage + 1;
+          }
         });
       } else {
         throw Exception(response['message'] ?? 'Failed to load departments');
       }
     } catch (e) {
       print('Error loading departments: $e');
-      rethrow;
+      setState(() {
+        _hasError = true;
+        _errorMessage = e.toString();
+        _isLoading = false;
+        _isLoadingMore = false;
+      });
     }
   }
 
-  /*
-  Future<void> _loadUsers() async {
+  Future<void> _loadMoreDepartments() async {
+    if (_isLoadingMore || !_hasMoreData) return;
+    
+    setState(() {
+      _isLoadingMore = true;
+    });
+
     try {
-      final response = await ApiService.getUsers();
+      final response = await ApiService.getDepartments(
+        page: _currentPage,
+        limit: _limit,
+      );
       
       if (response['success'] == true) {
-        final List<dynamic> usersData = response['data']['users'] ?? [];
+        final List<dynamic> departmentsData = response['data']['departments'] ?? [];
+        final pagination = response['data']['pagination'] ?? {};
+        
         setState(() {
-          _users = usersData.map((data) => User.fromJson(data)).toList();
+          _departments.addAll(departmentsData.map((data) => Department.fromJson(data)).toList());
+          _pagination = pagination;
+          _isLoadingMore = false;
+          
+          // Update pagination info
+          final int totalPages = pagination['totalPages'] ?? 1;
+          final int currentPage = pagination['page'] ?? 1;
+          _hasMoreData = currentPage < totalPages;
+          if (departmentsData.isNotEmpty) {
+            _currentPage = currentPage + 1;
+          }
         });
       } else {
-        throw Exception(response['message'] ?? 'Failed to load users');
+        throw Exception(response['message'] ?? 'Failed to load more departments');
       }
     } catch (e) {
-      print('Error loading users: $e');
-      rethrow;
+      print('Error loading more departments: $e');
+      setState(() {
+        _isLoadingMore = false;
+      });
     }
   }
 
-  */
   Future<void> _loadUsersByDepartment(int departmentId) async {
     try {
       final response = await ApiService.getUsersByDepartment(departmentId);
-      //final response = await ApiService.getUsers();
       
       if (response['success'] == true) {
         final List<dynamic> usersData = response['data']['users'] ?? [];
@@ -164,7 +232,7 @@ class _DepartmentsManagementScreenState extends State<DepartmentsManagementScree
       final response = await ApiService.createDepartment(department.toJson());
       
       if (response['success'] == true) {
-        await _loadDepartments();
+        await _loadDepartments(reset: true);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Department created successfully')),
         );
@@ -185,7 +253,7 @@ class _DepartmentsManagementScreenState extends State<DepartmentsManagementScree
       final response = await ApiService.updateDepartment(department.id, department.toJson());
       
       if (response['success'] == true) {
-        await _loadDepartments();
+        await _loadDepartments(reset: true);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Department updated successfully')),
         );
@@ -337,7 +405,7 @@ class _DepartmentsManagementScreenState extends State<DepartmentsManagementScree
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    _departments.length.toString(),
+                    _pagination?['total']?.toString() ?? '0',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -355,234 +423,253 @@ class _DepartmentsManagementScreenState extends State<DepartmentsManagementScree
           Expanded(
             child: _departments.isEmpty 
                 ? _buildEmptyState()
-                : ListView.builder(
-              padding: EdgeInsets.symmetric(horizontal: 24),
-              itemCount: _departments.length,
-              itemBuilder: (context, index) {
-                final department = _departments[index];
-                final isExpanded = _expandedIndex == index;
-                final shortName = _generateShortName(department.name);
-                
-                return Container(
-                  margin: EdgeInsets.only(bottom: 12),
-                  child: Material(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    elevation: 2,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: () {
-                        setState(() {
-                          _expandedIndex = isExpanded ? null : index;
-                        });
-                      },
-                      child: AnimatedContainer(
-                        duration: Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                        padding: EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: ColorGenerator.getRandomColor(department.name).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: isExpanded 
-                              ? Border.all(color: ColorGenerator.getRandomColor(department.name).withOpacity(0.2), width: 2)
-                              : null,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Header Row
-                            Row(
-                              children: [
-                                // Department Icon
-                                Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: ColorGenerator.getRandomColor(department.name),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      shortName,
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                : RefreshIndicator(
+                    onRefresh: () => _loadDepartments(reset: true),
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      padding: EdgeInsets.symmetric(horizontal: 24),
+                      itemCount: _departments.length + (_isLoadingMore ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (index == _departments.length) {
+                          // Loading more indicator
+                          return Container(
+                            margin: EdgeInsets.symmetric(vertical: 16),
+                            child: Center(
+                              child: _hasMoreData 
+                                  ? CircularProgressIndicator(color: Colors.white)
+                                  : Text(
+                                      'No more departments',
+                                      style: TextStyle(color: Colors.grey[400]),
                                     ),
-                                  ),
-                                ),
-                                SizedBox(width: 12),
-                                
-                                // Department Info
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        shortName,
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black,
-                                        ),
-                                      ),
-                                      SizedBox(height: 2),
-                                      Text(
-                                        department.name,
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w900,
-                                          color: Colors.grey[700],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                
-                                // Expand/Collapse Arrow
-                                Transform.rotate(
-                                  angle: isExpanded ? -1.5708 : 1.5708,
-                                  child: Icon(
-                                    Icons.arrow_forward_ios,
-                                    size: 16,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
                             ),
-                            
-                            // Expanded Details
-                            if (isExpanded) ...[
-                              SizedBox(height: 16),
-                              Divider(height: 1, color: Colors.grey[300]),
-                              SizedBox(height: 16),
-                              
-                              // Details Grid
-                              Row(
-                                children: [
-                                  _buildDetailItem(
-                                    icon: Icons.people,
-                                    title: 'Employees',
-                                    value: '${department.employees}',
-                                  ),
-                                  SizedBox(width: 24),
-                                  _buildDetailItem(
-                                    icon: Icons.person,
-                                    title: 'HOD',
-                                    value: department.headName ?? '',
-                                  ),
-                                ],
-                              ),
-                              
-                              SizedBox(height: 16),
-                              
-                              Row(
-                                children: [
-                                  _buildDetailItem(
-                                    icon: Icons.account_balance_wallet,
-                                    title: 'Cost Center',
-                                    value: department.costCenterName ?? '',
-                                  ),
-                                  SizedBox(width: 24),
-                                  _buildDetailItem(
-                                    icon: Icons.circle,
-                                    title: 'Status',
-                                    value: department.isActive ? 'Active' : 'Inactive',
-                                    valueColor: department.isActive ? Colors.green : Colors.orange,
-                                  ),
-                                ],
-                              ),
-                              
-                              SizedBox(height: 16),
-                              
-                              // Action Buttons
-                              Row(
-                                children: [
-                                  // Edit Button
-                                  Expanded(
-                                    child: Container(
-                                      height: 46,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.secondary,
-                                        borderRadius: BorderRadius.circular(12),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: AppColors.secondary.withOpacity(0.3),
-                                            blurRadius: 8,
-                                            offset: Offset(0, 4),
+                          );
+                        }
+                        
+                        final department = _departments[index];
+                        final isExpanded = _expandedIndex == index;
+                        final shortName = _generateShortName(department.name);
+                        
+                        return Container(
+                          margin: EdgeInsets.only(bottom: 12),
+                          child: Material(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            elevation: 2,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: () {
+                                setState(() {
+                                  _expandedIndex = isExpanded ? null : index;
+                                });
+                              },
+                              child: AnimatedContainer(
+                                duration: Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                                padding: EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: ColorGenerator.getRandomColor(department.name).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: isExpanded 
+                                      ? Border.all(color: ColorGenerator.getRandomColor(department.name).withOpacity(0.2), width: 2)
+                                      : null,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Header Row
+                                    Row(
+                                      children: [
+                                        // Department Icon
+                                        Container(
+                                          width: 40,
+                                          height: 40,
+                                          decoration: BoxDecoration(
+                                            color: ColorGenerator.getRandomColor(department.name),
+                                            borderRadius: BorderRadius.circular(8),
                                           ),
-                                        ],
-                                      ),
-                                      child: Material(
-                                        color: Colors.transparent,
-                                        child: InkWell(
-                                          borderRadius: BorderRadius.circular(12),
-                                          onTap: () {
-                                            _showEditDepartmentDialog(index, department);
-                                          },
                                           child: Center(
-                                            child: Row(
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              children: [
-                                                Icon(Icons.edit, color: AppColors.primary, size: 20),
-                                                SizedBox(width: 8),
-                                                Text(
-                                                  'Edit Department',
-                                                  style: TextStyle(
-                                                    color: AppColors.primary,
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ],
+                                            child: Text(
+                                              shortName,
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                             ),
                                           ),
                                         ),
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(width: 12),
-                                  
-                                  // Delete Button
-                                  Container(
-                                    width: 46,
-                                    height: 46,
-                                    decoration: BoxDecoration(
-                                      color: Colors.red,
-                                      borderRadius: BorderRadius.circular(12),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.red.withOpacity(0.3),
-                                          blurRadius: 8,
-                                          offset: Offset(0, 4),
+                                        SizedBox(width: 12),
+                                        
+                                        // Department Info
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                shortName,
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.black,
+                                                ),
+                                              ),
+                                              SizedBox(height: 2),
+                                              Text(
+                                                department.name,
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: Colors.grey[700],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        
+                                        // Expand/Collapse Arrow
+                                        Transform.rotate(
+                                          angle: isExpanded ? -1.5708 : 1.5708,
+                                          child: Icon(
+                                            Icons.arrow_forward_ios,
+                                            size: 16,
+                                            color: Colors.grey[600],
+                                          ),
                                         ),
                                       ],
                                     ),
-                                    child: Material(
-                                      color: Colors.transparent,
-                                      child: InkWell(
-                                        borderRadius: BorderRadius.circular(12),
-                                        onTap: () {
-                                          _showDeleteConfirmation(index);
-                                        },
-                                        child: Center(
-                                          child: Icon(Icons.delete, color: Colors.white, size: 20),
-                                        ),
+                                    
+                                    // Expanded Details
+                                    if (isExpanded) ...[
+                                      SizedBox(height: 16),
+                                      Divider(height: 1, color: Colors.grey[300]),
+                                      SizedBox(height: 16),
+                                      
+                                      // Details Grid
+                                      Row(
+                                        children: [
+                                          _buildDetailItem(
+                                            icon: Icons.people,
+                                            title: 'Employees',
+                                            value: '${department.employees}',
+                                          ),
+                                          SizedBox(width: 24),
+                                          _buildDetailItem(
+                                            icon: Icons.person,
+                                            title: 'HOD',
+                                            value: department.headName ?? '',
+                                          ),
+                                        ],
                                       ),
-                                    ),
-                                  ),
-                                ],
+                                      
+                                      SizedBox(height: 16),
+                                      
+                                      Row(
+                                        children: [
+                                          _buildDetailItem(
+                                            icon: Icons.account_balance_wallet,
+                                            title: 'Cost Center',
+                                            value: department.costCenterName ?? '',
+                                          ),
+                                          SizedBox(width: 24),
+                                          _buildDetailItem(
+                                            icon: Icons.circle,
+                                            title: 'Status',
+                                            value: department.isActive ? 'Active' : 'Inactive',
+                                            valueColor: department.isActive ? Colors.green : Colors.orange,
+                                          ),
+                                        ],
+                                      ),
+                                      
+                                      SizedBox(height: 16),
+                                      
+                                      // Action Buttons
+                                      Row(
+                                        children: [
+                                          // Edit Button
+                                          Expanded(
+                                            child: Container(
+                                              height: 46,
+                                              decoration: BoxDecoration(
+                                                color: AppColors.secondary,
+                                                borderRadius: BorderRadius.circular(12),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: AppColors.secondary.withOpacity(0.3),
+                                                    blurRadius: 8,
+                                                    offset: Offset(0, 4),
+                                                  ),
+                                                ],
+                                              ),
+                                              child: Material(
+                                                color: Colors.transparent,
+                                                child: InkWell(
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  onTap: () {
+                                                    _showEditDepartmentDialog(index, department);
+                                                  },
+                                                  child: Center(
+                                                    child: Row(
+                                                      mainAxisAlignment: MainAxisAlignment.center,
+                                                      children: [
+                                                        Icon(Icons.edit, color: AppColors.primary, size: 20),
+                                                        SizedBox(width: 8),
+                                                        Text(
+                                                          'Edit Department',
+                                                          style: TextStyle(
+                                                            color: AppColors.primary,
+                                                            fontSize: 16,
+                                                            fontWeight: FontWeight.w600,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          SizedBox(width: 12),
+                                          
+                                          // Delete Button
+                                          Container(
+                                            width: 46,
+                                            height: 46,
+                                            decoration: BoxDecoration(
+                                              color: Colors.red,
+                                              borderRadius: BorderRadius.circular(12),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.red.withOpacity(0.3),
+                                                  blurRadius: 8,
+                                                  offset: Offset(0, 4),
+                                                ),
+                                              ],
+                                            ),
+                                            child: Material(
+                                              color: Colors.transparent,
+                                              child: InkWell(
+                                                borderRadius: BorderRadius.circular(12),
+                                                onTap: () {
+                                                  _showDeleteConfirmation(index);
+                                                },
+                                                child: Center(
+                                                  child: Icon(Icons.delete, color: Colors.white, size: 20),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ],
+                                ),
                               ),
-                            ],
-                          ],
-                        ),
-                      ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
-                );
-              },
-            ),
           ),
         ],
       );    
@@ -768,8 +855,8 @@ class _DepartmentsManagementScreenState extends State<DepartmentsManagementScree
                   // Department Users Info
                   if (_departmentUsers.isNotEmpty)
                     Container(
-                      width: double.infinity, // Take full width
-                      margin: EdgeInsets.only(top: 8), // Add some top margin
+                      width: double.infinity,
+                      margin: EdgeInsets.only(top: 8),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Colors.green.withOpacity(0.1),
@@ -780,7 +867,7 @@ class _DepartmentsManagementScreenState extends State<DepartmentsManagementScree
                         children: [
                           Icon(Icons.people, size: 16, color: Colors.green),
                           SizedBox(width: 8),
-                          Expanded( // Make text take available space
+                          Expanded(
                             child: Text(
                               '${_departmentUsers.length} users available in this department',
                               style: TextStyle(
@@ -804,7 +891,7 @@ class _DepartmentsManagementScreenState extends State<DepartmentsManagementScree
                         children: [
                           Icon(Icons.warning, size: 16, color: Colors.orange),
                           SizedBox(width: 8),
-                          Expanded( // Add this
+                          Expanded(
                             child: Text(
                               'No users registered in this department yet',
                               style: TextStyle(
@@ -912,8 +999,8 @@ class _DepartmentsManagementScreenState extends State<DepartmentsManagementScree
                                     id: _departments[index].id,
                                     name: fullName,
                                     employees: department.employees,
-                                    headId: selectedHead, // Can be null
-                                    costCenterId: selectedCostCenter, // Can be null
+                                    headId: selectedHead,
+                                    costCenterId: selectedCostCenter,
                                     isActive: isActive,
                                   );
 
@@ -961,161 +1048,155 @@ class _DepartmentsManagementScreenState extends State<DepartmentsManagementScree
 
   // Helper methods to validate dropdown values
   String? _getValidHeadValue(String? headId, List<ShortUser> userList) {
-  if (headId == null || headId.isEmpty) return null;
-  
-  // Check if the headId exists in the provided user list
-  final userExists = userList.any((user) => user.id.toString() == headId);
-  return userExists ? headId : null;
-}
+    if (headId == null || headId.isEmpty) return null;
+    
+    final userExists = userList.any((user) => user.id.toString() == headId);
+    return userExists ? headId : null;
+  }
 
   String? _getValidCostCenterValue(String? costCenterId) {
-  if (costCenterId == null || costCenterId.isEmpty) return null;
-  
-  // Check if the costCenterId exists in _costCenters list
-  final costCenterExists = _costCenters.any((center) => center.id.toString() == costCenterId);
-  return costCenterExists ? costCenterId : null;
-}
+    if (costCenterId == null || costCenterId.isEmpty) return null;
+    
+    final costCenterExists = _costCenters.any((center) => center.id.toString() == costCenterId);
+    return costCenterExists ? costCenterId : null;
+  }
 
   void _showDeleteConfirmation(int index) {
-  bool _isSubmitting = false;
+    bool _isSubmitting = false;
 
-  showDialog(
-    context: context,
-    builder: (context) => StatefulBuilder(
-      builder: (context, setState) {
-        return Dialog(
-          backgroundColor: Colors.black.withOpacity(0.8),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Center(
-                  child: Text(
-                    'Delete Department',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return Dialog(
+            backgroundColor: Colors.black.withOpacity(0.8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Center(
+                    child: Text(
+                      'Delete Department',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-                // Content
-                Text(
-                  'Are you sure you want to delete ${_departments[index].name} department?',
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 16,
+                  Text(
+                    'Are you sure you want to delete ${_departments[index].name} department?',
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 16,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
-                // Buttons Row
-                Row(
-                  children: [
-                    // Cancel Button
-                    Expanded(
-                      child: Container(
-                        height: 50,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade600, width: 2),
-                          borderRadius: BorderRadius.circular(12),
-                          color: Colors.transparent,
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          height: 50,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade600, width: 2),
                             borderRadius: BorderRadius.circular(12),
-                            onTap: _isSubmitting ? null : () => Navigator.pop(context),
-                            child: Center(
-                              child: Text(
-                                'Cancel',
-                                style: TextStyle(
-                                  color: Colors.grey.shade400,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
+                            color: Colors.transparent,
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: _isSubmitting ? null : () => Navigator.pop(context),
+                              child: Center(
+                                child: Text(
+                                  'Cancel',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade400,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    
-                    // Delete Button
-                    Expanded(
-                      child: Container(
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: _isSubmitting ? Colors.grey : Colors.red,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: _isSubmitting ? [] : [
-                            BoxShadow(
-                              color: Colors.red.withOpacity(0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
+                      const SizedBox(width: 12),
+                      
+                      Expanded(
+                        child: Container(
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: _isSubmitting ? Colors.grey : Colors.red,
                             borderRadius: BorderRadius.circular(12),
-                            onTap: _isSubmitting ? null : () async {
-                              try {
-                                setState(() {
-                                  _isSubmitting = true;
-                                });
+                            boxShadow: _isSubmitting ? [] : [
+                              BoxShadow(
+                                color: Colors.red.withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: _isSubmitting ? null : () async {
+                                try {
+                                  setState(() {
+                                    _isSubmitting = true;
+                                  });
 
-                                await _deleteDepartment(_departments[index].id, index);
-                                Navigator.pop(context);
-                              } catch (e) {
-                                setState(() {
-                                  _isSubmitting = false;
-                                });
-                              }
-                            },
-                            child: Center(
-                              child: _isSubmitting
-                                  ? SizedBox(
-                                      height: 20,
-                                      width: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
+                                  await _deleteDepartment(_departments[index].id, index);
+                                  Navigator.pop(context);
+                                } catch (e) {
+                                  setState(() {
+                                    _isSubmitting = false;
+                                  });
+                                }
+                              },
+                              child: Center(
+                                child: _isSubmitting
+                                    ? SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : Text(
+                                        'Delete',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
-                                    )
-                                  : Text(
-                                      'Delete',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      ),
+                    ]
+                  ),
+                ],
+              ),
             ),
-          ),
-        );
-      },
-    ),
-  );
-}
+          );
+        },
+      ),
+    );
+  }
 
   Widget _buildEmptyState() {
     return Center(
@@ -1274,19 +1355,6 @@ class _DepartmentsManagementScreenState extends State<DepartmentsManagementScree
               textAlign: TextAlign.center,
             ),
             SizedBox(height: 32),
-            /*ElevatedButton.icon(
-              onPressed: () {
-                // Navigate to company creation screen
-                // Navigator.push(context, MaterialPageRoute(builder: (context) => CreateCompanyScreen()));
-              },
-              icon: Icon(Icons.add_business),
-              label: Text('Create Company'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.secondary,
-                foregroundColor: AppColors.primary,
-                padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-              ),
-            ),*/
           ],
         ),
       ),
@@ -1352,46 +1420,6 @@ class _DepartmentsManagementScreenState extends State<DepartmentsManagementScree
                     onChanged: (value) => fullName = value,
                   ),
                   const SizedBox(height: 16),
-
-                  // Head of Department Dropdown
-                  /*DropdownButtonFormField<String>(
-                    dropdownColor: Colors.black,
-                    style: const TextStyle(color: Colors.yellow),
-                    decoration: InputDecoration(
-                      labelText: 'Head of Department',
-                      labelStyle: const TextStyle(color: Colors.grey),
-                      floatingLabelStyle: const TextStyle(color: Colors.yellow),
-                      prefixIcon: const Icon(Icons.person, color: Colors.yellow),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.yellow, width: 1),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                    ),
-                    value: selectedHead,
-                    items: [
-                      DropdownMenuItem(
-                        value: null,
-                        child: Text('None', style: TextStyle(color: Colors.grey)),
-                      ),
-                      ..._users.map((user) {
-                        return DropdownMenuItem(
-                          value: user.id.toString(),
-                          child: Text(user.displayname, style: TextStyle(color: Colors.yellow)),
-                        );
-                      }).toList(),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        selectedHead = value;
-                      });
-                    },
-                  ),
-                
-                  const SizedBox(height: 16),*/
 
                   // Cost Center Dropdown
                   DropdownButtonFormField<String>(
@@ -1586,5 +1614,4 @@ class _DepartmentsManagementScreenState extends State<DepartmentsManagementScree
       ),
     );
   }
-
 }

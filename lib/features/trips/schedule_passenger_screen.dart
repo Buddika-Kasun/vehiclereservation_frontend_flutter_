@@ -39,6 +39,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
   List<Map<String, dynamic>> _selectedOthers = [];
   bool _includeMeInGroup = true;
   User? _user;
+  bool _canSchedule = true;
 
   @override
   void initState() {
@@ -67,6 +68,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
 
       setState(() {
         _user = user;
+        _canSchedule = _user?.role != UserRole.employee;
       });
 
       print('User data loaded: ${user.displayname}');
@@ -274,69 +276,70 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                   SizedBox(height: 16),
 
                   // Repetition Dropdown
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Repetition',
-                        style: TextStyle(color: Colors.grey, fontSize: 14),
-                      ),
-                      SizedBox(height: 4),
-                      DropdownButtonFormField<String>(
-                        dropdownColor: Colors.grey[800],
-                        style: TextStyle(color: Colors.yellow),
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
+                  if (_canSchedule)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Repetition',
+                          style: TextStyle(color: Colors.grey, fontSize: 14),
                         ),
-                        value: _repetition,
-                        items: [
-                          DropdownMenuItem(
-                            value: 'once',
-                            child: Text(
-                              'Once',
-                              style: TextStyle(color: Colors.yellow),
+                        SizedBox(height: 4),
+                        DropdownButtonFormField<String>(
+                          dropdownColor: Colors.grey[800],
+                          style: TextStyle(color: Colors.yellow),
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
                             ),
                           ),
-                          DropdownMenuItem(
-                            value: 'daily',
-                            child: Text(
-                              'Daily',
-                              style: TextStyle(color: Colors.yellow),
+                          value: _repetition,
+                          items: [
+                            DropdownMenuItem(
+                              value: 'once',
+                              child: Text(
+                                'Once',
+                                style: TextStyle(color: Colors.yellow),
+                              ),
                             ),
-                          ),
-                          DropdownMenuItem(
-                            value: 'weekly',
-                            child: Text(
-                              'Weekly',
-                              style: TextStyle(color: Colors.yellow),
+                            DropdownMenuItem(
+                              value: 'daily',
+                              child: Text(
+                                'Daily',
+                                style: TextStyle(color: Colors.yellow),
+                              ),
                             ),
-                          ),
-                          DropdownMenuItem(
-                            value: 'monthly',
-                            child: Text(
-                              'Monthly',
-                              style: TextStyle(color: Colors.yellow),
+                            DropdownMenuItem(
+                              value: 'weekly',
+                              child: Text(
+                                'Weekly',
+                                style: TextStyle(color: Colors.yellow),
+                              ),
                             ),
-                          ),
-                          DropdownMenuItem(
-                            value: 'custom',
-                            child: Text(
-                              'Custom',
-                              style: TextStyle(color: Colors.yellow),
+                            DropdownMenuItem(
+                              value: 'monthly',
+                              child: Text(
+                                'Monthly',
+                                style: TextStyle(color: Colors.yellow),
+                              ),
                             ),
-                          ),
-                        ],
-                        onChanged: (value) =>
-                            setState(() => _repetition = value!),
-                      ),
-                    ],
-                  ),
+                            DropdownMenuItem(
+                              value: 'custom',
+                              child: Text(
+                                'Custom',
+                                style: TextStyle(color: Colors.yellow),
+                              ),
+                            ),
+                          ],
+                          onChanged: (value) =>
+                              setState(() => _repetition = value!),
+                        ),
+                      ],
+                    ),
 
                   if (_repetition != 'once') ...[
                     SizedBox(height: 8),

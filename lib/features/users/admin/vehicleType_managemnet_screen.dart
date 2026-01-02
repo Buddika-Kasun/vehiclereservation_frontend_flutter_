@@ -355,7 +355,7 @@ class _VehicleTypeManagementScreenState extends State<VehicleTypeManagementScree
                                             ),
                                             SizedBox(height: 2),
                                             Text(
-                                              'Cost: \$${vehicleType.costPerKm.toStringAsFixed(2)}/KM',
+                                              'Cost: LKR ${vehicleType.costPerKm.toStringAsFixed(2)}/KM',
                                               style: TextStyle(
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.w900,
