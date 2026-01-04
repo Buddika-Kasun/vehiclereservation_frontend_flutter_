@@ -97,7 +97,7 @@ class SideMenu extends StatelessWidget {
       case UserRole.sysadmin:
         return 'System Administrator';
       case UserRole.admin:
-        return 'Administrator';
+        return 'Head of Department';
       case UserRole.hr:
         return 'HR Manager';
       case UserRole.manager:

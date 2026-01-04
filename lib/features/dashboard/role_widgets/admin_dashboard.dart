@@ -144,9 +144,33 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
   }
 
   /// Formats currency values with thousand separators and 2 decimal places
-  String _formatCurrency(double value) {
+  String _formatCurrency(dynamic value) {
+    // Convert value to double first
+    final doubleValue = (value is int)
+        ? value.toDouble()
+        : (value ?? 0.0).toDouble();
     final formatter = NumberFormat('#,##0.00', 'en_US');
-    return formatter.format(value);
+    return formatter.format(doubleValue);
+  }
+
+  // Helper method to safely get double values from the stats map
+  double _getDoubleValue(String key, [double defaultValue = 0.0]) {
+    final value = _dashboardStats[key];
+    if (value == null) return defaultValue;
+    if (value is int) return value.toDouble();
+    if (value is double) return value;
+    if (value is String) return double.tryParse(value) ?? defaultValue;
+    return defaultValue;
+  }
+
+  // Helper method to safely get int values from the stats map
+  int _getIntValue(String key, [int defaultValue = 0]) {
+    final value = _dashboardStats[key];
+    if (value == null) return defaultValue;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? defaultValue;
+    return defaultValue;
   }
 
   @override
@@ -196,19 +220,18 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
       );
     }
 
-    // Calculate derived values for UI
-    final double budgetVsActual =
-        (_dashboardStats['budgetAmount'] != 0 &&
-            _dashboardStats['budgetAmount'] != null)
-        ? (_dashboardStats['actualCost'] / _dashboardStats['budgetAmount']) *
-              100
-        : 0;
+    // Calculate derived values for UI using safe getters
+    final double budgetAmount = _getDoubleValue('budgetAmount');
+    final double actualCost = _getDoubleValue('actualCost');
 
-    final bool isOverBudget =
-        _dashboardStats['actualCost'] > _dashboardStats['budgetAmount'];
+    final double budgetVsActual = (budgetAmount > 0)
+        ? (actualCost / budgetAmount) * 100
+        : 0.0;
 
-    final bool isCostIncrease =
-        (_dashboardStats['monthOverMonthChange'] ?? 0) > 0;
+    final bool isOverBudget = actualCost > budgetAmount;
+
+    final double monthOverMonthChange = _getDoubleValue('monthOverMonthChange');
+    final bool isCostIncrease = monthOverMonthChange > 0;
 
     return RefreshIndicator(
       onRefresh: _refreshDashboard,
@@ -278,7 +301,7 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
                   case 0: // Total Rides
                     return _buildDynamicStatCard(
                       'Total Rides',
-                      '${_dashboardStats['totalRides'] ?? 0}',
+                      '${_getIntValue('totalRides')}',
                       Icons.directions_car,
                       Colors.blue,
                       'Completed Rides',
@@ -287,7 +310,7 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
                   case 1: // Pending for Supervisor
                     return _buildDynamicStatCard(
                       'Pending for Supervisor',
-                      '${_dashboardStats['pendingSupervisorRides'] ?? 0}',
+                      '${_getIntValue('pendingSupervisorRides')}',
                       Icons.pending_actions,
                       Colors.orange,
                       'Draft rides',
@@ -296,7 +319,7 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
                   case 2: // Today's Rides
                     return _buildDynamicStatCard(
                       "Today's Rides",
-                      '${_dashboardStats['ridesToday'] ?? 0}',
+                      '${_getIntValue('ridesToday')}',
                       Icons.today,
                       Colors.purple,
                       'Scheduled for today',
@@ -305,7 +328,7 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
                   case 3: // Monthly Cost
                     return _buildDynamicStatCard(
                       'Monthly Cost',
-                      'LKR ${_formatCurrency(_dashboardStats['currentMonthCost'] ?? 0)}',
+                      'LKR ${_formatCurrency(_getDoubleValue('currentMonthCost'))}',
                       Icons.attach_money,
                       Colors.teal,
                       'Current month',
@@ -314,7 +337,7 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
                   case 4: // Total Users
                     return _buildDynamicStatCard(
                       'Total Users',
-                      '${_dashboardStats['totalUsers'] ?? 0}',
+                      '${_getIntValue('totalUsers')}',
                       Icons.people,
                       Colors.green,
                       'Approved',
@@ -323,7 +346,7 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
                   case 5: // Pending Users
                     return _buildDynamicStatCard(
                       'Pending Users',
-                      '${_dashboardStats['pendingUserCreations'] ?? 0}',
+                      '${_getIntValue('pendingUserCreations')}',
                       Icons.person_add,
                       Colors.red,
                       'Awaiting approval',
@@ -424,7 +447,7 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
                                       SizedBox(width: 4),
                                       Flexible(
                                         child: Text(
-                                          '${(_dashboardStats['costVariancePercent'] ?? 0).toStringAsFixed(1)}%',
+                                          '${(_getDoubleValue('costVariancePercent')).toStringAsFixed(1)}%',
                                           style: TextStyle(
                                             fontSize: 13,
                                             fontWeight: FontWeight.w600,
@@ -479,7 +502,7 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
                                             ),
                                             SizedBox(height: 4),
                                             Text(
-                                              'LKR ${_formatCurrency(_dashboardStats['budgetAmount'] ?? 0)}',
+                                              'LKR ${_formatCurrency(budgetAmount)}',
                                               style: TextStyle(
                                                 fontSize: 15,
                                                 fontWeight: FontWeight.bold,
@@ -504,7 +527,7 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
                                             ),
                                             SizedBox(height: 4),
                                             Text(
-                                              'LKR ${_formatCurrency(_dashboardStats['actualCost'] ?? 0)}',
+                                              'LKR ${_formatCurrency(actualCost)}',
                                               style: TextStyle(
                                                 fontSize: 15,
                                                 fontWeight: FontWeight.bold,
@@ -539,7 +562,7 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
                                           ),
                                           SizedBox(height: 4),
                                           Text(
-                                            'LKR ${_formatCurrency(_dashboardStats['budgetAmount'] ?? 0)}',
+                                            'LKR ${_formatCurrency(budgetAmount)}',
                                             style: TextStyle(
                                               fontSize: 15,
                                               fontWeight: FontWeight.bold,
@@ -563,7 +586,7 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
                                           ),
                                           SizedBox(height: 4),
                                           Text(
-                                            'LKR ${_formatCurrency(_dashboardStats['actualCost'] ?? 0)}',
+                                            'LKR ${_formatCurrency(actualCost)}',
                                             style: TextStyle(
                                               fontSize: 15,
                                               fontWeight: FontWeight.bold,
@@ -602,7 +625,7 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
                                             ),
                                             SizedBox(height: 4),
                                             Text(
-                                              'LKR ${_formatCurrency((_dashboardStats['costVariance'] ?? 0).abs())}',
+                                              'LKR ${_formatCurrency((_getDoubleValue('costVariance')).abs())}',
                                               style: TextStyle(
                                                 fontSize: 15,
                                                 fontWeight: FontWeight.w600,
@@ -675,7 +698,7 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
                                           ),
                                           SizedBox(height: 4),
                                           Text(
-                                            'LKR ${_formatCurrency((_dashboardStats['costVariance'] ?? 0).abs())}',
+                                            'LKR ${_formatCurrency((_getDoubleValue('costVariance')).abs())}',
                                             style: TextStyle(
                                               fontSize: 15,
                                               fontWeight: FontWeight.w600,
@@ -808,7 +831,7 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
                               ),
                             ),
                             Text(
-                              'LKR ${_formatCurrency(_dashboardStats['previousMonthCost'] ?? 0)}',
+                              'LKR ${_formatCurrency(_getDoubleValue('previousMonthCost'))}',
                               style: TextStyle(
                                 fontSize: isSmallScreen ? 14 : 15,
                                 fontWeight: FontWeight.w600,
@@ -830,7 +853,7 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
                               ),
                             ),
                             Text(
-                              'LKR ${_formatCurrency(_dashboardStats['currentMonthCost'] ?? 0)}',
+                              'LKR ${_formatCurrency(_getDoubleValue('currentMonthCost'))}',
                               style: TextStyle(
                                 fontSize: isSmallScreen ? 14 : 15,
                                 fontWeight: FontWeight.w600,
@@ -864,7 +887,7 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
                                 ),
                                 SizedBox(width: 4),
                                 Text(
-                                  'LKR ${_formatCurrency((_dashboardStats['monthOverMonthChange'] ?? 0).abs())}',
+                                  'LKR ${_formatCurrency((monthOverMonthChange).abs())}',
                                   style: TextStyle(
                                     fontSize: isSmallScreen ? 14 : 15,
                                     fontWeight: FontWeight.w600,
@@ -914,7 +937,7 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
                                   ),
                                   SizedBox(width: 4),
                                   Text(
-                                    '${(_dashboardStats['monthOverMonthPercent'] ?? 0).toStringAsFixed(1)}%',
+                                    '${(_getDoubleValue('monthOverMonthPercent')).toStringAsFixed(1)}%',
                                     style: TextStyle(
                                       fontSize: isSmallScreen ? 13 : 14,
                                       fontWeight: FontWeight.w600,
@@ -1030,9 +1053,9 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
       constraints: BoxConstraints(minHeight: 80, maxHeight: 120),
       padding: EdgeInsets.all(screenWidth < 360 ? 8 : 12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
+        color: color.withOpacity(0.15),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withOpacity(0.4)),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -1117,4 +1140,5 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
       ),
     );
   }
+
 }

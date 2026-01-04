@@ -424,7 +424,8 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
     }
   }
 
-  List<String> get _originalAvailableRoles => [
+  // Get available roles
+  List<String> get _availableRoles => [
     'employee',
     'admin',
     'hr',
@@ -432,32 +433,6 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
     'driver',
     'supervisor',
   ];
-
-  // Get available roles with display names
-  Map<String, String> get _availableRoles => {
-    'employee': 'Employee',
-    'admin': 'HOD', // Changed from 'admin' to 'HOD'
-    'hr': 'HR',
-    'security': 'Security',
-    'driver': 'Driver',
-    'supervisor':
-        'Transport Supervisor', // Changed from 'supervisor' to 'Transport Supervisor'
-  };
-
-  // Helper method to get display name
-  String _getRoleDisplayName(String role) {
-    return _availableRoles[role] ?? role;
-  }
-
-  // Helper method to get backend value from display name
-  String _getRoleBackendValue(String displayName) {
-    return _availableRoles.entries
-        .firstWhere(
-          (entry) => entry.value == displayName,
-          orElse: () => MapEntry(displayName.toLowerCase(), displayName),
-        )
-        .key;
-  }
 
   Future<void> _loadDepartments() async {
     try {
@@ -937,7 +912,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
                                           icon: Icons.person,
                                           label: 'User Role',
                                           value: currentRole,
-                                          items: _originalAvailableRoles,
+                                          items: _availableRoles,
                                           onChanged: (value) {
                                             if (value != null) {
                                               setState(() {
@@ -1008,9 +983,8 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
                                             _buildDetailItem(
                                               icon: Icons.person,
                                               title: 'Role',
-                                              value:  _getRoleDisplayName(
-                                                userCreation.role.name,
-                                              ),
+                                              value:
+                                                  userCreation.role.displayName,
                                             ),
                                             SizedBox(width: 24),
                                             _buildDetailItem(
@@ -1112,10 +1086,6 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
     required List<String> items,
     required Function(String?) onChanged,
   }) {
-    // Convert backend values to display names
-    final displayValue = _getRoleDisplayName(value);
-    final displayItems = items.map(_getRoleDisplayName).toList();
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1141,9 +1111,9 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
-              value: displayValue,
+              value: value,
               isExpanded: true,
-              items: displayItems.map((String item) {
+              items: items.map((String item) {
                 return DropdownMenuItem<String>(
                   value: item,
                   child: Padding(
@@ -1158,13 +1128,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
                   ),
                 );
               }).toList(),
-              onChanged: (displayName) {
-                if (displayName != null) {
-                  // Convert display name back to backend value
-                  final backendValue = _getRoleBackendValue(displayName);
-                  onChanged(backendValue);
-                }
-              },
+              onChanged: onChanged,
             ),
           ),
         ),
@@ -1687,7 +1651,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Role: ${_getRoleDisplayName(role)}',
+                          'Role: ${role.toUpperCase()}',
                           style: TextStyle(
                             color: Colors.yellow,
                             fontWeight: FontWeight.bold,
@@ -2114,9 +2078,6 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
     required String currentRole,
     required Function(String?) onChanged,
   }) {
-    final displayValue = _getRoleDisplayName(currentRole);
-    final displayItems = _availableRoles.values.toList();
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2156,8 +2117,8 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
               vertical: 16,
             ),
           ),
-          value: displayValue,
-          items: displayItems.map((role) {
+          value: currentRole,
+          items: _availableRoles.map((role) {
             return DropdownMenuItem(
               value: role,
               child: Text(
@@ -2166,16 +2127,9 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
               ),
             );
           }).toList(),
-          onChanged: (displayName) {
-            if (displayName != null) {
-              // Convert display name back to backend value
-              final backendValue = _getRoleBackendValue(displayName);
-              onChanged(backendValue);
-            }
-          },
+          onChanged: onChanged,
         ),
       ],
     );
   }
-
 }

@@ -5,7 +5,7 @@
 param(
     [string]$KeystorePath = "",
     [string]$KeyAlias = "",
-    [string]$TargetPlatforms = "apk,aab",
+    [string]$TargetPlatforms = "apk",
     [switch]$SkipPrompts,
     [switch]$MinimalStorage,
     [string]$OutputDir = "",
@@ -247,9 +247,9 @@ if ($QuickBuild) {
         Write-Info "Building APK..."
         try {
             if ($NoSigning) {
-                flutter build apk --release --no-tree-shake-icons:$MinimalStorage
+                flutter build apk --release --no-tree-shake-icons
             } else {
-                flutter build apk --release --no-tree-shake-icons:$MinimalStorage
+                flutter build apk --release
             }
             
             $apkPath = "build\app\outputs\flutter-apk\app-release.apk"
@@ -267,9 +267,9 @@ if ($QuickBuild) {
         Write-Info "Building AAB..."
         try {
             if ($NoSigning) {
-                flutter build appbundle --release --no-tree-shake-icons:$MinimalStorage
+                flutter build appbundle --release --no-tree-shake-icons
             } else {
-                flutter build appbundle --release --no-tree-shake-icons:$MinimalStorage
+                flutter build appbundle --release
             }
             
             $aabPath = "build\app\outputs\bundle\release\app-release.aab"
@@ -317,10 +317,10 @@ if ($FixDependencies) {
     flutter pub get
     
     if ($fixResult -and $cleanResult) {
-        Write-Success "`nDependencies fixed successfully!")
+        Write-Success "`nDependencies fixed successfully!"
         Write-Info "You can now run the build again."
     } else {
-        Write-Warning "`nSome fixes may not have been applied.")
+        Write-Warning "`nSome fixes may not have been applied."
         Write-Info "Check the build.gradle file manually."
     }
     

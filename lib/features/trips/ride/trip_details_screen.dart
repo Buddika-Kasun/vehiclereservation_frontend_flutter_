@@ -52,6 +52,46 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   bool _isInitializing = false;
   Timer? _debounceTimer;
 
+  // Add these helper methods
+  String _getTripTypeDisplayName(String type) {
+    switch (type.toLowerCase()) {
+      case 'normal':
+        return 'Normal';
+      case 'fixed_rate':
+        return 'Fixed Rate';
+      case 'safety_approval':
+        return 'Safety Approval';
+      default:
+        return type;
+    }
+  }
+
+  Color _getTripTypeColor(String type) {
+    switch (type.toLowerCase()) {
+      case 'normal':
+        return Colors.blue;
+      case 'fixed_rate':
+        return Colors.green;
+      case 'safety_approval':
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getTripTypeIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'normal':
+        return Icons.trip_origin;
+      case 'fixed_rate':
+        return Icons.monetization_on;
+      case 'safety_approval':
+        return Icons.security;
+      default:
+        return Icons.trip_origin;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -928,6 +968,136 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     );
   }
 
+  Widget _buildTripTypeSection() {
+    if (_tripDetails?.tripType == null) {
+      return SizedBox.shrink();
+    }
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(0, 0, 0, 16),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        border: Border(bottom: BorderSide(color: Colors.grey[800]!)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Trip Type',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 12),
+
+          // Trip Type Badge
+          Container(
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: _getTripTypeColor(_tripDetails!.tripType).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: _getTripTypeColor(
+                  _tripDetails!.tripType,
+                ).withOpacity(0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: _getTripTypeColor(_tripDetails!.tripType),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Icon(
+                    _getTripTypeIcon(_tripDetails!.tripType),
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _getTripTypeDisplayName(_tripDetails!.tripType),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      if (_tripDetails!.tripType == 'fixed_rate' &&
+                          _tripDetails!.fixedRate != null)
+                        Text(
+                          'Fixed Rate: LKR ${_formatCurrency(_tripDetails!.fixedRate!)}',
+                          style: TextStyle(
+                            color: Color(0xFFF9C80E),
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _getTripTypeColor(
+                      _tripDetails!.tripType,
+                    ).withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _tripDetails!.tripType.toUpperCase(),
+                    style: TextStyle(
+                      color: _getTripTypeColor(_tripDetails!.tripType),
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Reason Field
+          if (_tripDetails?.reason != null && _tripDetails!.reason!.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(top: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Reason',
+                    style: TextStyle(color: Colors.grey[300], fontSize: 14),
+                  ),
+                  SizedBox(height: 4),
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[800],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _tripDetails!.reason!,
+                      style: TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildTripInfoSection() {
     return Container(
       padding: EdgeInsets.all(16),
@@ -940,6 +1110,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Trip Type Section - ADD THIS
+          _buildTripTypeSection(),
+          SizedBox(height: 8),
+
           Text(
             'Trip Information',
             style: TextStyle(

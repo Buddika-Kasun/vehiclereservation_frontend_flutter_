@@ -51,10 +51,7 @@ echo.
 set /p debug_choice="Select option (1-5): "
 
 if "%debug_choice%"=="1" (
-    echo.
-    echo Starting Quick Debug Build (APK)...
-    echo.
-    powershell -ExecutionPolicy Bypass -File "%~dp0build_debug.ps1" -QuickBuild
+    powershell -ExecutionPolicy Bypass -File "%~dp0build_debug.ps1" -QuickBuild -Target apk
     goto PAUSE_RETURN
 )
 
@@ -73,9 +70,6 @@ if "%debug_choice%"=="2" (
     set /p confirm="Start full debug build? (Y/n): "
     
     if /i not "%confirm%"=="n" (
-        echo.
-        echo Starting Full Debug Build...
-        echo.
         powershell -ExecutionPolicy Bypass -File "%~dp0build_debug.ps1"
         goto PAUSE_RETURN
     )
@@ -83,18 +77,12 @@ if "%debug_choice%"=="2" (
 )
 
 if "%debug_choice%"=="3" (
-    echo.
-    echo Starting Debug App Bundle (AAB)...
-    echo.
-    powershell -ExecutionPolicy Bypass -File "%~dp0build_debug.ps1" -Target "aab"
+    powershell -ExecutionPolicy Bypass -File "%~dp0build_debug.ps1" -Target aab
     goto PAUSE_RETURN
 )
 
 if "%debug_choice%"=="4" (
-    echo.
-    echo Starting Build Only (no cleaning)...
-    echo.
-    powershell -ExecutionPolicy Bypass -File "%~dp0build_debug.ps1" -BuildOnly
+    powershell -ExecutionPolicy Bypass -File "%~dp0build_debug.ps1" -BuildOnly -Target apk
     goto PAUSE_RETURN
 )
 
@@ -122,9 +110,6 @@ echo.
 set /p release_choice="Select option (1-6): "
 
 if "%release_choice%"=="1" (
-    echo.
-    echo Starting Quick Release Build (Unsigned)...
-    echo.
     powershell -ExecutionPolicy Bypass -File "%~dp0build_release.ps1" -QuickBuild -NoSigning
     goto PAUSE_RETURN
 )
@@ -145,9 +130,6 @@ if "%release_choice%"=="2" (
     set /p confirm="Continue? (Y/n): "
     
     if /i not "%confirm%"=="n" (
-        echo.
-        echo Starting Full Release Build with Signing...
-        echo.
         powershell -ExecutionPolicy Bypass -File "%~dp0build_release.ps1"
         goto PAUSE_RETURN
     )
@@ -168,9 +150,6 @@ if "%release_choice%"=="3" (
     set /p confirm="Continue? (Y/n): "
     
     if /i not "%confirm%"=="n" (
-        echo.
-        echo Starting Full Release Build without Signing...
-        echo.
         powershell -ExecutionPolicy Bypass -File "%~dp0build_release.ps1" -NoSigning
         goto PAUSE_RETURN
     )
@@ -178,18 +157,12 @@ if "%release_choice%"=="3" (
 )
 
 if "%release_choice%"=="4" (
-    echo.
-    echo Building Release APK only (Unsigned)...
-    echo.
-    powershell -ExecutionPolicy Bypass -File "%~dp0build_release.ps1" -TargetPlatforms "apk" -NoSigning -QuickBuild
+    powershell -ExecutionPolicy Bypass -File "%~dp0build_release.ps1" -TargetPlatforms apk -NoSigning -QuickBuild
     goto PAUSE_RETURN
 )
 
 if "%release_choice%"=="5" (
-    echo.
-    echo Building Release App Bundle (AAB) only (Unsigned)...
-    echo.
-    powershell -ExecutionPolicy Bypass -File "%~dp0build_release.ps1" -TargetPlatforms "aab" -NoSigning -QuickBuild
+    powershell -ExecutionPolicy Bypass -File "%~dp0build_release.ps1" -TargetPlatforms aab -NoSigning -QuickBuild
     goto PAUSE_RETURN
 )
 
@@ -217,25 +190,16 @@ echo.
 set /p clean_choice="Select option (1-6): "
 
 if "%clean_choice%"=="1" (
-    echo.
-    echo Cleaning project only...
-    echo.
     powershell -ExecutionPolicy Bypass -file "%~dp0build_clean.ps1" -CleanProjectOnly
     goto PAUSE_RETURN
 )
 
 if "%clean_choice%"=="2" (
-    echo.
-    echo Cleaning Flutter cache...
-    echo.
     powershell -ExecutionPolicy Bypass -file "%~dp0build_clean.ps1" -CleanFlutterOnly
     goto PAUSE_RETURN
 )
 
 if "%clean_choice%"=="3" (
-    echo.
-    echo Cleaning Gradle cache...
-    echo.
     powershell -ExecutionPolicy Bypass -file "%~dp0build_clean.ps1" -CleanGradleOnly
     goto PAUSE_RETURN
 )
@@ -270,9 +234,6 @@ if "%clean_choice%"=="4" (
 )
 
 if "%clean_choice%"=="5" (
-    echo.
-    echo Fixing Duplicate Dependencies...
-    echo.
     powershell -ExecutionPolicy Bypass -file "%~dp0build_fix.ps1" -FixDependencies
     goto PAUSE_RETURN
 )
@@ -364,41 +325,26 @@ echo.
 set /p fix_choice="Select option (1-6): "
 
 if "%fix_choice%"=="1" (
-    echo.
-    echo Fixing Duplicate Class Error...
-    echo.
-    powershell -ExecutionPolicy Bypass -File "%~dp0build_fix.ps1"
+    powershell -ExecutionPolicy Bypass -File "%~dp0build_fix.ps1" -FixDependencies
     goto PAUSE_RETURN
 )
 
 if "%fix_choice%"=="2" (
-    echo.
-    echo Checking Keystore Configuration...
-    echo.
     powershell -ExecutionPolicy Bypass -file "%~dp0build_fix.ps1" -CheckKeystore
     goto PAUSE_RETURN
 )
 
 if "%fix_choice%"=="3" (
-    echo.
-    echo Fixing Gradle Sync Errors...
-    echo.
     powershell -ExecutionPolicy Bypass -file "%~dp0build_fix.ps1" -FixGradle
     goto PAUSE_RETURN
 )
 
 if "%fix_choice%"=="4" (
-    echo.
-    echo Updating Flutter Dependencies...
-    echo.
     powershell -ExecutionPolicy Bypass -file "%~dp0build_fix.ps1" -UpdateDependencies
     goto PAUSE_RETURN
 )
 
 if "%fix_choice%"=="5" (
-    echo.
-    echo Checking Build Configuration...
-    echo.
     powershell -ExecutionPolicy Bypass -file "%~dp0build_fix.ps1" -CheckConfig
     goto PAUSE_RETURN
 )

@@ -77,11 +77,10 @@ function Fix-DuplicateClassIssue {
     Write-Info "  Has exclude: $hasExclude"
     
     if ($hasDebugEmbedding -and $hasReleaseEmbedding -and -not $hasExclude) {
-        Write-Step "Fixing duplicate dependencies...", "Yellow"
+        Write-Step "Fixing duplicate dependencies..." -Color "Yellow"
         
         # Solution 1: Add exclude to configurations
-        $fixedContent = $content -replace "(android\s*\{)", @"
-`$1
+        $excludeConfig = @"
     configurations {
         implementation {
             exclude group: 'io.flutter', module: 'flutter_embedding_debug'
@@ -89,10 +88,11 @@ function Fix-DuplicateClassIssue {
     }
 "@
 
+        $fixedContent = $content -replace "(android\s*\{)", "`$1`n$excludeConfig"
+
         # Solution 2: Fix dependencies block
         if ($content -match "dependencies\s*\{") {
-            $fixedContent = $fixedContent -replace "(dependencies\s*\{)", @"
-`$1
+            $dependencyFix = @"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:`$kotlin_version"
     
     // Fixed: Use only release embedding with exclude
@@ -100,13 +100,14 @@ function Fix-DuplicateClassIssue {
         exclude group: 'io.flutter', module: 'flutter_embedding_debug'
     }
 "@
+            $fixedContent = $fixedContent -replace "(dependencies\s*\{)", "`$1`n$dependencyFix"
         }
         
         $fixedContent | Out-File $buildGradlePath -Encoding UTF8 -Force
-        Write-Success "Fixed build.gradle configuration")
+        Write-Success "Fixed build.gradle configuration"
         
         # Clean caches
-        Write-Step "Cleaning build caches...", "Yellow"
+        Write-Step "Cleaning build caches..." -Color "Yellow"
         flutter clean 2>$null
         
         if (Test-Path "android") {
@@ -116,18 +117,18 @@ function Fix-DuplicateClassIssue {
         }
         
         # Update dependencies
-        Write-Step "Updating dependencies...", "Yellow"
+        Write-Step "Updating dependencies..." -Color "Yellow"
         flutter pub get
         
-        Write-Success "Duplicate class issue should be fixed!")
+        Write-Success "Duplicate class issue should be fixed!"
         Write-Info "Try building again."
         return $true
     } elseif ($hasExclude) {
-        Write-Success "Fix already applied!")
+        Write-Success "Fix already applied!"
         return $true
     } else {
-        Write-Warning "Configuration doesn't match expected pattern")
-        Write-Info "Manual fix may be required.")
+        Write-Warning "Configuration doesn't match expected pattern"
+        Write-Info "Manual fix may be required."
         return $false
     }
 }
@@ -138,10 +139,10 @@ function Check-KeystoreConfig {
     $keyPropertiesPath = "android/key.properties"
     $buildGradlePath = "android/app/build.gradle"
     
-    Write-Step "Checking key.properties...")
+    Write-Step "Checking key.properties..."
     
     if (Test-Path $keyPropertiesPath) {
-        Write-Success "key.properties exists")
+        Write-Success "key.properties exists"
         try {
             $content = Get-Content $keyPropertiesPath
             Write-Info "Contents:"
@@ -153,28 +154,28 @@ function Check-KeystoreConfig {
                 }
             }
         } catch {
-            Write-Error "Could not read key.properties")
+            Write-Error "Could not read key.properties"
         }
     } else {
-        Write-Warning "key.properties not found")
-        Write-Info "Create it with:")
-        Write-Info "  storePassword=your_password")
-        Write-Info "  keyPassword=your_password")
-        Write-Info "  keyAlias=key")
-        Write-Info "  storeFile=/path/to/keystore.jks")
+        Write-Warning "key.properties not found"
+        Write-Info "Create it with:"
+        Write-Info "  storePassword=your_password"
+        Write-Info "  keyPassword=your_password"
+        Write-Info "  keyAlias=key"
+        Write-Info "  storeFile=/path/to/keystore.jks"
     }
     
-    Write-Step "Checking build.gradle signing config...")
+    Write-Step "Checking build.gradle signing config..."
     
     if (Test-Path $buildGradlePath) {
         $content = Get-Content $buildGradlePath -Raw
         
         if ($content -match "signingConfigs") {
-            Write-Success "Signing config found in build.gradle")
+            Write-Success "Signing config found in build.gradle"
         } else {
-            Write-Warning "No signing config in build.gradle")
-            Write-Info "Add signing config to android/app/build.gradle:")
-            Write-Info @"
+            Write-Warning "No signing config in build.gradle"
+            Write-Info "Add signing config to android/app/build.gradle:"
+            $signingConfig = @"
 android {
     signingConfigs {
         release {
@@ -191,16 +192,17 @@ android {
     }
 }
 "@
+            Write-Info $signingConfig
         }
     } else {
-        Write-Error "build.gradle not found")
+        Write-Error "build.gradle not found"
     }
 }
 
 function Fix-GradleSync {
     Write-Header "Fixing Gradle Sync Issues"
     
-    Write-Step "Cleaning Gradle cache...")
+    Write-Step "Cleaning Gradle cache..."
     
     # Clean various gradle caches
     $cachePaths = @(
@@ -222,76 +224,76 @@ function Fix-GradleSync {
         }
     }
     
-    Write-Step "Running Gradle clean...")
+    Write-Step "Running Gradle clean..."
     
     if (Test-Path "android") {
         Set-Location "android"
         try {
             ./gradlew clean
-            Write-Success "Gradle clean completed")
+            Write-Success "Gradle clean completed"
         } catch {
-            Write-Error "Gradle clean failed")
+            Write-Error "Gradle clean failed"
         }
         Set-Location ..
     }
     
-    Write-Step "Invalidating Android Studio caches...")
-    Write-Info "If using Android Studio:")
-    Write-Info "  1. File -> Invalidate Caches and Restart")
-    Write-Info "  2. Click 'Invalidate and Restart'")
+    Write-Step "Invalidating Android Studio caches..."
+    Write-Info "If using Android Studio:"
+    Write-Info "  1. File -> Invalidate Caches and Restart"
+    Write-Info "  2. Click 'Invalidate and Restart'"
     
-    Write-Success "Gradle sync fix applied")
+    Write-Success "Gradle sync fix applied"
 }
 
 function Update-FlutterDependencies {
     Write-Header "Updating Flutter Dependencies"
     
-    Write-Step "Upgrading Flutter...")
+    Write-Step "Upgrading Flutter..."
     flutter upgrade
     
-    Write-Step "Getting packages...")
+    Write-Step "Getting packages..."
     flutter pub get
     
-    Write-Step "Upgrading packages...")
+    Write-Step "Upgrading packages..."
     flutter pub upgrade
     
-    Write-Step "Running Flutter doctor...")
+    Write-Step "Running Flutter doctor..."
     flutter doctor -v
     
-    Write-Success "Dependencies updated")
+    Write-Success "Dependencies updated"
 }
 
 function Check-BuildConfig {
     Write-Header "Checking Build Configuration"
     
-    Write-Step "Checking Flutter version...")
+    Write-Step "Checking Flutter version..."
     flutter --version
     
-    Write-Step "Checking pubspec.yaml...")
+    Write-Step "Checking pubspec.yaml..."
     if (Test-Path "pubspec.yaml") {
         $pubspec = Get-Content "pubspec.yaml" | Select-Object -First 20
         Write-Info "First 20 lines of pubspec.yaml:"
         $pubspec | ForEach-Object { Write-Info "  $_" }
     }
     
-    Write-Step "Checking Android configuration...")
+    Write-Step "Checking Android configuration..."
     if (Test-Path "android/app/build.gradle") {
         $buildGradle = Get-Content "android/app/build.gradle" | Select-Object -First 50
         Write-Info "First 50 lines of build.gradle:"
         $buildGradle | ForEach-Object { Write-Info "  $_" }
     }
     
-    Write-Step "Checking for common issues...")
+    Write-Step "Checking for common issues..."
     
     # Check for duplicate embeddings
     if (Test-Path "android/app/build.gradle") {
         $content = Get-Content "android/app/build.gradle" -Raw
         if ($content -match "flutter_embedding_debug.*1\.0\.0" -and $content -match "flutter_embedding_release.*1\.0\.0") {
-            Write-Warning "Potential duplicate embedding found")
+            Write-Warning "Potential duplicate embedding found"
         }
     }
     
-    Write-Success "Configuration check complete")
+    Write-Success "Configuration check complete"
 }
 
 # ============================================

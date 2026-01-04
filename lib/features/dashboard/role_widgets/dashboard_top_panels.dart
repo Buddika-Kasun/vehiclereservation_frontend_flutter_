@@ -378,7 +378,11 @@ class AdminTopPanel extends StatelessWidget {
       child: Column(
         children: [
           Text(
-            'Admin Dashboard',
+            user?.role == UserRole.sysadmin 
+            ? 'System Administrator Dashboard' 
+            : user?.role == UserRole.admin
+              ? 'HOD Dashboard' 
+              : 'Admin Dashboard',
             style: TextStyle(
               color: Colors.white,
               fontSize: 20,

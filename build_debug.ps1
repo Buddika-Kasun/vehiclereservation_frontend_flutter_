@@ -44,6 +44,71 @@ function Get-StorageInfo {
     }
 }
 
+function Clean-GradleCache-Aggressive {
+    Write-Info "Performing aggressive Gradle cache cleanup..."
+    
+    # Clean the ENTIRE .gradle directory (except wrapper)
+    $gradleDir = "$env:USERPROFILE\.gradle"
+    if (Test-Path $gradleDir) {
+        Write-Info "Backing up Gradle wrapper..."
+        
+        # Backup wrapper if it exists
+        $wrapperDir = "$gradleDir\wrapper"
+        $hasWrapper = Test-Path $wrapperDir
+        $tempBackup = $null
+        
+        if ($hasWrapper) {
+            $tempBackup = "$env:TEMP\gradle-wrapper-backup-$(Get-Date -Format 'yyyyMMddHHmmss')"
+            Copy-Item -Path $wrapperDir -Destination $tempBackup -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Info "Wrapper backed up to: $tempBackup"
+        }
+        
+        # Remove entire .gradle directory
+        Write-Info "Removing entire Gradle cache directory..."
+        Remove-Item -Path $gradleDir -Recurse -Force -ErrorAction SilentlyContinue
+        
+        # Recreate directory
+        New-Item -ItemType Directory -Path $gradleDir -Force | Out-Null
+        
+        # Restore wrapper if we backed it up
+        if ($hasWrapper -and (Test-Path $tempBackup)) {
+            Write-Info "Restoring Gradle wrapper..."
+            Copy-Item -Path "$tempBackup\*" -Destination "$gradleDir\wrapper" -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path $tempBackup -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        
+        Write-Success "Completely cleaned Gradle cache"
+    }
+    
+    # Also clean project Gradle directories
+    $projectGradleDirs = @("\.gradle", "android\.gradle")
+    foreach ($dir in $projectGradleDirs) {
+        if (Test-Path $dir) {
+            Remove-Item -Path $dir -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Info "Cleaned project $dir"
+        }
+    }
+}
+
+function Clean-FlutterCache {
+    Write-Info "Cleaning Flutter cache..."
+    
+    # Find Flutter SDK path
+    $flutterPath = flutter --version 2>$null | Select-String "Flutter.*SDK"
+    if ($flutterPath) {
+        $sdkPath = $flutterPath -replace ".*\s+at\s+(.*)", '$1'
+    } else {
+        $sdkPath = "$env:LOCALAPPDATA\flutter"
+    }
+    
+    # Clean Flutter's bin/cache
+    $flutterCache = "$sdkPath\bin\cache"
+    if (Test-Path $flutterCache) {
+        Remove-Item -Path $flutterCache -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Success "Cleaned Flutter cache"
+    }
+}
+
 # ============================================
 # HEADER
 # ============================================
@@ -108,9 +173,9 @@ if ($QuickBuild -or $BuildOnly) {
 }
 
 # ============================================
-# FULL DEBUG BUILD (YOUR ORIGINAL SCRIPT)
+# FULL DEBUG BUILD
 # ============================================
-Write-Step -Message "Stopping build processes" -Step 1 -Total 7
+Write-Step -Message "Stopping build processes" -Step 1 -Total 8
 
 $processes = @("java", "javaw", "gradle", "dart")
 foreach ($proc in $processes) {
@@ -120,49 +185,46 @@ foreach ($proc in $processes) {
         Write-Info "Stopped $proc ($($running.Count) processes)"
     }
 }
-Start-Sleep -Seconds 1
+Start-Sleep -Seconds 2
 
 # ============================================
-Write-Step -Message "Selective cleaning" -Step 2 -Total 7
+Write-Step -Message "Aggressive Gradle cache cleanup" -Step 2 -Total 8
 
-Write-Info "Running flutter clean (project only)..."
+Clean-GradleCache-Aggressive
+
+# ============================================
+Write-Step -Message "Flutter cache cleanup" -Step 3 -Total 8
+
+Clean-FlutterCache
+
+# ============================================
+Write-Step -Message "Project cleaning" -Step 4 -Total 8
+
+Write-Info "Running flutter clean..."
 flutter clean
 
-$projectBuildDirs = @("build", ".gradle")
-foreach ($dir in $projectBuildDirs) {
-    $path = "android/$dir"
-    if (Test-Path $path) {
-        Remove-Item -Path $path -Recurse -Force -ErrorAction SilentlyContinue
-        Write-Success "Cleaned project $dir"
+# Clean all project build directories
+$buildDirs = @(
+    "build",
+    "android\build", 
+    "android\app\build",
+    ".dart_tool",
+    ".flutter-plugins",
+    ".flutter-plugins-dependencies"
+)
+
+foreach ($dir in $buildDirs) {
+    if (Test-Path $dir) {
+        Remove-Item -Path $dir -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Info "Cleaned $dir"
     }
 }
 
 # ============================================
-Write-Step -Message "Checking Gradle cache" -Step 3 -Total 7
+Write-Step -Message "Getting dependencies" -Step 5 -Total 8
 
-$transformsPath = "$env:USERPROFILE\.gradle\caches\transforms-*"
-if (Test-Path $transformsPath) {
-    $transformsSize = [math]::Round((Get-ChildItem $transformsPath -Recurse -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum / 1MB, 2)
-    Write-Info "Found transforms cache: ~$transformsSize MB"
-    
-    if (-not $NoPrompt) {
-        $cleanTransforms = Read-Host "  Clean transforms metadata? (y/N)"
-        if ($cleanTransforms -eq 'y') {
-            Remove-Item -Path $transformsPath -Recurse -Force -ErrorAction SilentlyContinue
-            Write-Success "Cleaned transforms metadata"
-        }
-    }
-}
-
-# ============================================
-Write-Step -Message "Getting dependencies" -Step 4 -Total 7
-
-Write-Info "Running flutter pub get (offline first)..."
-flutter pub get --offline 2>$null
-if ($LASTEXITCODE -ne 0) {
-    Write-Warning "Offline failed, trying online..."
-    flutter pub get
-}
+Write-Info "Running flutter pub get..."
+flutter pub get
 
 Write-Info "Cleaning Android project..."
 Set-Location android
@@ -170,29 +232,24 @@ Set-Location android
 Set-Location ..
 
 # ============================================
-Write-Step -Message "Storage check" -Step 5 -Total 7
+Write-Step -Message "Storage check" -Step 6 -Total 8
 
 $storage = Get-StorageInfo
 Write-Info "Disk C: Free $($storage.Free) GB / Used $($storage.Used) GB / Total $($storage.Total) GB"
 
-if ($storage.Free -lt 2) {
-    Write-Warning "Less than 2GB free space!"
-    if (-not $NoPrompt) {
-        $continue = Read-Host "  Continue anyway? (y/N)"
-        if ($continue -ne 'y') {
-            Write-Host "  Build cancelled" -ForegroundColor Yellow
-            exit 1
-        }
-    }
+if ($storage.Free -lt 5) {
+    Write-Warning "Low disk space! Only $($storage.Free) GB free."
+    Write-Info "Build may fail due to insufficient space."
 }
 
 # ============================================
-Write-Step -Message "Building Debug $Target" -Step 6 -Total 7
+Write-Step -Message "Building Debug $Target" -Step 7 -Total 8
 
 Write-Info "Starting build..."
 $startTime = Get-Date
 
 try {
+    # Build with --no-daemon to avoid Gradle daemon issues
     if ($Target -eq "apk") {
         flutter build apk --debug --no-track-widget-creation
     } else {
@@ -203,34 +260,68 @@ try {
     $duration = $endTime - $startTime
     Write-Success "Build completed in $($duration.TotalSeconds.ToString('0.00')) seconds"
 } catch {
-    Write-Warning "Build failed! Trying alternative..."
+    Write-Warning "Build failed! Trying manual approach..."
     
+    # Manual Gradle build
+    Write-Info "Running manual Gradle build..."
+    Set-Location android
     try {
-        Write-Info "Trying alternative build..."
-        flutter build apk --debug --no-track-widget-creation
-        Write-Success "Alternative build successful"
+        # Clean first
+        ./gradlew clean 2>$null
+        
+        # Build with verbose output
+        ./gradlew assembleDebug --no-daemon --console=plain --info
+        
+        Set-Location ..
+        
+        # Check for output
+        $apkPath = "android\app\build\outputs\apk\debug\app-debug.apk"
+        if (Test-Path $apkPath) {
+            Write-Success "Manual Gradle build successful!"
+        } else {
+            Write-Warning "APK not found. Checking for other outputs..."
+        }
     } catch {
-        Write-Host "  All builds failed: $_" -ForegroundColor Red
+        Write-Host "  Manual build failed: $_" -ForegroundColor Red
         exit 1
     }
 }
 
 # ============================================
-Write-Step -Message "Build Information" -Step 7 -Total 7
+Write-Step -Message "Build Information" -Step 8 -Total 8
 
-if ($Target -eq "apk") {
-    $outputPath = "build\app\outputs\flutter-apk\app-debug.apk"
-} else {
-    $outputPath = "build\app\outputs\bundle\debug\app-debug.aab"
+# Check for output files
+$possibleApkPaths = @(
+    "build\app\outputs\flutter-apk\app-debug.apk",
+    "android\app\build\outputs\apk\debug\app-debug.apk",
+    "build\app\outputs\apk\debug\app-debug.apk"
+)
+
+$found = $false
+foreach ($apkPath in $possibleApkPaths) {
+    if (Test-Path $apkPath) {
+        $size = [math]::Round((Get-Item $apkPath).Length / 1MB, 2)
+        Write-Success "Debug APK: $apkPath"
+        Write-Info "Size: $($size.ToString('0.00')) MB"
+        $found = $true
+        break
+    }
 }
 
-if (Test-Path $outputPath) {
-    $size = [math]::Round((Get-Item $outputPath).Length / 1MB, 2)
-    Write-Success "Debug $($Target.ToUpper()): $outputPath"
-    Write-Info "Size: $($size.ToString('0.00')) MB"
-    Write-Success "Build successful!"
-} else {
+if (-not $found) {
     Write-Host "  No output file found!" -ForegroundColor Red
+    
+    # Check if build directory exists at all
+    if (Test-Path "build") {
+        Write-Info "Checking build directory contents..."
+        $buildContents = Get-ChildItem -Path "build" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 10
+        if ($buildContents) {
+            Write-Info "Found in build directory:"
+            foreach ($item in $buildContents) {
+                Write-Info "  $($item.FullName)"
+            }
+        }
+    }
 }
 
 # Final storage check
