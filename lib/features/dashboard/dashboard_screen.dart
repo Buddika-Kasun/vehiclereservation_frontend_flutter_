@@ -92,7 +92,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case UserRole.hr:
         return AdminDashboardContent(
           user: _user,
-          stats: _dashboardStats?.admin,
         );
       case UserRole.driver:
         return DriverDashboardContent(user: _user);

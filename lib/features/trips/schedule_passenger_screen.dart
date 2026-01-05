@@ -47,10 +47,32 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
   String _reason = '';
   bool _tripTypeExpanded = true;
 
+  // Text Controllers
+  late TextEditingController _fixedRateController;
+  late TextEditingController _reasonController;
+  late TextEditingController _repeatDaysController;
+
+  // Expansion State
+  bool _scheduleExpanded = true;
+  bool _passengersExpanded = false;
+
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    _fixedRateController = TextEditingController(text: _fixedRate);
+    _reasonController = TextEditingController(text: _reason);
+    _repeatDaysController = TextEditingController(
+      text: _repeatAfterDays.toString(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _fixedRateController.dispose();
+    _reasonController.dispose();
+    _repeatDaysController.dispose();
+    super.dispose();
   }
 
   // Add this getter method instead:
@@ -82,10 +104,6 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
       print('Load user data error: $e');
     }
   }
-
-  // Expansion State
-  bool _scheduleExpanded = true;
-  bool _passengersExpanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -222,7 +240,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
           collapsedShape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          initiallyExpanded: true,
+          initiallyExpanded: _tripTypeExpanded,
           title: Text(
             'Trip Type & Details',
             style: TextStyle(
@@ -231,6 +249,11 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
+          onExpansionChanged: (expanded) {
+            setState(() {
+              _tripTypeExpanded = expanded;
+            });
+          },
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
@@ -282,8 +305,11 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                               ),
                             ),
                           ],
-                          onChanged: (value) =>
-                              setState(() => _tripType = value!),
+                          onChanged: (value) {
+                            setState(() {
+                              _tripType = value!;
+                            });
+                          },
                         ),
                       ],
                     ),
@@ -300,6 +326,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                         ),
                         SizedBox(height: 4),
                         TextFormField(
+                          controller: _fixedRateController,
                           style: TextStyle(color: Colors.yellow),
                           decoration: InputDecoration(
                             hintText: '10000.00',
@@ -318,13 +345,8 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                             decimal: true,
                             signed: false,
                           ),
-                          inputFormatters: [
-                            // You may want to add currency formatter here
-                          ],
                           onChanged: (value) {
-                            setState(() {
-                              _fixedRate = value;
-                            });
+                            _fixedRate = value;
                           },
                         ),
                       ],
@@ -332,7 +354,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                   ],
 
                   // Reason Field (for all trip types)
-                  if(_canSchedule) SizedBox(height: 16),
+                  if (_canSchedule) SizedBox(height: 16),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -342,6 +364,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                       ),
                       SizedBox(height: 4),
                       TextFormField(
+                        controller: _reasonController,
                         style: TextStyle(color: Colors.yellow),
                         decoration: InputDecoration(
                           hintText: 'Enter reason for the trip',
@@ -356,9 +379,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                         ),
                         maxLines: 2,
                         onChanged: (value) {
-                          setState(() {
-                            _reason = value;
-                          });
+                          _reason = value;
                         },
                       ),
                     ],
@@ -398,14 +419,13 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
         ),
         child: ExpansionTile(
           tilePadding: EdgeInsets.symmetric(horizontal: 16),
-          //contentPadding: EdgeInsets.zero,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
           collapsedShape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          initiallyExpanded: true,
+          initiallyExpanded: _scheduleExpanded,
           title: Text(
             'Schedule',
             style: TextStyle(
@@ -414,6 +434,11 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
+          onExpansionChanged: (expanded) {
+            setState(() {
+              _scheduleExpanded = expanded;
+            });
+          },
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
@@ -513,8 +538,11 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                               ),
                             ),
                           ],
-                          onChanged: (value) =>
-                              setState(() => _repetition = value!),
+                          onChanged: (value) {
+                            setState(() {
+                              _repetition = value!;
+                            });
+                          },
                         ),
                       ],
                     ),
@@ -545,6 +573,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                   if (_repetition == 'custom') ...[
                     SizedBox(height: 4),
                     TextField(
+                      controller: _repeatDaysController,
                       style: TextStyle(color: Colors.yellow, fontSize: 14),
                       decoration: InputDecoration(
                         labelText: 'Repeat after (days)',
@@ -558,9 +587,11 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                         ),
                       ),
                       keyboardType: TextInputType.number,
-                      onChanged: (value) => setState(
-                        () => _repeatAfterDays = int.tryParse(value) ?? 1,
-                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          _repeatAfterDays = int.tryParse(value) ?? 1;
+                        });
+                      },
                     ),
                   ],
                 ],
@@ -586,13 +617,13 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
         ),
         child: ExpansionTile(
           tilePadding: EdgeInsets.symmetric(horizontal: 16),
-          //contentPadding: EdgeInsets.zero,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
           collapsedShape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
+          initiallyExpanded: _passengersExpanded,
           title: Text(
             'Select Passenger',
             style: TextStyle(
@@ -601,6 +632,11 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
               color: Colors.white,
             ),
           ),
+          onExpansionChanged: (expanded) {
+            setState(() {
+              _passengersExpanded = expanded;
+            });
+          },
           children: [
             Padding(
               padding: const EdgeInsets.all(16.0),
@@ -610,10 +646,14 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                   Column(
                     children: [
                       RadioListTile<String>(
-                        title: Text('Own', style: TextStyle(color: Colors.white)),
+                        title: Text(
+                          'Own',
+                          style: TextStyle(color: Colors.white),
+                        ),
                         value: 'own',
                         groupValue: _passengerType,
-                        onChanged: (value) => _handlePassengerTypeChange(value!),
+                        onChanged: (value) =>
+                            _handlePassengerTypeChange(value!),
                         activeColor: Colors.yellow[600],
                       ),
                       RadioListTile<String>(
@@ -623,7 +663,8 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                         ),
                         value: 'other_individual',
                         groupValue: _passengerType,
-                        onChanged: (value) => _handlePassengerTypeChange(value!),
+                        onChanged: (value) =>
+                            _handlePassengerTypeChange(value!),
                         activeColor: Colors.yellow[600],
                       ),
                       RadioListTile<String>(
@@ -633,7 +674,8 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                         ),
                         value: 'group',
                         groupValue: _passengerType,
-                        onChanged: (value) => _handlePassengerTypeChange(value!),
+                        onChanged: (value) =>
+                            _handlePassengerTypeChange(value!),
                         activeColor: Colors.yellow[600],
                       ),
                     ],
@@ -971,10 +1013,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionHeader(
-            'Selected Passengers',
-            _getTotalPassengerCount(),
-          ),
+          _buildSectionHeader('Selected Passengers', _getTotalPassengerCount()),
           SizedBox(height: 12),
 
           // Own User Card

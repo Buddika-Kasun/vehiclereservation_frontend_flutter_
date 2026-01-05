@@ -7,10 +7,8 @@ import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart
 
 class AdminDashboardContent extends StatefulWidget {
   final User? user;
-  final Map<String, dynamic>? stats;
 
-  const AdminDashboardContent({Key? key, required this.user, this.stats})
-    : super(key: key);
+  const AdminDashboardContent({Key? key, required this.user}) : super(key: key);
 
   @override
   _AdminDashboardContentState createState() => _AdminDashboardContentState();
@@ -173,11 +171,26 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
     return defaultValue;
   }
 
+  // Helper method to get string values from the stats map
+  String _getStringValue(String key, [String defaultValue = '']) {
+    final value = _dashboardStats[key];
+    if (value == null) return defaultValue;
+    if (value is String) return value;
+    return value.toString();
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
     final isSmallScreen = screenWidth < 360;
+
+    // Get dashboard title from API response or use default
+    final dashboardTitle = _getStringValue('dashboardTitle').isNotEmpty
+        ? _getStringValue('dashboardTitle')
+        : (widget.user?.role == UserRole.sysadmin
+              ? 'All Departments'
+              : 'Dashboard');
 
     // Show loading indicator for initial load only
     if (_isLoading && !_isRefreshing) {
@@ -238,6 +251,57 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
       child: CustomScrollView(
         physics: AlwaysScrollableScrollPhysics(),
         slivers: [
+          // Dashboard Title with Department Name
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: isSmallScreen ? 16 : 24,
+                vertical: 16,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    constraints: BoxConstraints(maxWidth: screenWidth * 0.9),
+                    child: Text(
+                      '${dashboardTitle} Usage',
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 16 : 18,
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 2,
+                    ),
+                  ),
+                  // Alternative with automatic wrapping:
+                  // Wrap(
+                  //   alignment: WrapAlignment.center,
+                  //   children: [
+                  //     Text(
+                  //       dashboardTitle,
+                  //       style: TextStyle(
+                  //         fontSize: isSmallScreen ? 16 : 18,
+                  //         color: Colors.black,
+                  //         fontWeight: FontWeight.bold,
+                  //       ),
+                  //     ),
+                  //     Text(
+                  //       ' Usage',
+                  //       style: TextStyle(
+                  //         fontSize: isSmallScreen ? 16 : 18,
+                  //         color: Colors.black,
+                  //         fontWeight: FontWeight.bold,
+                  //       ),
+                  //     ),
+                  //   ],
+                  // ),
+                ],
+              ),
+            ),
+          ),
+
           // Error banner (shows at top if there's an error with existing data)
           if (_errorMessage.isNotEmpty && _dashboardStats.isNotEmpty)
             SliverToBoxAdapter(
@@ -284,9 +348,11 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
 
           // Main Statistics Cards Grid - Responsive layout
           SliverPadding(
-            padding: EdgeInsets.symmetric(
-              horizontal: isSmallScreen ? 12 : 16,
-              vertical: 16,
+            padding: EdgeInsets.fromLTRB(
+              isSmallScreen ? 12 : 16,
+              4,
+              isSmallScreen ? 12 : 16,
+              16,
             ),
             sliver: SliverGrid(
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -376,6 +442,16 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                  SizedBox(height: 8),
+                  Text(
+                    widget.user?.role == UserRole.sysadmin
+                        ? 'All cost centers'
+                        : 'Department cost center',
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 12 : 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
                   SizedBox(height: 12),
                   Container(
                     width: double.infinity,
@@ -404,7 +480,9 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
                                 ),
                                 SizedBox(height: 4),
                                 Text(
-                                  'All cost centers',
+                                  widget.user?.role == UserRole.sysadmin
+                                      ? 'All cost centers'
+                                      : 'Department cost center',
                                   style: TextStyle(
                                     fontSize: isVeryNarrow ? 12 : 14,
                                     color: Colors.grey[600],
@@ -809,6 +887,16 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
+                              SizedBox(height: 4),
+                              Text(
+                                widget.user?.role == UserRole.sysadmin
+                                    ? 'All departments'
+                                    : dashboardTitle,
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 12 : 13,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -1140,5 +1228,4 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
       ),
     );
   }
-
 }
