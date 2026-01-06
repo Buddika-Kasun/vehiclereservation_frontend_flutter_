@@ -11,6 +11,7 @@ import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storag
 import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/color_generator.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/constant.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/users/admin/check_list_screen.dart';
 
 class VehicleScreen extends StatefulWidget {
   final User user;
@@ -544,6 +545,22 @@ class _VehicleScreenState extends State<VehicleScreen> {
                           ],
                         ),
 
+                        SizedBox(height: 16),
+
+                        // Details Grid - Row 4
+                        Row(
+                          children: [
+                            _buildDetailItem(
+                              icon: Icons.list,
+                              title: 'Today Checking',
+                              value: vehicle.todayChecked == true ? 'Checked' : 'Not Checked',
+                              valueColor: vehicle.todayChecked == true
+                                  ? Colors.green
+                                  : Colors.orange,
+                            ),
+                          ],
+                        ),
+
                         if (!isPrimary) ...[
                           SizedBox(height: 16),
                           Row(
@@ -558,6 +575,68 @@ class _VehicleScreenState extends State<VehicleScreen> {
                         ],
                         
                         SizedBox(height: 20),
+                        Divider(height: 1, color: Colors.grey[300]),
+                        SizedBox(height: 8),
+
+                        // Action Buttons Row
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(8),
+                                    onTap: () async {
+                                    // Navigate to checklist screen
+                                    await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => ChecklistScreen(
+                                          vehicleId: vehicle.id.toString(),
+                                          vehicleRegNo: vehicle.regNo,
+                                          userId: widget.user.id.toString(),
+                                          userRole: widget.user.role.name,
+                                          userName: widget.user.displayname,
+                                        ),
+                                      ),
+                                    ).then((result) {
+                                      // This runs AFTER navigation is complete
+                                      if (mounted && result == true) {
+                                        _loadDriverVehicles();
+                                      }
+                                    });
+                                  },
+                                    child: Center(
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.checklist, color: Colors.white, size: 20),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Go to Checklist',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        
+                        SizedBox(height: 8),
                         Divider(height: 1, color: Colors.grey[300]),
                         SizedBox(height: 16),
 
@@ -827,4 +906,5 @@ class _VehicleScreenState extends State<VehicleScreen> {
       throw Exception('Invalid QR code data');
     }
   }
+
 }
