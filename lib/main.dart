@@ -105,7 +105,7 @@ Future<void> _requestPermissions() async {
     Permission.locationWhenInUse,
     //Permission.locationAlways, // If you need background location
 
-    Permission.notification,
+    //Permission.notification,
 
     // Camera/Scan permissions (for quick scan, QR code scanning)
     //Permission.camera,
@@ -113,8 +113,8 @@ Future<void> _requestPermissions() async {
     // Storage permissions (for file uploads, profile pictures)
     //Permission.photos, // For iOS
     //Permission.mediaLibrary, // For iOS
-    //Permission.storage, // For Android
-    //Permission.accessMediaLocation, // For Android 11+
+    Permission.storage, // For Android
+    Permission.accessMediaLocation, // For Android 11+
 
     // Network permissions (implicitly granted but good to check)
     //Permission.accessNotificationPolicy,

@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/utils/optional_permission_manager%20copy.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/trip_details_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
@@ -577,18 +579,122 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
   }
 
   Future<void> _makePhoneCall(String phoneNumber) async {
-    final url = 'tel:$phoneNumber';
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url));
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Cannot make call'),
-          backgroundColor: Colors.red,
-        ),
-      );
+    try {
+      // Clean the phone number
+      String cleanedNumber = phoneNumber.trim();
+
+      // Validate phone number format
+      if (cleanedNumber.isEmpty) {
+        _showSnackBar('Phone number is empty', Colors.red);
+        return;
+      }
+
+      // Check if we have permission first
+      final hasPermission =
+          await OptionalPermissionManager.requestPhonePermission(
+            context: context,
+            rationaleMessage: 'Phone permission is required to make calls',
+          );
+
+      if (!hasPermission) {
+        _showSnackBar('Cannot make call without permission', Colors.red);
+        return;
+      }
+
+      // Create URL with proper format
+      final url = 'tel:$cleanedNumber';
+      final uri = Uri.parse(url);
+
+      print('📞 Attempting to call: $cleanedNumber');
+      print('📞 URL: $url');
+
+      // Check if we can launch
+      bool canLaunch = await canLaunchUrl(uri);
+      print('📞 Can launch URL: $canLaunch');
+
+      if (canLaunch) {
+        await launchUrl(uri);
+        print('📞 Launched dialer successfully');
+      } else {
+        // Fallback: Try to open dialer with number manually
+        print('📞 canLaunchUrl returned false, trying alternative');
+        await _launchDialerFallback(cleanedNumber);
+      }
+    } catch (e, stackTrace) {
+      print('❌ Error making call: $e');
+      print('❌ Stack trace: $stackTrace');
+      _showSnackBar('Unable to make call: ${e.toString()}', Colors.red);
     }
   }
+
+  // Alternative method for opening dialer
+  Future<void> _launchDialerFallback(String phoneNumber) async {
+    try {
+      // Try different URL formats
+      final String url = 'tel:$phoneNumber';
+      final Uri uri = Uri.parse(url);
+
+      // Try launching directly without checking first
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      print('❌ Fallback also failed: $e');
+
+      // Show alternative options
+      if (context.mounted) {
+        await _showNoDialerDialog(context, phoneNumber);
+      }
+    }
+  }
+
+  // Dialog when no dialer is found
+  Future<void> _showNoDialerDialog(
+    BuildContext context,
+    String phoneNumber,
+  ) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Cannot Make Call'),
+          content: Text(
+            'No phone app found to make calls.\n\n'
+            'Phone number: $phoneNumber\n\n'
+            'You can manually dial this number.',
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Copy Number'),
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: phoneNumber));
+                Navigator.of(context).pop();
+                _showSnackBar('Phone number copied to clipboard', Colors.green);
+              },
+            ),
+            TextButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showSnackBar(String message, Color color) {
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
 
   void _navigateToConflictTrip(int tripId) {
     Navigator.push(

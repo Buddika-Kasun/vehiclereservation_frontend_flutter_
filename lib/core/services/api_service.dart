@@ -410,8 +410,8 @@ class ApiService {
     }
 
     // Add pagination parameters
-    params.add('page=$page');
-    params.add('limit=$limit');
+    //params.add('page=$page');
+    //params.add('limit=$limit');
 
     if (params.isNotEmpty) {
       url += '?${params.join('&')}';
