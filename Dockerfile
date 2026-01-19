@@ -19,7 +19,7 @@ RUN mkdir -p assets && touch assets/.env
 
 # Build Flutter web
 RUN flutter pub get
-RUN flutter build web --release
+RUN flutter build web --release --web-renderer html --tree-shake-icons
 
 # Create config.js template (Railway will inject vars)
 RUN echo 'window.config = {' > build/web/config.js
