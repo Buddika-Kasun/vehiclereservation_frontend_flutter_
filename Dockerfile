@@ -37,7 +37,7 @@ COPY --from=build /app/build/web /usr/share/nginx/html
 RUN echo 'events { worker_connections 1024; }' > /etc/nginx/nginx.conf
 RUN echo 'http {' >> /etc/nginx/nginx.conf
 RUN echo '  server {' >> /etc/nginx/nginx.conf
-RUN echo '    listen ${PORT:-8080};' >> /etc/nginx/nginx.conf
+RUN echo '    listen 8080;' >> /etc/nginx/nginx.conf
 RUN echo '    root /usr/share/nginx/html;' >> /etc/nginx/nginx.conf
 RUN echo '    index index.html;' >> /etc/nginx/nginx.conf
 RUN echo '    location / { try_files $uri $uri/ /index.html; }' >> /etc/nginx/nginx.conf
