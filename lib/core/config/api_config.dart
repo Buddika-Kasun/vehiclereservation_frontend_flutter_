@@ -1,6 +1,6 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:js' as js; // Add this import
+//import 'dart:js' as js; // Add this import
 
 class ApiConfig {
   static bool _initialized = false;
@@ -22,13 +22,20 @@ class ApiConfig {
   // Add this method
   static void _loadWebConfig() {
     try {
-      final config = js.context['config'];
+      //final config = js.context['config'];
+      /*
       if (config != null) {
         _webEnv = {
           'API_URL': config['apiUrl']?.toString() ?? 'https://api.example.com',
           'WS_URL': config['wsUrl']?.toString() ?? 'wss://api.example.com',
         };
       }
+      */
+
+      _webEnv = {
+        'API_URL': 'https://pcw-ride-server.up.railway.app',
+        'WS_URL': 'https://pcw-ride-server.up.railway.app',
+      };
     } catch (e) {
       // Fallback values for web
       _webEnv = {
