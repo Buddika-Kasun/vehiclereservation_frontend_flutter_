@@ -14,6 +14,9 @@ RUN flutter --version
 WORKDIR /app
 COPY . .
 
+# Create missing assets if they don't exist
+RUN mkdir -p assets && touch assets/.env
+
 # Build Flutter web
 RUN flutter pub get
 RUN flutter build web --release
