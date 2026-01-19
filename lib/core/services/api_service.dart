@@ -410,8 +410,27 @@ class ApiService {
     }
 
     // Add pagination parameters
-    //params.add('page=$page');
-    //params.add('limit=$limit');
+    params.add('page=$page');
+    params.add('limit=$limit');
+
+    if (params.isNotEmpty) {
+      url += '?${params.join('&')}';
+    }
+
+    return await authenticatedApiCall(url, method: 'GET');
+  }
+
+  static Future<Map<String, dynamic>> getUserDepartments({
+    int page = 1,
+    int limit = 10,
+  }) async {
+    String url = 'department/get-user-all';
+
+    List<String> params = [];
+
+    // Add pagination parameters
+    params.add('page=$page');
+    params.add('limit=$limit');
 
     if (params.isNotEmpty) {
       url += '?${params.join('&')}';
@@ -474,6 +493,13 @@ class ApiService {
   static Future<Map<String, dynamic>> getUsersByDepartment(int departmentId) async {
     return await authenticatedApiCall(
       'user/get-all-by-department/$departmentId',
+      method: 'GET',
+    );
+  }
+
+  static Future<Map<String, dynamic>> getAllHodUsers() async {
+    return await authenticatedApiCall(
+      'user/get-all-hod',
       method: 'GET',
     );
   }
@@ -1269,11 +1295,21 @@ class ApiService {
   }
 
 
-  static Future<Map<String, dynamic>> getAdminDashboardStats() async {
+  static Future<Map<String, dynamic>> getAdminDashboardStats({
+    String? departmentId,
+  }) async {
     try {
+      // Build URL with query parameters
+      String url = 'dashboard/admin/stats';
+
+      // Add departmentId to query params if provided
+      if (departmentId != null && departmentId.isNotEmpty) {
+        url += '?departmentId=$departmentId';
+      }
+
       // Replace with your actual API endpoint
       return await authenticatedApiCall(
-        'dashboard/admin/stats', // Your API endpoint
+        url, // Your API endpoint with query params
         method: 'GET',
       );
     } catch (e) {

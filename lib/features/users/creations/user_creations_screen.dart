@@ -461,7 +461,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
 
   Future<void> _loadDepartments() async {
     try {
-      final response = await ApiService.getDepartments();
+      final response = await ApiService.getDepartments(limit: 50);
 
       if (response['success'] == true) {
         final List<dynamic> departmentsData =

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/models/department_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
@@ -38,11 +39,20 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
   DateTime? _startDate;
   DateTime? _endDate;
 
+  // Department filter states
+  List<Department> _availableDepartments = [];
+  String? _selectedDepartmentId; // null = all departments
+  String? _tempSelectedDepartmentId; // For popup selection
+  bool _isFilterPopupOpen = false;
+  bool _isLoadingDepartments = false;
+
   @override
   void initState() {
     super.initState();
-    // Initial data load
+    // Initial data load with all departments
     _loadDashboardData();
+    // Load departments for filter
+    _loadDepartments();
     // Start auto-refresh timer
     _startAutoRefresh();
   }
@@ -52,6 +62,89 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
     // Cancel timer to prevent memory leaks
     _refreshTimer?.cancel();
     super.dispose();
+  }
+
+  /// Loads departments for filter dropdown
+  Future<void> _loadDepartments() async {
+    if (_isLoadingDepartments) return;
+
+    setState(() {
+      _isLoadingDepartments = true;
+    });
+
+    try {
+      final response = await ApiService.getUserDepartments(limit: 50);
+
+      if (response['success'] == true) {
+        final List<dynamic> departmentsData =
+            response['data']['departments'] ?? [];
+        setState(() {
+          _availableDepartments = departmentsData
+              .map((data) => Department.fromJson(data))
+              .toList();
+        });
+      } else {
+        throw Exception(response['message'] ?? 'Failed to load departments');
+      }
+    } catch (e) {
+      print('Error loading departments: $e');
+      // Don't show error to user for department loading - just log it
+    } finally {
+      setState(() {
+        _isLoadingDepartments = false;
+      });
+    }
+  }
+
+  /// Shows/hides the filter popup
+  void _toggleFilterPopup() {
+    setState(() {
+      _isFilterPopupOpen = !_isFilterPopupOpen;
+      // Initialize temp selection with current selection
+      if (_isFilterPopupOpen) {
+        _tempSelectedDepartmentId = _selectedDepartmentId;
+      }
+    });
+  }
+
+  /// Applies the selected filter
+  void _applyFilter() {
+    setState(() {
+      _selectedDepartmentId = _tempSelectedDepartmentId;
+      _isFilterPopupOpen = false;
+    });
+    // Reload dashboard data with selected filter
+    _loadDashboardData();
+  }
+
+  /// Clears the filter (shows all departments)
+  void _clearFilter() {
+    setState(() {
+      _selectedDepartmentId = null;
+      _tempSelectedDepartmentId = null;
+      _isFilterPopupOpen = false;
+    });
+    // Reload dashboard data without filter
+    _loadDashboardData();
+  }
+
+  /// Gets the currently selected department name
+  String? get _selectedDepartmentName {
+    if (_selectedDepartmentId == null) return null;
+    final department = _availableDepartments.firstWhere(
+      (dept) => dept.id.toString() == _selectedDepartmentId,
+      orElse: () => Department(
+        id: 0,
+        name: 'Unknown',
+        isActive: true,
+        employees: 0,
+        headId: null,
+        headName: null,
+        costCenterId: null,
+        costCenterName: null,
+      ),
+    );
+    return department.name;
   }
 
   /// Starts auto-refresh timer that triggers every 30 seconds
@@ -72,8 +165,10 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
     });
 
     try {
-      // Call the API service to get dashboard statistics
-      final response = await ApiService.getAdminDashboardStats();
+      // Call the API service to get dashboard statistics with department filter
+      final response = await ApiService.getAdminDashboardStats(
+        departmentId: _selectedDepartmentId,
+      );
 
       if (response.isNotEmpty) {
         // Successfully received data from API
@@ -109,7 +204,9 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
     _isRefreshing = true;
 
     try {
-      final response = await ApiService.getAdminDashboardStats();
+      final response = await ApiService.getAdminDashboardStats(
+        departmentId: _selectedDepartmentId,
+      );
 
       if (response.isNotEmpty) {
         // Update the data silently without triggering rebuild if data hasn't changed
@@ -187,6 +284,272 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
     if (value == null) return defaultValue;
     if (value is String) return value;
     return value.toString();
+  }
+
+  /// Builds the filter popup widget
+  Widget _buildFilterPopup(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    final popupWidth = isSmallScreen ? screenWidth * 0.9 : 320.0;
+
+    return Positioned(
+      top: 70, // Position below the title row
+      left: (screenWidth - popupWidth) / 2,
+      child: Material(
+        elevation: 8,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: popupWidth,
+          padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.filter_alt, size: 18, color: Colors.blue),
+                      SizedBox(width: 8),
+                      Text(
+                        'Filter by Department',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close, size: 18),
+                    onPressed: _toggleFilterPopup,
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
+              ),
+              SizedBox(height: 16),
+
+              // Department Dropdown
+              _buildDepartmentDropdownNew(
+                currentDepartmentId: _tempSelectedDepartmentId ?? '',
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      _tempSelectedDepartmentId = value;
+                    });
+                  }
+                },
+              ),
+
+              SizedBox(height: 20),
+
+              // Action Buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _clearFilter,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey,
+                        side: BorderSide(color: Colors.grey.shade300),
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: Text('Show All'),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _applyFilter,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: Text('Apply'),
+                    ),
+                  ),
+                ],
+              ),
+
+              // Current filter info
+              if (_selectedDepartmentId != null)
+                Padding(
+                  padding: EdgeInsets.only(top: 12),
+                  child: Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline, size: 14, color: Colors.blue),
+                        SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Currently filtered by: ${_selectedDepartmentName ?? 'Unknown'}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.blue[800],
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Department Dropdown for the filter popup
+  Widget _buildDepartmentDropdownNew({
+    required String currentDepartmentId,
+    required Function(String?) onChanged,
+  }) {
+    // Show loading indicator if departments are still loading
+    if (_isLoadingDepartments) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.business, size: 16, color: Colors.grey),
+              SizedBox(width: 8),
+              Text(
+                'Department',
+                style: TextStyle(color: Colors.grey, fontSize: 14),
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+          Container(
+            height: 56,
+            alignment: Alignment.center,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ],
+      );
+    }
+
+    // If no departments are available
+    if (_availableDepartments.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.business, size: 16, color: Colors.grey),
+              SizedBox(width: 8),
+              Text(
+                'Department',
+                style: TextStyle(color: Colors.grey, fontSize: 14),
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              'No departments available',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Ensure the current value exists in available departments
+    String? safeCurrentDepartmentId = currentDepartmentId.isNotEmpty
+        ? currentDepartmentId
+        : null;
+
+    // Validate that the current selection exists in the list
+    if (safeCurrentDepartmentId != null &&
+        !_availableDepartments.any(
+          (dept) => dept.id.toString() == safeCurrentDepartmentId,
+        )) {
+      safeCurrentDepartmentId = null;
+    }
+
+    // Create dropdown items including "All Departments" option
+    final List<DropdownMenuItem<String>> dropdownItems = [
+      ..._availableDepartments.map((department) {
+        return DropdownMenuItem<String>(
+          value: department.id.toString(),
+          child: Text(department.name, style: TextStyle(color: Colors.black87)),
+        );
+      }).toList(),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Label with Icon
+        Row(
+          children: [
+            Icon(Icons.business, size: 16, color: Colors.grey),
+            SizedBox(width: 8),
+            Text(
+              'Department',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+
+        // Dropdown
+        DropdownButtonFormField<String>(
+          isExpanded: true,
+          dropdownColor: Colors.white,
+          style: TextStyle(color: Colors.black87, fontSize: 14),
+          decoration: InputDecoration(
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey.shade400, width: 1),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.blue, width: 1.5),
+            ),
+            filled: true,
+            fillColor: Colors.grey.shade50,
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            hintText: 'Select Department',
+            hintStyle: TextStyle(color: Colors.grey.shade600),
+          ),
+          value: safeCurrentDepartmentId,
+          items: dropdownItems,
+          onChanged: onChanged,
+        ),
+      ],
+    );
   }
 
   /// Shows the report download dialog
@@ -519,7 +882,6 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
     }
   }
 
-  /// Downloads the report in specified format (PDF/Excel)
   /// Downloads the report in specified format (PDF/Excel)
   Future<void> _downloadReport(String format) async {
     print('=== START _downloadReport for format: $format ===');
@@ -1043,937 +1405,1027 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
     final double monthOverMonthChange = _getDoubleValue('monthOverMonthChange');
     final bool isCostIncrease = monthOverMonthChange > 0;
 
-    return RefreshIndicator(
-      onRefresh: _refreshDashboard,
-      child: CustomScrollView(
-        physics: AlwaysScrollableScrollPhysics(),
-        slivers: [
-          // Dashboard Title with Department Name
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: isSmallScreen ? 16 : 24,
-                vertical: 16,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    constraints: BoxConstraints(maxWidth: screenWidth * 0.9),
-                    child: Text(
-                      '${dashboardTitle} Usage',
-                      style: TextStyle(
-                        fontSize: isSmallScreen ? 16 : 18,
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 2,
-                    ),
+    return Stack(
+      children: [
+        RefreshIndicator(
+          onRefresh: _refreshDashboard,
+          child: CustomScrollView(
+            physics: AlwaysScrollableScrollPhysics(),
+            slivers: [
+              // Dashboard Title with Department Name and Filter Button
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isSmallScreen ? 16 : 24,
+                    vertical: 16,
                   ),
-                ],
-              ),
-            ),
-          ),
-
-          // Error banner (shows at top if there's an error with existing data)
-          if (_errorMessage.isNotEmpty && _dashboardStats.isNotEmpty)
-            SliverToBoxAdapter(
-              child: Container(
-                margin: EdgeInsets.symmetric(
-                  horizontal: isSmallScreen ? 12 : 16,
-                  vertical: 8,
-                ),
-                padding: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.warning_amber_outlined,
-                      size: 16,
-                      color: Colors.orange,
-                    ),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _errorMessage,
-                        style: TextStyle(
-                          fontSize: isSmallScreen ? 10 : 12,
-                          color: Colors.orange[800],
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.refresh, size: 16),
-                      onPressed: _refreshDashboard,
-                      padding: EdgeInsets.zero,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          // Main Statistics Cards Grid - Responsive layout
-          SliverPadding(
-            padding: EdgeInsets.fromLTRB(
-              isSmallScreen ? 12 : 16,
-              4,
-              isSmallScreen ? 12 : 16,
-              16,
-            ),
-            sliver: SliverGrid(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: isTablet ? 3 : (isSmallScreen ? 2 : 2),
-                crossAxisSpacing: isSmallScreen ? 8 : 12,
-                mainAxisSpacing: isSmallScreen ? 8 : 12,
-                childAspectRatio: _calculateCardAspectRatio(screenWidth),
-              ),
-              delegate: SliverChildBuilderDelegate((context, index) {
-                // Build different stat cards based on index
-                switch (index) {
-                  case 0: // Total Rides
-                    return _buildDynamicStatCard(
-                      'Total Rides',
-                      '${_getIntValue('totalRides')}',
-                      Icons.directions_car,
-                      Colors.blue,
-                      'Completed Rides',
-                      screenWidth,
-                    );
-                  case 1: // Pending for Supervisor
-                    return _buildDynamicStatCard(
-                      'Pending for Supervisor',
-                      '${_getIntValue('pendingSupervisorRides')}',
-                      Icons.pending_actions,
-                      Colors.orange,
-                      'Draft rides',
-                      screenWidth,
-                    );
-                  case 2: // Today's Rides
-                    return _buildDynamicStatCard(
-                      "Today's Rides",
-                      '${_getIntValue('ridesToday')}',
-                      Icons.today,
-                      Colors.purple,
-                      'Scheduled for today',
-                      screenWidth,
-                    );
-                  case 3: // Monthly Cost
-                    return _buildDynamicStatCard(
-                      'Monthly Cost',
-                      'LKR ${_formatCurrency(_getDoubleValue('currentMonthCost'))}',
-                      Icons.attach_money,
-                      Colors.teal,
-                      'Current month',
-                      screenWidth,
-                    );
-                  case 4: // Total Users
-                    return _buildDynamicStatCard(
-                      'Total Users',
-                      '${_getIntValue('totalUsers')}',
-                      Icons.people,
-                      Colors.green,
-                      'Approved',
-                      screenWidth,
-                    );
-                  case 5: // Pending Users
-                    return _buildDynamicStatCard(
-                      'Pending Users',
-                      '${_getIntValue('pendingUserCreations')}',
-                      Icons.person_add,
-                      Colors.red,
-                      'Awaiting approval',
-                      screenWidth,
-                    );
-                  default:
-                    return SizedBox.shrink();
-                }
-              }, childCount: 6),
-            ),
-          ),
-
-          // Budget vs Actual Performance Section
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: isSmallScreen ? 12 : 16,
-                vertical: 8,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Budget Performance',
-                    style: TextStyle(
-                      fontSize: isSmallScreen ? 16 : 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    widget.user?.role == UserRole.sysadmin
-                        ? 'All cost centers'
-                        : 'Department cost center',
-                    style: TextStyle(
-                      fontSize: isSmallScreen ? 12 : 14,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[200]!),
-                    ),
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final bool isVeryNarrow = constraints.maxWidth < 300;
-                        return Column(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Title
+                      Expanded(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Section title
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Budget vs Actual',
-                                  style: TextStyle(
-                                    fontSize: isVeryNarrow ? 14 : 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  widget.user?.role == UserRole.sysadmin
-                                      ? 'All cost centers'
-                                      : 'Department cost center',
-                                  style: TextStyle(
-                                    fontSize: isVeryNarrow ? 12 : 14,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 12),
-
-                            // Variance percentage badge
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              children: [
-                                Container(
-                                  constraints: BoxConstraints(maxWidth: 120),
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 5,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isOverBudget
-                                        ? Colors.red.withOpacity(0.1)
-                                        : Colors.green.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        isOverBudget
-                                            ? Icons.trending_up
-                                            : Icons.trending_down,
-                                        size: 14,
-                                        color: isOverBudget
-                                            ? Colors.red
-                                            : Colors.green,
-                                      ),
-                                      SizedBox(width: 4),
-                                      Flexible(
-                                        child: Text(
-                                          '${(_getDoubleValue('costVariancePercent')).toStringAsFixed(1)}%',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                            color: isOverBudget
-                                                ? Colors.red
-                                                : Colors.green,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 16),
-
-                            // Progress bar showing budget vs actual
-                            LinearProgressIndicator(
-                              value: budgetVsActual / 100,
-                              backgroundColor: Colors.grey[300],
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                isOverBudget ? Colors.red : Colors.green,
-                              ),
-                              minHeight: isVeryNarrow ? 10 : 12,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            SizedBox(height: 12),
-
-                            // Budget and Actual cost values
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (!isVeryNarrow)
-                                  // Horizontal layout for wider screens
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Flexible(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Budget',
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                color: Colors.grey[600],
-                                              ),
-                                            ),
-                                            SizedBox(height: 4),
-                                            Text(
-                                              'LKR ${_formatCurrency(budgetAmount)}',
-                                              style: TextStyle(
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Flexible(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.end,
-                                          children: [
-                                            Text(
-                                              'Actual Cost',
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                color: Colors.grey[600],
-                                              ),
-                                            ),
-                                            SizedBox(height: 4),
-                                            Text(
-                                              'LKR ${_formatCurrency(actualCost)}',
-                                              style: TextStyle(
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.bold,
-                                                color: isOverBudget
-                                                    ? Colors.red
-                                                    : Colors.green,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                else
-                                  // Vertical layout for narrow screens
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Budget',
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              color: Colors.grey[600],
-                                            ),
-                                          ),
-                                          SizedBox(height: 4),
-                                          Text(
-                                            'LKR ${_formatCurrency(budgetAmount)}',
-                                            style: TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
-                                      ),
-                                      SizedBox(height: 12),
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Actual Cost',
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              color: Colors.grey[600],
-                                            ),
-                                          ),
-                                          SizedBox(height: 4),
-                                          Text(
-                                            'LKR ${_formatCurrency(actualCost)}',
-                                            style: TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.bold,
-                                              color: isOverBudget
-                                                  ? Colors.red
-                                                  : Colors.green,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                SizedBox(height: 16),
-                                Divider(),
-                                SizedBox(height: 12),
-
-                                // Variance amount and status
-                                if (!isVeryNarrow)
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Flexible(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Variance',
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                color: Colors.grey[600],
-                                              ),
-                                            ),
-                                            SizedBox(height: 4),
-                                            Text(
-                                              'LKR ${_formatCurrency((_getDoubleValue('costVariance')).abs())}',
-                                              style: TextStyle(
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.w600,
-                                                color: isOverBudget
-                                                    ? Colors.red
-                                                    : Colors.green,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Flexible(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Container(
-                                              padding: EdgeInsets.symmetric(
-                                                horizontal: 10,
-                                                vertical: 5,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: isOverBudget
-                                                    ? Colors.red.withOpacity(
-                                                        0.1,
-                                                      )
-                                                    : Colors.green.withOpacity(
-                                                        0.1,
-                                                      ),
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                              child: Text(
-                                                isOverBudget
-                                                    ? 'Over Budget'
-                                                    : 'Under Budget',
-                                                style: TextStyle(
-                                                  fontSize: 13,
-                                                  color: isOverBudget
-                                                      ? Colors.red
-                                                      : Colors.green,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                else
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Variance',
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              color: Colors.grey[600],
-                                            ),
-                                          ),
-                                          SizedBox(height: 4),
-                                          Text(
-                                            'LKR ${_formatCurrency((_getDoubleValue('costVariance')).abs())}',
-                                            style: TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w600,
-                                              color: isOverBudget
-                                                  ? Colors.red
-                                                  : Colors.green,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
-                                      ),
-                                      SizedBox(height: 12),
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Container(
-                                            padding: EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                              vertical: 5,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: isOverBudget
-                                                  ? Colors.red.withOpacity(0.1)
-                                                  : Colors.green.withOpacity(
-                                                      0.1,
-                                                    ),
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                            child: Text(
-                                              isOverBudget
-                                                  ? 'Over Budget'
-                                                  : 'Under Budget',
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                color: isOverBudget
-                                                    ? Colors.red
-                                                    : Colors.green,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                              ],
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Month-over-Month Cost Comparison Section
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: isSmallScreen ? 12 : 16,
-                vertical: 8,
-              ),
-              child: Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.withOpacity(0.2)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Section header with icon
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.bar_chart,
-                            color: Colors.blue,
-                            size: 22,
-                          ),
-                        ),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Cost Comparison (Month-over-Month)',
-                                style: TextStyle(
-                                  fontSize: isSmallScreen ? 14 : 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                widget.user?.role == UserRole.sysadmin
-                                    ? 'All departments'
-                                    : dashboardTitle,
-                                style: TextStyle(
-                                  fontSize: isSmallScreen ? 12 : 13,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 16),
-
-                    // Cost comparison details
-                    Column(
-                      children: [
-                        // Previous Month Cost
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Previous Month:',
-                              style: TextStyle(
-                                fontSize: isSmallScreen ? 13 : 14,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            Text(
-                              'LKR ${_formatCurrency(_getDoubleValue('previousMonthCost'))}',
-                              style: TextStyle(
-                                fontSize: isSmallScreen ? 14 : 15,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 12),
-
-                        // Current Month Cost
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Current Month:',
-                              style: TextStyle(
-                                fontSize: isSmallScreen ? 13 : 14,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            Text(
-                              'LKR ${_formatCurrency(_getDoubleValue('currentMonthCost'))}',
-                              style: TextStyle(
-                                fontSize: isSmallScreen ? 14 : 15,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 12),
-
-                        // Month-over-Month Change Amount
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Change:',
-                              style: TextStyle(
-                                fontSize: isSmallScreen ? 13 : 14,
-                                color: Colors.grey[600],
-                              ),
-                            ),
                             Row(
                               children: [
-                                Icon(
-                                  isCostIncrease
-                                      ? Icons.arrow_upward
-                                      : Icons.arrow_downward,
-                                  size: 14,
-                                  color: isCostIncrease
-                                      ? Colors.red
-                                      : Colors.green,
-                                ),
-                                SizedBox(width: 4),
-                                Text(
-                                  'LKR ${_formatCurrency((monthOverMonthChange).abs())}',
-                                  style: TextStyle(
-                                    fontSize: isSmallScreen ? 14 : 15,
-                                    fontWeight: FontWeight.w600,
-                                    color: isCostIncrease
-                                        ? Colors.red
-                                        : Colors.green,
+                                // Filter indicator icon (shown when filter is active)
+                                if (_selectedDepartmentId != null)
+                                  Container(
+                                    margin: EdgeInsets.only(right: 8),
+                                    child: Icon(
+                                      Icons.filter_alt,
+                                      size: 16,
+                                      color: Colors.blue,
+                                    ),
+                                  ),
+                                Expanded(
+                                  child: Text(
+                                    '${dashboardTitle} Usage',
+                                    style: TextStyle(
+                                      fontSize: isSmallScreen ? 16 : 18,
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 2,
                                   ),
                                 ),
                               ],
                             ),
-                          ],
-                        ),
-                        SizedBox(height: 12),
-
-                        // Percentage Change with colored background
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Percentage Change:',
-                              style: TextStyle(
-                                fontSize: isSmallScreen ? 13 : 14,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 5,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isCostIncrease
-                                    ? Colors.red.withOpacity(0.1)
-                                    : Colors.green.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    isCostIncrease
-                                        ? Icons.arrow_upward
-                                        : Icons.arrow_downward,
-                                    size: 12,
-                                    color: isCostIncrease
-                                        ? Colors.red
-                                        : Colors.green,
-                                  ),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    '${(_getDoubleValue('monthOverMonthPercent')).toStringAsFixed(1)}%',
-                                    style: TextStyle(
-                                      fontSize: isSmallScreen ? 13 : 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: isCostIncrease
-                                          ? Colors.red
-                                          : Colors.green,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 8),
-
-                        // Trend indicator badge
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isCostIncrease
-                                    ? Colors.red.withOpacity(0.1)
-                                    : Colors.green.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: isCostIncrease
-                                      ? Colors.red.withOpacity(0.3)
-                                      : Colors.green.withOpacity(0.3),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    isCostIncrease
-                                        ? Icons.trending_up
-                                        : Icons.trending_down,
-                                    size: 14,
-                                    color: isCostIncrease
-                                        ? Colors.red
-                                        : Colors.green,
-                                  ),
-                                  SizedBox(width: 6),
-                                  Text(
-                                    isCostIncrease
-                                        ? 'Cost Increased'
-                                        : 'Cost Decreased',
-                                    style: TextStyle(
-                                      fontSize: isSmallScreen ? 12 : 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: isCostIncrease
-                                          ? Colors.red
-                                          : Colors.green,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // QUICK ACTIONS SECTION - Only for sysadmin and hr
-          if (showReportButton)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isSmallScreen ? 12 : 16,
-                  vertical: 16,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Divider(),
-                    SizedBox(height: 8),
-                    Text(
-                      'Quick Actions',
-                      style: TextStyle(
-                        fontSize: isSmallScreen ? 16 : 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 12),
-
-                    // Report Download Card
-                    Card(
-                      elevation: 3,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () => _showReportDialog(context),
-                        child: Container(
-                          padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                Colors.blue.withOpacity(0.1),
-                                Colors.blue.withOpacity(0.05),
-                              ],
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: EdgeInsets.all(isSmallScreen ? 8 : 10),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.withOpacity(0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.download,
-                                  color: Colors.blue,
-                                  size: isSmallScreen ? 20 : 24,
-                                ),
-                              ),
-                              SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                            // Show filtered department name if a filter is applied
+                            if (_selectedDepartmentId != null)
+                              Padding(
+                                padding: EdgeInsets.only(top: 4),
+                                child: Row(
                                   children: [
-                                    Text(
-                                      'Trip Details',
-                                      style: TextStyle(
-                                        fontSize: isSmallScreen ? 14 : 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.blue[800],
-                                      ),
+                                    Icon(
+                                      Icons.business,
+                                      size: 12,
+                                      color: Colors.blue,
                                     ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                      'Generate PDF/Excel reports for trips',
-                                      style: TextStyle(
-                                        fontSize: isSmallScreen ? 11 : 12,
-                                        color: Colors.grey[600],
+                                    SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        '${_selectedDepartmentName ?? 'Unknown'}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.blue[700],
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                              Icon(
-                                Icons.chevron_right,
-                                color: Colors.grey,
-                                size: isSmallScreen ? 20 : 24,
-                              ),
-                            ],
-                          ),
+                          ],
                         ),
                       ),
-                    ),
-                  ],
+
+                      // Filter Button
+                      IconButton(
+                        onPressed: _toggleFilterPopup,
+                        icon: Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: _selectedDepartmentId != null
+                                ? Colors.blue.withOpacity(0.1)
+                                : Colors.grey.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.filter_alt,
+                            size: isSmallScreen ? 18 : 20,
+                            color: _selectedDepartmentId != null
+                                ? Colors.blue
+                                : Colors.grey[600],
+                          ),
+                        ),
+                        tooltip: 'Filter by Department',
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-          // Extra space at bottom for better scrolling
-          SliverToBoxAdapter(child: SizedBox(height: 24)),
-        ],
-      ),
+              // Error banner (shows at top if there's an error with existing data)
+              if (_errorMessage.isNotEmpty && _dashboardStats.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: Container(
+                    margin: EdgeInsets.symmetric(
+                      horizontal: isSmallScreen ? 12 : 16,
+                      vertical: 8,
+                    ),
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.warning_amber_outlined,
+                          size: 16,
+                          color: Colors.orange,
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _errorMessage,
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 10 : 12,
+                              color: Colors.orange[800],
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.refresh, size: 16),
+                          onPressed: _refreshDashboard,
+                          padding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+              // Main Statistics Cards Grid - Responsive layout
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  isSmallScreen ? 12 : 16,
+                  4,
+                  isSmallScreen ? 12 : 16,
+                  16,
+                ),
+                sliver: SliverGrid(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: isTablet ? 3 : (isSmallScreen ? 2 : 2),
+                    crossAxisSpacing: isSmallScreen ? 8 : 12,
+                    mainAxisSpacing: isSmallScreen ? 8 : 12,
+                    childAspectRatio: _calculateCardAspectRatio(screenWidth),
+                  ),
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    // Build different stat cards based on index
+                    switch (index) {
+                      case 0: // Total Rides
+                        return _buildDynamicStatCard(
+                          'Total Rides',
+                          '${_getIntValue('totalRides')}',
+                          Icons.directions_car,
+                          Colors.blue,
+                          'Completed Rides',
+                          screenWidth,
+                        );
+                      case 1: // Pending for Supervisor
+                        return _buildDynamicStatCard(
+                          'Pending for Supervisor',
+                          '${_getIntValue('pendingSupervisorRides')}',
+                          Icons.pending_actions,
+                          Colors.orange,
+                          'Draft rides',
+                          screenWidth,
+                        );
+                      case 2: // Today's Rides
+                        return _buildDynamicStatCard(
+                          "Today's Rides",
+                          '${_getIntValue('ridesToday')}',
+                          Icons.today,
+                          Colors.purple,
+                          'Scheduled for today',
+                          screenWidth,
+                        );
+                      case 3: // Monthly Cost
+                        return _buildDynamicStatCard(
+                          'Monthly Cost',
+                          'LKR ${_formatCurrency(_getDoubleValue('currentMonthCost'))}',
+                          Icons.attach_money,
+                          Colors.teal,
+                          'Current month',
+                          screenWidth,
+                        );
+                      case 4: // Total Users
+                        return _buildDynamicStatCard(
+                          'Total Users',
+                          '${_getIntValue('totalUsers')}',
+                          Icons.people,
+                          Colors.green,
+                          'Approved',
+                          screenWidth,
+                        );
+                      case 5: // Pending Users
+                        return _buildDynamicStatCard(
+                          'Pending Users',
+                          '${_getIntValue('pendingUserCreations')}',
+                          Icons.person_add,
+                          Colors.red,
+                          'Awaiting approval',
+                          screenWidth,
+                        );
+                      default:
+                        return SizedBox.shrink();
+                    }
+                  }, childCount: 6),
+                ),
+              ),
+
+              // Budget vs Actual Performance Section
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isSmallScreen ? 12 : 16,
+                    vertical: 8,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Budget Performance',
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 16 : 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        _selectedDepartmentId == null
+                            ? 'All Departments'
+                            : _selectedDepartmentName ?? 'Selected Department',
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 12 : 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey[200]!),
+                        ),
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final bool isVeryNarrow =
+                                constraints.maxWidth < 300;
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Section title
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Budget vs Actual',
+                                      style: TextStyle(
+                                        fontSize: isVeryNarrow ? 14 : 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      _selectedDepartmentId == null
+                                          ? 'All Departments'
+                                          : _selectedDepartmentName ??
+                                                'Selected Department',
+                                      style: TextStyle(
+                                        fontSize: isVeryNarrow ? 12 : 14,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 12),
+
+                                // Variance percentage badge
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    Container(
+                                      constraints: BoxConstraints(
+                                        maxWidth: 120,
+                                      ),
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 5,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: isOverBudget
+                                            ? Colors.red.withOpacity(0.1)
+                                            : Colors.green.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            isOverBudget
+                                                ? Icons.trending_up
+                                                : Icons.trending_down,
+                                            size: 14,
+                                            color: isOverBudget
+                                                ? Colors.red
+                                                : Colors.green,
+                                          ),
+                                          SizedBox(width: 4),
+                                          Flexible(
+                                            child: Text(
+                                              '${(_getDoubleValue('costVariancePercent')).toStringAsFixed(1)}%',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w600,
+                                                color: isOverBudget
+                                                    ? Colors.red
+                                                    : Colors.green,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 16),
+
+                                // Progress bar showing budget vs actual
+                                LinearProgressIndicator(
+                                  value: budgetVsActual / 100,
+                                  backgroundColor: Colors.grey[300],
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    isOverBudget ? Colors.red : Colors.green,
+                                  ),
+                                  minHeight: isVeryNarrow ? 10 : 12,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                SizedBox(height: 12),
+
+                                // Budget and Actual cost values
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (!isVeryNarrow)
+                                      // Horizontal layout for wider screens
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Flexible(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  'Budget',
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    color: Colors.grey[600],
+                                                  ),
+                                                ),
+                                                SizedBox(height: 4),
+                                                Text(
+                                                  'LKR ${_formatCurrency(budgetAmount)}',
+                                                  style: TextStyle(
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Flexible(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.end,
+                                              children: [
+                                                Text(
+                                                  'Actual Cost',
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    color: Colors.grey[600],
+                                                  ),
+                                                ),
+                                                SizedBox(height: 4),
+                                                Text(
+                                                  'LKR ${_formatCurrency(actualCost)}',
+                                                  style: TextStyle(
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: isOverBudget
+                                                        ? Colors.red
+                                                        : Colors.green,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    else
+                                      // Vertical layout for narrow screens
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Budget',
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  color: Colors.grey[600],
+                                                ),
+                                              ),
+                                              SizedBox(height: 4),
+                                              Text(
+                                                'LKR ${_formatCurrency(budgetAmount)}',
+                                                style: TextStyle(
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
+                                          ),
+                                          SizedBox(height: 12),
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Actual Cost',
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  color: Colors.grey[600],
+                                                ),
+                                              ),
+                                              SizedBox(height: 4),
+                                              Text(
+                                                'LKR ${_formatCurrency(actualCost)}',
+                                                style: TextStyle(
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: isOverBudget
+                                                      ? Colors.red
+                                                      : Colors.green,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    SizedBox(height: 16),
+                                    Divider(),
+                                    SizedBox(height: 12),
+
+                                    // Variance amount and status
+                                    if (!isVeryNarrow)
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Flexible(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  'Variance',
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    color: Colors.grey[600],
+                                                  ),
+                                                ),
+                                                SizedBox(height: 4),
+                                                Text(
+                                                  'LKR ${_formatCurrency((_getDoubleValue('costVariance')).abs())}',
+                                                  style: TextStyle(
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: isOverBudget
+                                                        ? Colors.red
+                                                        : Colors.green,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Flexible(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Container(
+                                                  padding: EdgeInsets.symmetric(
+                                                    horizontal: 10,
+                                                    vertical: 5,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: isOverBudget
+                                                        ? Colors.red
+                                                              .withOpacity(0.1)
+                                                        : Colors.green
+                                                              .withOpacity(0.1),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                  ),
+                                                  child: Text(
+                                                    isOverBudget
+                                                        ? 'Over Budget'
+                                                        : 'Under Budget',
+                                                    style: TextStyle(
+                                                      fontSize: 13,
+                                                      color: isOverBudget
+                                                          ? Colors.red
+                                                          : Colors.green,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    else
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Variance',
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  color: Colors.grey[600],
+                                                ),
+                                              ),
+                                              SizedBox(height: 4),
+                                              Text(
+                                                'LKR ${_formatCurrency((_getDoubleValue('costVariance')).abs())}',
+                                                style: TextStyle(
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: isOverBudget
+                                                      ? Colors.red
+                                                      : Colors.green,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
+                                          ),
+                                          SizedBox(height: 12),
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Container(
+                                                padding: EdgeInsets.symmetric(
+                                                  horizontal: 10,
+                                                  vertical: 5,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: isOverBudget
+                                                      ? Colors.red.withOpacity(
+                                                          0.1,
+                                                        )
+                                                      : Colors.green
+                                                            .withOpacity(0.1),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: Text(
+                                                  isOverBudget
+                                                      ? 'Over Budget'
+                                                      : 'Under Budget',
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    color: isOverBudget
+                                                        ? Colors.red
+                                                        : Colors.green,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Month-over-Month Cost Comparison Section
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isSmallScreen ? 12 : 16,
+                    vertical: 8,
+                  ),
+                  child: Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Section header with icon
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.bar_chart,
+                                color: Colors.blue,
+                                size: 22,
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Cost Comparison (Month-over-Month)',
+                                    style: TextStyle(
+                                      fontSize: isSmallScreen ? 14 : 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    _selectedDepartmentId == null
+                                        ? 'All Departments'
+                                        : _selectedDepartmentName ??
+                                              'Selected Department',
+                                    style: TextStyle(
+                                      fontSize: isSmallScreen ? 12 : 13,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 16),
+
+                        // Cost comparison details
+                        Column(
+                          children: [
+                            // Previous Month Cost
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Previous Month:',
+                                  style: TextStyle(
+                                    fontSize: isSmallScreen ? 13 : 14,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                                Text(
+                                  'LKR ${_formatCurrency(_getDoubleValue('previousMonthCost'))}',
+                                  style: TextStyle(
+                                    fontSize: isSmallScreen ? 14 : 15,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+
+                            // Current Month Cost
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Current Month:',
+                                  style: TextStyle(
+                                    fontSize: isSmallScreen ? 13 : 14,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                                Text(
+                                  'LKR ${_formatCurrency(_getDoubleValue('currentMonthCost'))}',
+                                  style: TextStyle(
+                                    fontSize: isSmallScreen ? 14 : 15,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+
+                            // Month-over-Month Change Amount
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Change:',
+                                  style: TextStyle(
+                                    fontSize: isSmallScreen ? 13 : 14,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      isCostIncrease
+                                          ? Icons.arrow_upward
+                                          : Icons.arrow_downward,
+                                      size: 14,
+                                      color: isCostIncrease
+                                          ? Colors.red
+                                          : Colors.green,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'LKR ${_formatCurrency((monthOverMonthChange).abs())}',
+                                      style: TextStyle(
+                                        fontSize: isSmallScreen ? 14 : 15,
+                                        fontWeight: FontWeight.w600,
+                                        color: isCostIncrease
+                                            ? Colors.red
+                                            : Colors.green,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+
+                            // Percentage Change with colored background
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Percentage Change:',
+                                  style: TextStyle(
+                                    fontSize: isSmallScreen ? 13 : 14,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isCostIncrease
+                                        ? Colors.red.withOpacity(0.1)
+                                        : Colors.green.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        isCostIncrease
+                                            ? Icons.arrow_upward
+                                            : Icons.arrow_downward,
+                                        size: 12,
+                                        color: isCostIncrease
+                                            ? Colors.red
+                                            : Colors.green,
+                                      ),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        '${(_getDoubleValue('monthOverMonthPercent')).toStringAsFixed(1)}%',
+                                        style: TextStyle(
+                                          fontSize: isSmallScreen ? 13 : 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: isCostIncrease
+                                              ? Colors.red
+                                              : Colors.green,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 8),
+
+                            // Trend indicator badge
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isCostIncrease
+                                        ? Colors.red.withOpacity(0.1)
+                                        : Colors.green.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: isCostIncrease
+                                          ? Colors.red.withOpacity(0.3)
+                                          : Colors.green.withOpacity(0.3),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        isCostIncrease
+                                            ? Icons.trending_up
+                                            : Icons.trending_down,
+                                        size: 14,
+                                        color: isCostIncrease
+                                            ? Colors.red
+                                            : Colors.green,
+                                      ),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        isCostIncrease
+                                            ? 'Cost Increased'
+                                            : 'Cost Decreased',
+                                        style: TextStyle(
+                                          fontSize: isSmallScreen ? 12 : 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: isCostIncrease
+                                              ? Colors.red
+                                              : Colors.green,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              // QUICK ACTIONS SECTION - Only for sysadmin and hr
+              if (showReportButton)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isSmallScreen ? 12 : 16,
+                      vertical: 16,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Divider(),
+                        SizedBox(height: 8),
+                        Text(
+                          'Quick Actions',
+                          style: TextStyle(
+                            fontSize: isSmallScreen ? 16 : 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 12),
+
+                        // Report Download Card
+                        Card(
+                          elevation: 3,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () => _showReportDialog(context),
+                            child: Container(
+                              padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Colors.blue.withOpacity(0.1),
+                                    Colors.blue.withOpacity(0.05),
+                                  ],
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(
+                                      isSmallScreen ? 8 : 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.withOpacity(0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.download,
+                                      color: Colors.blue,
+                                      size: isSmallScreen ? 20 : 24,
+                                    ),
+                                  ),
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Trip Details',
+                                          style: TextStyle(
+                                            fontSize: isSmallScreen ? 14 : 16,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.blue[800],
+                                          ),
+                                        ),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          'Generate PDF/Excel reports for trips',
+                                          style: TextStyle(
+                                            fontSize: isSmallScreen ? 11 : 12,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Icon(
+                                    Icons.chevron_right,
+                                    color: Colors.grey,
+                                    size: isSmallScreen ? 20 : 24,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+              // Extra space at bottom for better scrolling
+              SliverToBoxAdapter(child: SizedBox(height: 24)),
+            ],
+          ),
+        ),
+
+        // Filter Popup (shown on top when opened)
+        if (_isFilterPopupOpen) _buildFilterPopup(context),
+      ],
     );
   }
 }

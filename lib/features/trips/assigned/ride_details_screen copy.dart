@@ -1802,7 +1802,7 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Awaiting supervisor assignment',
+                          'Vehicle assignment pending',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 14,

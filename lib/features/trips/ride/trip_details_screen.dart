@@ -1684,7 +1684,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Awaiting supervisor assignment',
+                          'Vehicle assignment pending',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 14,

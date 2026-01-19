@@ -2,7 +2,7 @@ name: vehiclereservation_frontend_flutter_
 description: "PCW Ride - Vehicle Reservation and Transport Management App"
 publish_to: "none"
 
-version: 1.0.0+1
+version: 1.1.0+2
 
 environment:
   sdk: '>=3.9.2 <4.0.0'

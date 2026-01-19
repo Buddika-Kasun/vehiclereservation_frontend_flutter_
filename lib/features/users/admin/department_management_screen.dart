@@ -155,6 +155,9 @@ class _DepartmentsManagementScreenState extends State<DepartmentsManagementScree
     
     setState(() {
       _isLoadingMore = true;
+      if (_currentPage == 1) {
+        _currentPage = 2; // Start from page 2 if loading more for the first time
+      }
     });
 
     try {
@@ -193,7 +196,8 @@ class _DepartmentsManagementScreenState extends State<DepartmentsManagementScree
 
   Future<void> _loadUsersByDepartment(int departmentId) async {
     try {
-      final response = await ApiService.getUsersByDepartment(departmentId);
+      //final response = await ApiService.getUsersByDepartment(departmentId);
+      final response = await ApiService.getAllHodUsers();
       
       if (response['success'] == true) {
         final List<dynamic> usersData = response['data']['users'] ?? [];
@@ -211,7 +215,7 @@ class _DepartmentsManagementScreenState extends State<DepartmentsManagementScree
 
   Future<void> _loadCostCenters() async {
     try {
-      final response = await ApiService.getCostCenters();
+      final response = await ApiService.getCostCenters(limit: 50);
       
       if (response['success'] == true) {
         final List<dynamic> costCentersData = response['data']['costCenters'] ?? [];

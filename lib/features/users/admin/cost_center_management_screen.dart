@@ -147,6 +147,9 @@ class _CostCenterManagementScreenState
 
     setState(() {
       _isLoadingMore = true;
+      if (_currentPage == 1) {
+        _currentPage = 2; // Start from page 2 when loading more
+      }
     });
 
     try {
