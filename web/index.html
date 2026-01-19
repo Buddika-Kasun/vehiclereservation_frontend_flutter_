@@ -5,27 +5,33 @@
   <meta charset="UTF-8">
   <base href="/">
 
-  <!-- Viewport -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Viewport - IMPORTANT for iOS Home Screen -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
-  <!-- PWA Meta Tags -->
-  <meta name="mobile-web-app-capable" content="yes">
+  <!-- PWA Meta Tags - MUST be in this order -->
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
 
-  <!-- BLACK STATUS BAR -->
+  <!-- iOS Status Bar - For Home Screen App -->
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
 
-  <meta name="apple-mobile-web-app-title" content="PCW RIDE">
+  <!-- Theme Colors - For different contexts -->
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 
-  <!-- Theme Color -->
-  <meta name="theme-color" content="#000000">
+  <!-- Apple specific -->
+  <meta name="apple-mobile-web-app-title" content="PCW RIDE">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="apple-touch-fullscreen" content="yes">
 
   <!-- Description -->
   <meta name="description" content="PCW RIDE - Vehicle Reservation System">
 
-  <!-- Favicon & App Icons -->
+  <!-- App Icons for Home Screen -->
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <!-- Apple Startup Image (optional but helps) -->
+  <link rel="apple-touch-startup-image" href="icons/Icon-512.png">
   <link rel="manifest" href="manifest.json">
 
   <title>PCW RIDE</title>
@@ -34,11 +40,40 @@
   <link rel="preload" href="flutter_bootstrap.js" as="script">
   <link rel="preload" href="main.dart.js" as="script">
 
+  <!-- iOS Home Screen App CSS Fix -->
   <style>
+    /* iOS Home Screen App specific styles */
+    @media all and (display-mode: standalone) {
+
+      /* This targets when app is launched from home screen */
+      body {
+        background-color: #000000;
+        /* Black background for status bar area */
+      }
+
+      /* Force black status bar */
+      #status-bar-fix {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: env(safe-area-inset-top);
+        background-color: #000000;
+        z-index: 10000;
+      }
+    }
+
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
     }
 
     #flutter-loader {
@@ -86,12 +121,35 @@
 </head>
 
 <body>
+  <!-- iOS Status Bar Fix Element -->
+  <div id="status-bar-fix"></div>
+
+  <!-- Loading Screen -->
   <div id="flutter-loader">
     <div class="loader-spinner"></div>
     <div class="loader-text">Loading PCW RIDE...</div>
   </div>
 
   <script>
+    // Detect if launched from home screen
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true;
+
+    console.log('Is Home Screen App:', isStandalone);
+
+    // iOS Home Screen App Fix
+    if (isStandalone) {
+      // Force black status bar for home screen app
+      document.documentElement.style.backgroundColor = '#000000';
+      document.body.style.backgroundColor = '#000000';
+
+      // Set iOS status bar color
+      const meta = document.createElement('meta');
+      meta.name = 'apple-mobile-web-app-status-bar-style';
+      meta.content = 'black';
+      document.head.appendChild(meta);
+    }
+
     window.config = window.config || {
       apiUrl: 'https://pcw-ride-server.up.railway.app',
       wsUrl: 'wss://pcw-ride-server.up.railway.app',
@@ -103,14 +161,72 @@
     window.addEventListener('flutter-first-frame', function () {
       document.body.classList.remove('loading');
       document.body.classList.add('flutter-loaded');
+
+      // Remove status bar fix after Flutter loads
+      const fix = document.getElementById('status-bar-fix');
+      if (fix) {
+        fix.style.display = 'none';
+      }
     });
 
     setTimeout(function () {
       document.body.classList.add('flutter-loaded');
     }, 10000);
+
+    // iOS specific fixes
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    if (isIOS) {
+      // Fix for home screen app status bar
+      document.addEventListener('DOMContentLoaded', function () {
+        // Add iOS home screen app class
+        if (isStandalone) {
+          document.body.classList.add('ios-standalone');
+        }
+
+        // Set status bar color for iOS
+        const viewportMeta = document.querySelector('meta[name="viewport"]');
+        if (viewportMeta && isStandalone) {
+          viewportMeta.setAttribute('content',
+            'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+        }
+      });
+    }
   </script>
 
   <script src="flutter_bootstrap.js" async></script>
+
+  <!-- iOS Home Screen App JavaScript -->
+  <script>
+    // Additional iOS home screen fix
+    if (window.navigator.standalone) {
+      // Running in iOS standalone mode (home screen)
+      document.addEventListener('DOMContentLoaded', function () {
+        // Create a style element to force black status bar
+        const style = document.createElement('style');
+        style.textContent = `
+          /* Force black status bar for home screen app */
+          body:before {
+            content: '';
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: env(safe-area-inset-top);
+            background: #000000;
+            z-index: 99999;
+          }
+        `;
+        document.head.appendChild(style);
+
+        // Also set theme-color dynamically
+        const themeMeta = document.querySelector('meta[name="theme-color"]');
+        if (themeMeta) {
+          themeMeta.setAttribute('content', '#000000');
+        }
+      });
+    }
+  </script>
 </body>
 
 </html>
