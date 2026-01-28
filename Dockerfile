@@ -1,113 +1,73 @@
-# Flutter Web with FORCE UPDATE
-FROM debian:bullseye-slim AS build
+# Stage 1: Base Flutter installation (cached)
+FROM debian:bullseye-slim AS flutter-base
 
-RUN apt-get update && apt-get install -y curl git unzip
-RUN git clone https://github.com/flutter/flutter.git --depth 1 -b stable
-ENV PATH="$PATH:/flutter/bin"
+RUN apt-get update && apt-get install -y curl git unzip \
+    && git clone https://github.com/flutter/flutter.git --depth 1 -b stable \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV PATH="/flutter/bin:${PATH}"
+
+# Stage 2: Build dependencies (cached separately)
+FROM flutter-base AS dependencies
 
 WORKDIR /app
+
+# Copy pubspec files first for better caching
+COPY pubspec.yaml pubspec.lock ./
+
+# Get packages (cached unless pubspec changes)
+RUN flutter pub get
+
+# Stage 3: Build the app
+FROM dependencies AS builder
+
+# Copy rest of the app
 COPY . .
 
-RUN flutter pub get
+# Build with force update
 ENV FLUTTER_WEB_USE_SKIA=false
-RUN flutter build web --release --no-source-maps
 
-# ====== NUCLEAR CACHE BUSTING ======
-RUN BUILD_ID="FORCE_$(date +%s)"
-RUN echo "BUILD VERSION: $BUILD_ID"
+# Generate unique build ID for cache busting
+ARG BUILD_ID
+RUN if [ -z "$BUILD_ID" ]; then BUILD_ID=$(date +%s); fi && \
+    echo "BUILD_ID=$BUILD_ID" > /tmp/build.env && \
+    flutter build web --release --no-source-maps
 
-# 1. Rename ALL asset files with version
-RUN find build/web -type f \( -name "*.js" -o -name "*.css" -o -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" -o -name "*.gif" -o -name "*.ico" -o -name "*.svg" \) \
-    -exec sh -c 'mv "$1" "${1%.*}_${BUILD_ID}.${1##*.}"' _ {} \;
+# ====== FORCE UPDATE ======
+RUN source /tmp/build.env && \
+    # 1. Add version to ALL files
+    sed -i "s/main\.dart\.js/main.dart.js?v=$BUILD_ID/g" build/web/index.html && \
+    sed -i "s/flutter\.js/flutter.js?v=$BUILD_ID/g" build/web/index.html && \
+    sed -i "s/main\.css/main.css?v=$BUILD_ID/g" build/web/index.html && \
+    # 2. Remove service worker
+    rm -f build/web/flutter_service_worker.js && \
+    # 3. Add cache busting script
+    echo '<script>if("serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(r=>r.forEach(s=>s.unregister()))}</script>' > /tmp/cache-buster.html && \
+    sed -i '/<head>/r /tmp/cache-buster.html' build/web/index.html
 
-# 2. Update index.html with new filenames
-RUN sed -i "s/main\.dart\.js/main.dart_${BUILD_ID}.js/g" build/web/index.html
-RUN sed -i "s/flutter\.js/flutter_${BUILD_ID}.js/g" build/web/index.html
-RUN sed -i "s/main\.css/main_${BUILD_ID}.css/g" build/web/index.html
-
-# 3. Delete ALL service worker files
-RUN rm -f build/web/*service*.js 2>/dev/null || true
-RUN rm -f build/web/*worker*.js 2>/dev/null || true
-RUN rm -f build/web/*flutter_service* 2>/dev/null || true
-
-# 4. Create FORCE UPDATE script file
-RUN cat > build/web/force-update.js << 'EOF'
-// FORCE UPDATE SCRIPT
-(function() {
-console.log('=== FORCE UPDATE SCRIPT LOADED ===');
-
-// 1. Kill service workers
-if ('serviceWorker' in navigator) {
-navigator.serviceWorker.getRegistrations().then(function(regs) {
-regs.forEach(function(reg) {
-reg.unregister().then(function() {
-console.log('ServiceWorker unregistered:', reg.scope);
-});
-});
-});
-}
-
-// 2. Clear ALL storage
-if ('localStorage' in window) localStorage.clear();
-if ('sessionStorage' in window) sessionStorage.clear();
-
-// 3. Add no-cache meta tag dynamically
-var meta = document.createElement('meta');
-meta.httpEquiv = "Cache-Control";
-meta.content = "no-store, no-cache, must-revalidate";
-document.head.appendChild(meta);
-
-// 4. Force reload if cached
-if (window.performance && window.performance.navigation.type === 2) {
-window.location.reload(true);
-}
-})();
-EOF
-
-# 5. Inject force-update script into index.html
-RUN sed -i '/<head>/a\    <script src="force-update.js"></script>' build/web/index.html
-
-# 6. Create version file
-RUN echo "window.FORCE_UPDATE_VERSION = '$BUILD_ID';" > build/web/version.js
-
+# Stage 4: Production
 FROM nginx:alpine
 
 # Copy built files
-COPY --from=build /app/build/web /usr/share/nginx/html
+COPY --from=builder /app/build/web /usr/share/nginx/html
 
-# NUCLEAR nginx config - NO CACHING EVER
-RUN cat > /etc/nginx/nginx.conf << 'EOF'
-events{}
+# NO CACHE config
+RUN echo 'events{}
 http {
 server {
 listen 8080;
 root /usr/share/nginx/html;
 
-# KILL ALL CACHING
-add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0";
+# NO CACHE - FORCE UPDATE
+add_header Cache-Control "no-store, no-cache, must-revalidate";
 add_header Pragma "no-cache";
-add_header Expires "Thu, 01 Jan 1970 00:00:00 GMT";
-
-# Extra headers to prevent any caching
-add_header X-Accel-Expires "0";
+add_header Expires "0";
 
 location / {
 try_files $uri $uri/ /index.html;
-# Force immediate reload
-add_header Last-Modified $date_gmt;
-if_modified_since off;
-expires off;
-etag off;
-}
-
-# Special for index.html - ALWAYS fresh
-location = /index.html {
-add_header Cache-Control "no-store, no-cache, must-revalidate";
-expires -1;
 }
 }
-}
-EOF
+}' > /etc/nginx/nginx.conf
 
 EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]
