@@ -59,6 +59,54 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> verifyUserForPasswordReset({
+    required String username,
+    required String mobile,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/verify-password-reset'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'username': username, 'mobile': mobile}),
+      );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      throw Exception('Failed to verify user: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> resetPassword({
+    required String username,
+    required String mobile,
+    required String newPassword,
+    required String confirmPassword,
+    String? token,
+  }) async {
+    try {
+      final Map<String, dynamic> body = {
+        'username': username,
+        'mobile': mobile,
+        'newPassword': newPassword,
+        'confirmPassword': confirmPassword,
+      };
+
+      if (token != null) {
+        body['token'] = token;
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/reset-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      throw Exception('Failed to reset password: $e');
+    }
+  }
+
   static Future<Map<String, dynamic>> getRegisterStatus() async {
     try {
       final response = await http.get(
