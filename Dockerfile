@@ -30,9 +30,21 @@ RUN echo '  gzip on; gzip_vary on; gzip_min_length 256; gzip_types text/plain te
 RUN echo '  server{' >> /etc/nginx/nginx.conf
 RUN echo '    listen 8080;' >> /etc/nginx/nginx.conf
 RUN echo '    root /usr/share/nginx/html;' >> /etc/nginx/nginx.conf
-# RUN echo '    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ { expires 1y; add_header Cache-Control "public, immutable"; }' >> /etc/nginx/nginx.conf
-RUN echo '    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ { expires 1h; }' >> /etc/nginx/nginx.conf
-RUN echo '    location / { try_files $uri $uri/ /index.html; }' >> /etc/nginx/nginx.conf
+RUN echo '    # Static assets - cache with versioning' >> /etc/nginx/nginx.conf
+RUN echo '    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {' >> /etc/nginx/nginx.conf
+RUN echo '      expires 1y;' >> /etc/nginx/nginx.conf
+RUN echo '      add_header Cache-Control "public, immutable";' >> /etc/nginx/nginx.conf
+RUN echo '    }' >> /etc/nginx/nginx.conf
+RUN echo '    # HTML files - NEVER cache' >> /etc/nginx/nginx.conf
+RUN echo '    location ~* \.html$ {' >> /etc/nginx/nginx.conf
+RUN echo '      expires -1;' >> /etc/nginx/nginx.conf
+RUN echo '      add_header Cache-Control "no-store, no-cache, must-revalidate";' >> /etc/nginx/nginx.conf
+RUN echo '    }' >> /etc/nginx/nginx.conf
+RUN echo '    # Main route - serve index.html for SPA' >> /etc/nginx/nginx.conf
+RUN echo '    location / {' >> /etc/nginx/nginx.conf
+RUN echo '      try_files $uri $uri/ /index.html;' >> /etc/nginx/nginx.conf
+RUN echo '      add_header Cache-Control "no-store, no-cache, must-revalidate";' >> /etc/nginx/nginx.conf
+RUN echo '    }' >> /etc/nginx/nginx.conf
 RUN echo '  }' >> /etc/nginx/nginx.conf
 RUN echo '}' >> /etc/nginx/nginx.conf
 
