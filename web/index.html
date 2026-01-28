@@ -4,7 +4,7 @@
 <head>
 
   <!-- Add this INSIDE <head> tag of your web/index.html -->
-  <script>
+  <!-- <script>
     // Force update script for existing users
     if ('serviceWorker' in navigator) {
       // Immediately unregister any service workers
@@ -23,6 +23,43 @@
         });
       }
     }
+  </script> -->
+
+  <!-- FORCE UPDATE - ADD THIS TO YOUR LOCAL web/index.html -->
+  <script>
+    // NUCLEAR OPTION - Force update for ALL users
+    (function () {
+      // 1. Unregister ALL service workers immediately
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (registrations) {
+          registrations.forEach(function (registration) {
+            console.log('Unregistering service worker:', registration.scope);
+            registration.unregister();
+          });
+        });
+      }
+
+      // 2. Clear ALL caches
+      if ('caches' in window) {
+        caches.keys().then(function (cacheNames) {
+          cacheNames.forEach(function (cacheName) {
+            console.log('Deleting cache:', cacheName);
+            caches.delete(cacheName);
+          });
+        });
+      }
+
+      // 3. Force reload if page is loaded from cache
+      window.addEventListener('pageshow', function (event) {
+        if (event.persisted) {
+          console.log('Page loaded from cache, forcing reload');
+          window.location.reload();
+        }
+      });
+
+      // 4. Add version to prevent caching
+      window.BUILD_VERSION = 'FORCE_UPDATE_' + Date.now();
+    })();
   </script>
   
   <meta charset="UTF-8">
