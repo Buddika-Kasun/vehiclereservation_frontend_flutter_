@@ -636,6 +636,29 @@ class _ReviewVehicleSelectionScreenState
                     ],
                   ),
                 ),
+
+              if (availableVehicle.driverConflict != null)
+                Container(
+                  margin: EdgeInsets.only(top: 8),
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning, color: Colors.orange, size: 16),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          availableVehicle.driverConflict.toString(),
+                          style: TextStyle(color: Colors.orange, fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
             ],
           ),
         ),

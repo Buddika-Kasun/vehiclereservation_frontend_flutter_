@@ -1,6 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart'; // Add this import
 import 'package:vehiclereservation_frontend_flutter_/data/models/available_vehicles_response.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/models/checklist_models.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/driver_trip_response.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/trip_booking_response.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/trip_list_response.dart';
@@ -10,6 +14,9 @@ import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart
 import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/config/api_config.dart';
+import 'dart:math' as math;
+
+int min(int a, int b) => math.min(a, b);
 
 class ApiService {
   //static const String baseUrl = ApiConfig.baseUrl;
@@ -389,17 +396,28 @@ class ApiService {
   }
 
   // CostCenter API methods
-  static Future<Map<String, dynamic>> getCostCenters([int? companyId]) async {
+  static Future<Map<String, dynamic>> getCostCenters({
+    int? companyId,
+    int page = 1,
+    int limit = 10,
+  }) async {
     String url = 'cost-center/get-all';
-    
+
+    List<String> params = [];
+
     if (companyId != null) {
-      url += '?companyId=$companyId';
+      params.add('companyId=$companyId');
     }
-    
-    return await authenticatedApiCall(
-      url,
-      method: 'GET',
-    );
+
+    // Add pagination parameters
+    params.add('page=$page');
+    params.add('limit=$limit');
+
+    if (params.isNotEmpty) {
+      url += '?${params.join('&')}';
+    }
+
+    return await authenticatedApiCall(url, method: 'GET');
   }
 
   static Future<Map<String, dynamic>> createCostCenter(Map<String, dynamic> data) async {
@@ -426,17 +444,47 @@ class ApiService {
   }
 
   // Department API methods
-  static Future<Map<String, dynamic>> getDepartments([int? companyId]) async {
+  static Future<Map<String, dynamic>> getDepartments({
+    int? companyId,
+    int page = 1,
+    int limit = 10,
+  }) async {
     String url = 'department/get-all';
-    
+
+    List<String> params = [];
+
     if (companyId != null) {
-      url += '?companyId=$companyId';
+      params.add('companyId=$companyId');
     }
-    
-    return await authenticatedApiCall(
-      url,
-      method: 'GET',
-    );
+
+    // Add pagination parameters
+    params.add('page=$page');
+    params.add('limit=$limit');
+
+    if (params.isNotEmpty) {
+      url += '?${params.join('&')}';
+    }
+
+    return await authenticatedApiCall(url, method: 'GET');
+  }
+
+  static Future<Map<String, dynamic>> getUserDepartments({
+    int page = 1,
+    int limit = 10,
+  }) async {
+    String url = 'department/get-user-all';
+
+    List<String> params = [];
+
+    // Add pagination parameters
+    params.add('page=$page');
+    params.add('limit=$limit');
+
+    if (params.isNotEmpty) {
+      url += '?${params.join('&')}';
+    }
+
+    return await authenticatedApiCall(url, method: 'GET');
   }
 
   static Future<Map<String, dynamic>> getDepartmentsForReg([int? companyId]) async {
@@ -493,6 +541,13 @@ class ApiService {
   static Future<Map<String, dynamic>> getUsersByDepartment(int departmentId) async {
     return await authenticatedApiCall(
       'user/get-all-by-department/$departmentId',
+      method: 'GET',
+    );
+  }
+
+  static Future<Map<String, dynamic>> getAllHodUsers() async {
+    return await authenticatedApiCall(
+      'user/get-all-hod',
       method: 'GET',
     );
   }
@@ -1287,6 +1342,407 @@ class ApiService {
     }
   }
 
+
+  static Future<Map<String, dynamic>> getAdminDashboardStats({
+    String? departmentId,
+  }) async {
+    try {
+      // Build URL with query parameters
+      String url = 'dashboard/admin/stats';
+
+      // Add departmentId to query params if provided
+      if (departmentId != null && departmentId.isNotEmpty) {
+        url += '?departmentId=$departmentId';
+      }
+
+      // Replace with your actual API endpoint
+      return await authenticatedApiCall(
+        url, // Your API endpoint with query params
+        method: 'GET',
+      );
+    } catch (e) {
+      print('Error fetching dashboard stats: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Uint8List?> downloadTripReport({
+    required DateTime fromDate,
+    required DateTime toDate,
+    required String format,
+  }) async {
+    try {
+      // Validate input
+      if (fromDate.isAfter(toDate)) {
+        throw Exception('From date must be before or equal to to date');
+      }
+
+      // Check date range (max 1 year)
+      final maxDays = 365;
+      final daysDifference = toDate.difference(fromDate).inDays;
+      if (daysDifference > maxDays) {
+        throw Exception('Date range cannot exceed $maxDays days');
+      }
+
+      // Format dates
+      final dateFormat = DateFormat('yyyy-MM-dd');
+      final formattedFromDate = dateFormat.format(fromDate);
+      final formattedToDate = dateFormat.format(toDate);
+
+      print('📋 ======== DOWNLOAD REPORT REQUEST ========');
+      print('📋 From Date: $formattedFromDate');
+      print('📋 To Date: $formattedToDate');
+      print('📋 Format: $format');
+
+      // Download report
+      return await _downloadBinaryData(
+        'trips/report/download',
+        method: 'POST',
+        body: {
+          'fromDate': formattedFromDate,
+          'toDate': formattedToDate,
+          'format': format.toLowerCase(),
+        },
+      );
+    } catch (e) {
+      print('❌ ======== REPORT DOWNLOAD ERROR ========');
+      print('❌ Error: ${e.toString()}');
+
+      // Rethrow with user-friendly message if needed
+      if (e is! Exception) {
+        rethrow;
+      }
+
+      final errorStr = e.toString().toLowerCase();
+
+      if (errorStr.contains('no trips found') ||
+          errorStr.contains('no data available')) {
+        throw Exception('No trips found for the selected date range');
+      } else if (errorStr.contains('invalid date') ||
+          errorStr.contains('date format')) {
+        throw Exception('Invalid date format. Please check your dates.');
+      } else if (errorStr.contains('start date must be')) {
+        throw Exception('Start date must be before end date');
+      } else if (errorStr.contains('date range cannot exceed')) {
+        throw Exception('Date range cannot exceed 365 days');
+      } else if (errorStr.contains('module not found') ||
+          errorStr.contains('pdfkit') ||
+          errorStr.contains('exceljs')) {
+        throw Exception('Report generation service is temporarily unavailable');
+      } else if (errorStr.contains('network') ||
+          errorStr.contains('connection') ||
+          errorStr.contains('socket')) {
+        throw Exception(
+          'Network error. Please check your connection and try again.',
+        );
+      } else if (errorStr.contains('timeout')) {
+        throw Exception(
+          'Request timeout. The report is taking too long to generate.',
+        );
+      } else if (errorStr.contains('unauthorized') ||
+          errorStr.contains('token')) {
+        throw Exception('Session expired. Please log in again.');
+      } else {
+        // Generic error with fallback
+        final message = e.toString().replaceAll('Exception: ', '');
+        throw Exception(
+          message.isNotEmpty ? message : 'Failed to generate report',
+        );
+      }
+    }
+  }
+
+  /// Special method for downloading binary data (PDF/Excel files)
+  static Future<Uint8List> _downloadBinaryData(
+    String endpoint, {
+    String method = 'POST',
+    Map<String, dynamic>? body,
+  }) async {
+    print('🔄 ======== BINARY DOWNLOAD START ========');
+    print('🔄 Endpoint: $endpoint');
+
+    try {
+      // Get token
+      final token = await SecureStorageService().accessToken;
+      if (token == null || token.isEmpty) {
+        throw Exception('Your session has expired. Please log in again.');
+      }
+
+      // Create URL
+      final url = Uri.parse('$baseUrl/$endpoint');
+      print('🌐 URL: $url');
+
+      // Create request
+      final request = http.Request(method, url);
+      request.headers['Authorization'] = 'Bearer $token';
+      request.headers['Accept'] = '*/*';
+      request.headers['Cache-Control'] = 'no-cache';
+
+      if (method == 'POST' && body != null) {
+        request.headers['Content-Type'] = 'application/json';
+        request.body = json.encode(body);
+        print('📤 Request body: ${request.body}');
+      }
+
+      // Send request with timeout
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 60),
+        onTimeout: () {
+          throw http.ClientException('Request timeout after 60 seconds');
+        },
+      );
+
+      print('📊 Status Code: ${streamedResponse.statusCode}');
+
+      // Handle different status codes
+      if (streamedResponse.statusCode >= 200 &&
+          streamedResponse.statusCode < 300) {
+        // Success - read the response bytes
+        final bytes = await streamedResponse.stream.toBytes();
+        print('✅ Successfully downloaded: ${bytes.length} bytes');
+
+        // Validate file size
+        if (bytes.isEmpty) {
+          throw Exception('Received empty file from server');
+        }
+
+        // Validate file type based on content type
+        final contentType = streamedResponse.headers['content-type'] ?? '';
+        if (contentType.contains('pdf') ||
+            contentType.contains('excel') ||
+            contentType.contains('sheet')) {
+          return bytes;
+        } else {
+          // Might be an error in JSON format
+          try {
+            final errorText = utf8.decode(bytes);
+            final errorJson = json.decode(errorText) as Map<String, dynamic>;
+
+            String errorMessage = 'Failed to generate report';
+            if (errorJson.containsKey('message')) {
+              errorMessage = errorJson['message'] as String;
+            } else if (errorJson.containsKey('error')) {
+              errorMessage = errorJson['error'] as String;
+            }
+
+            // Clean up error message
+            if (errorMessage.startsWith('Failed to generate report: ')) {
+              errorMessage = errorMessage.substring(
+                'Failed to generate report: '.length,
+              );
+            }
+
+            throw Exception(errorMessage);
+          } catch (_) {
+            // Not JSON, just throw generic error
+            throw Exception('Server returned invalid file format');
+          }
+        }
+      } else {
+        // Error - try to parse error response
+        final bytes = await streamedResponse.stream.toBytes();
+        String errorMessage =
+            'Failed to generate report (Status: ${streamedResponse.statusCode})';
+
+        try {
+          final errorText = utf8.decode(bytes);
+          print('❌ Error response text: $errorText');
+
+          final errorJson = json.decode(errorText) as Map<String, dynamic>;
+
+          if (errorJson.containsKey('message')) {
+            errorMessage = errorJson['message'] as String;
+          } else if (errorJson.containsKey('error')) {
+            if (errorJson['error'] is Map) {
+              final errorMap = errorJson['error'] as Map<String, dynamic>;
+              if (errorMap.containsKey('message')) {
+                errorMessage = errorMap['message'] as String;
+              }
+            } else {
+              errorMessage = errorJson['error'] as String;
+            }
+          }
+        } catch (_) {
+          // Couldn't parse as JSON, use default message
+          if (streamedResponse.statusCode == 401) {
+            errorMessage = 'Session expired. Please log in again.';
+          } else if (streamedResponse.statusCode == 403) {
+            errorMessage = 'You do not have permission to generate reports.';
+          } else if (streamedResponse.statusCode == 404) {
+            errorMessage = 'Report endpoint not found.';
+          } else if (streamedResponse.statusCode == 500) {
+            errorMessage = 'Server error. Please try again later.';
+          } else if (streamedResponse.statusCode == 502 ||
+              streamedResponse.statusCode == 503 ||
+              streamedResponse.statusCode == 504) {
+            errorMessage =
+                'Service temporarily unavailable. Please try again later.';
+          }
+        }
+
+        throw Exception(errorMessage);
+      }
+    } on http.ClientException catch (e) {
+      print('💥 HTTP Client Error: ${e.message}');
+      if (e.message.contains('timeout')) {
+        throw Exception(
+          'Request timeout. The report is taking too long to generate.',
+        );
+      } else if (e.message.contains('Failed host lookup') ||
+          e.message.contains('Network is unreachable')) {
+        throw Exception(
+          'Network error. Please check your internet connection.',
+        );
+      }
+      rethrow;
+    } on SocketException catch (e) {
+      print('💥 Socket Error: ${e.message}');
+      throw Exception(
+        'Network error. Please check your connection and try again.',
+      );
+    } on FormatException catch (e) {
+      print('💥 Format Error: ${e.message}');
+      throw Exception('Invalid response from server. Please try again.');
+    } catch (e) {
+      print('💥 Unexpected Error in _downloadBinaryData: $e');
+      rethrow;
+    }
+  }
+
+  static Future<ChecklistResponse?> getChecklistByDate({
+  required String vehicleId,
+  required DateTime date,
+}) async {
+  try {
+    final formattedDate = DateFormat('yyyy-MM-dd').format(date);
+    
+    print('🔍 Fetching checklist for vehicle $vehicleId on $formattedDate');
+    
+    final response = await authenticatedApiCall(
+      'checklist/vehicle/$vehicleId/date/$formattedDate',
+      method: 'GET',
+    );
+    
+    print('📥 FULL API Response:');
+    print('  Response type: ${response.runtimeType}');
+    print('  Response keys: ${response.keys}');
+    print('  Has data key: ${response.containsKey('data')}');
+    print('  Data value: ${response['data']}');
+    print('  Data type: ${response['data']?.runtimeType}');
+    
+    // Try different approaches to get the data
+    dynamic checklistData;
+    
+    if (response['data'] != null && response['data'] != false) {
+      checklistData = response['data'];
+      print('✅ Using response[\'data\']');
+    } else if (response.isNotEmpty && response.containsKey('id')) {
+      // Maybe the data is directly in the response
+      checklistData = response;
+      print('✅ Using direct response');
+    } else {
+      print('❌ No checklist data found');
+      return null;
+    }
+    
+    print('📋 Parsing checklist data...');
+    try {
+      final checklist = ChecklistResponse.fromJson(checklistData);
+      print('✅ Checklist parsed successfully. ID: ${checklist.id}');
+      print('✅ Checklist has ${checklist.responses.length} responses');
+      return checklist;
+    } catch (e) {
+      print('❌ Error parsing checklist: $e');
+      print('❌ Checklist data structure: $checklistData');
+      return null;
+    }
+    
+  } catch (e) {
+    print('❌ Error in getChecklistByDate: $e');
+    print('❌ Stack trace: ${e.toString()}');
+    return null;
+  }
 }
+
+  static Future<ChecklistResponse> submitChecklist({
+    required String vehicleId,
+    required String vehicleRegNo,
+    required DateTime checklistDate,
+    required String checkedById,
+    required String checkedByName,
+    required String checkedByRole,
+    required Map<String, ChecklistItemRequest> responses,
+  }) async {
+    try {
+      final formattedDate = DateFormat('yyyy-MM-dd').format(checklistDate);
+
+      print('🚀 Submitting checklist...');
+
+      final request = ChecklistSubmitRequest(
+        vehicleId: int.parse(vehicleId),
+        vehicleRegNo: vehicleRegNo,
+        checklistDate: formattedDate,
+        checkedById: int.parse(checkedById),
+        responses: responses,
+      );
+
+      print('📤 Sending POST request to checklist/submit');
+      final response = await authenticatedApiCall(
+        'checklist/submit',
+        method: 'POST',
+        body: request.toJson(),
+      );
+
+      print('📥 API Response received');
+      print('Response type: ${response.runtimeType}');
+      print('Response keys: ${response.keys}');
+
+      // CRITICAL FIX: The API returns the checklist directly, not wrapped in 'data'
+      if (response.containsKey('id')) {
+        print('✅ Response contains checklist data directly');
+        // The response IS the checklist data
+        return ChecklistResponse.fromJson(response);
+      } else if (response['data'] != null) {
+        print('✅ Response contains checklist in data field');
+        // The response has data field containing the checklist
+        return ChecklistResponse.fromJson(response['data']);
+      } else {
+        print('❌ Response does not contain checklist data');
+        throw Exception('No checklist data in response');
+      }
+    } catch (e) {
+      print('❌ Error in submitChecklist: $e');
+      print('❌ Stack trace: ${e.toString()}');
+      rethrow;
+    }
+  }
+  
+  static Future<bool> checkIfChecklistExists({
+  required String vehicleId,
+  required DateTime date,
+}) async {
+  try {
+    final formattedDate = DateFormat('yyyy-MM-dd').format(date);
+    
+    print('🔍 Checking if checklist exists for vehicle $vehicleId on $formattedDate');
+    
+    final response = await authenticatedApiCall(
+      'checklist/vehicle/$vehicleId/date/$formattedDate/exists',
+      method: 'GET',
+    );
+    
+    print('📥 Exists check response: $response');
+    print('  exists value: ${response['exists']}');
+    
+    return response['exists'] ?? false;
+  } catch (e) {
+    print('❌ Error checking checklist existence: $e');
+    return false;
+  }
+}
+
+}
+
+
 
 

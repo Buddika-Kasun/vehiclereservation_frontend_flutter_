@@ -29,7 +29,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   List<Department> _departments = [];
 
-  final List<String> _roles = ['Employee', 'Admin', 'HR', 'Security', 'Driver', 'Transport Supervisor'];
+  final List<String> _roles = ['Employee', 'HOD', 'HR', 'Security', 'Driver', 'Transport Supervisor'];
 
   Future<void> _register() async {
     final displayName = _displayNameController.text.trim();
@@ -84,6 +84,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _isLoading = true;
     });
 
+    String role;
+    switch (_selectedRole) {
+      case 'Transport Supervisor':
+        role = 'Supervisor';
+        break;
+      case 'HOD':
+        role = 'Admin';
+        break;
+      default:
+        role = _selectedRole!;
+    }
+    
     try {
       final res = await ApiService.signUp(
         username,
@@ -92,7 +104,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _hasCompanyEmail ? email : null,
         phone: mobile,
         displayName: displayName,
-        role: _selectedRole == 'Transport Supervisor' ? 'Supervisor': _selectedRole,
+        role: role,
         departmentId: _selectedDepartment,
       );
 

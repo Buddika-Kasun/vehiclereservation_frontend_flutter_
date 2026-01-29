@@ -1,4 +1,4 @@
-package com.example.vehiclereservation_frontend_flutter_
+package com.axperia.pcwride
 
 import io.flutter.embedding.android.FlutterActivity
 

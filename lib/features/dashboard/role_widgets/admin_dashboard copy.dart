@@ -73,7 +73,7 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
     });
 
     try {
-      final response = await ApiService.getUserDepartments(limit: 50);
+      final response = await ApiService.getDepartments(limit: 50);
 
       if (response['success'] == true) {
         final List<dynamic> departmentsData =
@@ -167,7 +167,7 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
     try {
       // Call the API service to get dashboard statistics with department filter
       final response = await ApiService.getAdminDashboardStats(
-        departmentId: _selectedDepartmentId,
+        //departmentId: _selectedDepartmentId,
       );
 
       if (response.isNotEmpty) {
@@ -205,7 +205,7 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
 
     try {
       final response = await ApiService.getAdminDashboardStats(
-        departmentId: _selectedDepartmentId,
+        //departmentId: _selectedDepartmentId,
       );
 
       if (response.isNotEmpty) {
@@ -499,6 +499,10 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
 
     // Create dropdown items including "All Departments" option
     final List<DropdownMenuItem<String>> dropdownItems = [
+      DropdownMenuItem<String>(
+        value: '', // Empty string represents "All Departments"
+        child: Text('All Departments', style: TextStyle(color: Colors.black87)),
+      ),
       ..._availableDepartments.map((department) {
         return DropdownMenuItem<String>(
           value: department.id.toString(),
@@ -541,8 +545,6 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
             filled: true,
             fillColor: Colors.grey.shade50,
             contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-            hintText: 'Select Department',
-            hintStyle: TextStyle(color: Colors.grey.shade600),
           ),
           value: safeCurrentDepartmentId,
           items: dropdownItems,
@@ -1468,7 +1470,7 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
                                     SizedBox(width: 4),
                                     Expanded(
                                       child: Text(
-                                        '${_selectedDepartmentName ?? 'Unknown'}',
+                                        'Filtered by: ${_selectedDepartmentName ?? 'Unknown'}',
                                         style: TextStyle(
                                           fontSize: 12,
                                           color: Colors.blue[700],

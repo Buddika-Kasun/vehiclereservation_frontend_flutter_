@@ -74,6 +74,7 @@ class SideMenu extends StatelessWidget {
         items.addAll([
           MenuItem(Icons.directions_car, 'My Rides'),
           MenuItem(Icons.car_rental_sharp, 'My Vehicles'),
+          MenuItem(Icons.car_rental_sharp, 'All Vehicles'),
           MenuItem(Icons.directions_car, 'Assigned Rides'),
           MenuItem(Icons.verified, 'Review Trips'),
         ]);
@@ -97,7 +98,7 @@ class SideMenu extends StatelessWidget {
       case UserRole.sysadmin:
         return 'System Administrator';
       case UserRole.admin:
-        return 'Administrator';
+        return 'Head of Department';
       case UserRole.hr:
         return 'HR Manager';
       case UserRole.manager:

@@ -39,11 +39,40 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
   List<Map<String, dynamic>> _selectedOthers = [];
   bool _includeMeInGroup = true;
   User? _user;
+  bool _canSchedule = true;
+
+  // Trip Type Section State
+  String _tripType = 'normal';
+  String _fixedRate = '';
+  String _reason = '';
+  bool _tripTypeExpanded = true;
+
+  // Text Controllers
+  late TextEditingController _fixedRateController;
+  late TextEditingController _reasonController;
+  late TextEditingController _repeatDaysController;
+
+  // Expansion State
+  bool _scheduleExpanded = true;
+  bool _passengersExpanded = false;
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    _fixedRateController = TextEditingController(text: _fixedRate);
+    _reasonController = TextEditingController(text: _reason);
+    _repeatDaysController = TextEditingController(
+      text: _repeatAfterDays.toString(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _fixedRateController.dispose();
+    _reasonController.dispose();
+    _repeatDaysController.dispose();
+    super.dispose();
   }
 
   // Add this getter method instead:
@@ -67,6 +96,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
 
       setState(() {
         _user = user;
+        _canSchedule = _user?.role != UserRole.employee;
       });
 
       print('User data loaded: ${user.displayname}');
@@ -74,10 +104,6 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
       print('Load user data error: $e');
     }
   }
-
-  // Expansion State
-  bool _scheduleExpanded = true;
-  bool _passengersExpanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -140,6 +166,10 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
+                      // NEW: Trip Type Section
+                      _buildTripTypeSection(),
+                      SizedBox(height: 16),
+
                       // Schedule Section
                       _buildScheduleSection(),
                       SizedBox(height: 16),
@@ -193,6 +223,176 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
     );
   }
 
+  Widget _buildTripTypeSection() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade700, width: 1),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: EdgeInsets.symmetric(horizontal: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          collapsedShape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          initiallyExpanded: _tripTypeExpanded,
+          title: Text(
+            'Trip Type & Details',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          onExpansionChanged: (expanded) {
+            setState(() {
+              _tripTypeExpanded = expanded;
+            });
+          },
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+              child: Column(
+                children: [
+                  if (_canSchedule)
+                    // Trip Type Dropdown
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Trip Type',
+                          style: TextStyle(color: Colors.grey, fontSize: 14),
+                        ),
+                        SizedBox(height: 4),
+                        DropdownButtonFormField<String>(
+                          dropdownColor: Colors.grey[800],
+                          style: TextStyle(color: Colors.yellow),
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                          ),
+                          value: _tripType,
+                          items: [
+                            DropdownMenuItem(
+                              value: 'normal',
+                              child: Text(
+                                'Normal',
+                                style: TextStyle(color: Colors.yellow),
+                              ),
+                            ),
+                            DropdownMenuItem(
+                              value: 'fixed_rate',
+                              child: Text(
+                                'Fixed Rate',
+                                style: TextStyle(color: Colors.yellow),
+                              ),
+                            ),
+                            DropdownMenuItem(
+                              value: 'safety_approval',
+                              child: Text(
+                                'Safety Approval',
+                                style: TextStyle(color: Colors.yellow),
+                              ),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              _tripType = value!;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+
+                  // Fixed Rate Field (shown only when fixed_rate is selected)
+                  if (_tripType == 'fixed_rate') ...[
+                    SizedBox(height: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Fixed Rate (LKR)',
+                          style: TextStyle(color: Colors.grey, fontSize: 14),
+                        ),
+                        SizedBox(height: 4),
+                        TextFormField(
+                          controller: _fixedRateController,
+                          style: TextStyle(color: Colors.yellow),
+                          decoration: InputDecoration(
+                            hintText: '10000.00',
+                            hintStyle: TextStyle(color: Colors.grey.shade600),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 12,
+                            ),
+                            prefixText: 'LKR ',
+                            prefixStyle: TextStyle(color: Colors.yellow),
+                          ),
+                          keyboardType: TextInputType.numberWithOptions(
+                            decimal: true,
+                            signed: false,
+                          ),
+                          onChanged: (value) {
+                            _fixedRate = value;
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+
+                  // Reason Field (for all trip types)
+                  if (_canSchedule) SizedBox(height: 16),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Reason',
+                        style: TextStyle(color: Colors.grey, fontSize: 14),
+                      ),
+                      SizedBox(height: 4),
+                      TextFormField(
+                        controller: _reasonController,
+                        style: TextStyle(color: Colors.yellow),
+                        decoration: InputDecoration(
+                          hintText: 'Enter reason for the trip',
+                          hintStyle: TextStyle(color: Colors.grey.shade600),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                        ),
+                        maxLines: 2,
+                        onChanged: (value) {
+                          _reason = value;
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   bool _shouldShowSelectedUsers() {
     if (_passengerType == 'own') return true;
     if (_passengerType == 'other_individual' && _selectedIndividual != null)
@@ -207,6 +407,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
 
   Widget _buildScheduleSection() {
     return Container(
+      margin: EdgeInsets.only(top: 4),
       decoration: BoxDecoration(
         color: Colors.grey[900],
         borderRadius: BorderRadius.circular(12),
@@ -218,14 +419,13 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
         ),
         child: ExpansionTile(
           tilePadding: EdgeInsets.symmetric(horizontal: 16),
-          //contentPadding: EdgeInsets.zero,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
           collapsedShape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          initiallyExpanded: true,
+          initiallyExpanded: _scheduleExpanded,
           title: Text(
             'Schedule',
             style: TextStyle(
@@ -234,6 +434,11 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
+          onExpansionChanged: (expanded) {
+            setState(() {
+              _scheduleExpanded = expanded;
+            });
+          },
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
@@ -274,69 +479,73 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                   SizedBox(height: 16),
 
                   // Repetition Dropdown
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Repetition',
-                        style: TextStyle(color: Colors.grey, fontSize: 14),
-                      ),
-                      SizedBox(height: 4),
-                      DropdownButtonFormField<String>(
-                        dropdownColor: Colors.grey[800],
-                        style: TextStyle(color: Colors.yellow),
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
+                  if (_canSchedule)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Repetition',
+                          style: TextStyle(color: Colors.grey, fontSize: 14),
                         ),
-                        value: _repetition,
-                        items: [
-                          DropdownMenuItem(
-                            value: 'once',
-                            child: Text(
-                              'Once',
-                              style: TextStyle(color: Colors.yellow),
+                        SizedBox(height: 4),
+                        DropdownButtonFormField<String>(
+                          dropdownColor: Colors.grey[800],
+                          style: TextStyle(color: Colors.yellow),
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
                             ),
                           ),
-                          DropdownMenuItem(
-                            value: 'daily',
-                            child: Text(
-                              'Daily',
-                              style: TextStyle(color: Colors.yellow),
+                          value: _repetition,
+                          items: [
+                            DropdownMenuItem(
+                              value: 'once',
+                              child: Text(
+                                'Once',
+                                style: TextStyle(color: Colors.yellow),
+                              ),
                             ),
-                          ),
-                          DropdownMenuItem(
-                            value: 'weekly',
-                            child: Text(
-                              'Weekly',
-                              style: TextStyle(color: Colors.yellow),
+                            DropdownMenuItem(
+                              value: 'daily',
+                              child: Text(
+                                'Daily',
+                                style: TextStyle(color: Colors.yellow),
+                              ),
                             ),
-                          ),
-                          DropdownMenuItem(
-                            value: 'monthly',
-                            child: Text(
-                              'Monthly',
-                              style: TextStyle(color: Colors.yellow),
+                            DropdownMenuItem(
+                              value: 'weekly',
+                              child: Text(
+                                'Weekly',
+                                style: TextStyle(color: Colors.yellow),
+                              ),
                             ),
-                          ),
-                          DropdownMenuItem(
-                            value: 'custom',
-                            child: Text(
-                              'Custom',
-                              style: TextStyle(color: Colors.yellow),
+                            DropdownMenuItem(
+                              value: 'monthly',
+                              child: Text(
+                                'Monthly',
+                                style: TextStyle(color: Colors.yellow),
+                              ),
                             ),
-                          ),
-                        ],
-                        onChanged: (value) =>
-                            setState(() => _repetition = value!),
-                      ),
-                    ],
-                  ),
+                            DropdownMenuItem(
+                              value: 'custom',
+                              child: Text(
+                                'Custom',
+                                style: TextStyle(color: Colors.yellow),
+                              ),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              _repetition = value!;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
 
                   if (_repetition != 'once') ...[
                     SizedBox(height: 8),
@@ -364,6 +573,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                   if (_repetition == 'custom') ...[
                     SizedBox(height: 4),
                     TextField(
+                      controller: _repeatDaysController,
                       style: TextStyle(color: Colors.yellow, fontSize: 14),
                       decoration: InputDecoration(
                         labelText: 'Repeat after (days)',
@@ -377,9 +587,11 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                         ),
                       ),
                       keyboardType: TextInputType.number,
-                      onChanged: (value) => setState(
-                        () => _repeatAfterDays = int.tryParse(value) ?? 1,
-                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          _repeatAfterDays = int.tryParse(value) ?? 1;
+                        });
+                      },
                     ),
                   ],
                 ],
@@ -393,7 +605,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
 
   Widget _buildPassengersSection() {
     return Container(
-      margin: EdgeInsets.only(top: 16),
+      margin: EdgeInsets.only(top: 4),
       decoration: BoxDecoration(
         color: Colors.grey[900],
         borderRadius: BorderRadius.circular(12),
@@ -405,13 +617,13 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
         ),
         child: ExpansionTile(
           tilePadding: EdgeInsets.symmetric(horizontal: 16),
-          //contentPadding: EdgeInsets.zero,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
           collapsedShape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
+          initiallyExpanded: _passengersExpanded,
           title: Text(
             'Select Passenger',
             style: TextStyle(
@@ -420,6 +632,11 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
               color: Colors.white,
             ),
           ),
+          onExpansionChanged: (expanded) {
+            setState(() {
+              _passengersExpanded = expanded;
+            });
+          },
           children: [
             Padding(
               padding: const EdgeInsets.all(16.0),
@@ -429,10 +646,14 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                   Column(
                     children: [
                       RadioListTile<String>(
-                        title: Text('Own', style: TextStyle(color: Colors.white)),
+                        title: Text(
+                          'Own',
+                          style: TextStyle(color: Colors.white),
+                        ),
                         value: 'own',
                         groupValue: _passengerType,
-                        onChanged: (value) => _handlePassengerTypeChange(value!),
+                        onChanged: (value) =>
+                            _handlePassengerTypeChange(value!),
                         activeColor: Colors.yellow[600],
                       ),
                       RadioListTile<String>(
@@ -442,7 +663,8 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                         ),
                         value: 'other_individual',
                         groupValue: _passengerType,
-                        onChanged: (value) => _handlePassengerTypeChange(value!),
+                        onChanged: (value) =>
+                            _handlePassengerTypeChange(value!),
                         activeColor: Colors.yellow[600],
                       ),
                       RadioListTile<String>(
@@ -452,7 +674,8 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                         ),
                         value: 'group',
                         groupValue: _passengerType,
-                        onChanged: (value) => _handlePassengerTypeChange(value!),
+                        onChanged: (value) =>
+                            _handlePassengerTypeChange(value!),
                         activeColor: Colors.yellow[600],
                       ),
                     ],
@@ -790,10 +1013,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionHeader(
-            'Selected Passengers',
-            _getTotalPassengerCount(),
-          ),
+          _buildSectionHeader('Selected Passengers', _getTotalPassengerCount()),
           SizedBox(height: 12),
 
           // Own User Card
@@ -1393,6 +1613,17 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
       return;
     }
 
+    // Validate trip type fields
+    if (_tripType == 'fixed_rate' && _fixedRate.isEmpty) {
+      _showMessage('Please enter fixed rate amount', false);
+      return;
+    }
+
+    if (_reason.isEmpty) {
+      _showMessage('Please enter reason for the trip', false);
+      return;
+    }
+
     // Validate schedule
     if (_startDate == null) {
       _showMessage('Please select start date', false);
@@ -1446,10 +1677,17 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
         'currentUser': _currentUser,
       };
 
+      final tripTypeData = {
+        'tripType': _tripType,
+        'fixedRate': _fixedRate,
+        'reason': _reason,
+      };
+
       final tripRequest = TripRequest(
         locationData: locationData,
         scheduleData: scheduleData,
         passengerData: passengerData,
+        tripTypeData: tripTypeData,
       );
 
       final response = await ApiService.bookTripAsDraft(tripRequest);

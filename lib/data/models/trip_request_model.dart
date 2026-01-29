@@ -4,6 +4,7 @@ class TripRequest {
   final Map<String, dynamic> locationData;
   final Map<String, dynamic> scheduleData;
   final Map<String, dynamic> passengerData;
+  final Map<String, dynamic> tripTypeData;
   final int? selectedVehicleId;
   final int? conflictingTripId;
 
@@ -11,6 +12,7 @@ class TripRequest {
     required this.locationData,
     required this.scheduleData,
     required this.passengerData,
+    required this.tripTypeData,
     this.selectedVehicleId,
     this.conflictingTripId,
   });
@@ -20,6 +22,7 @@ class TripRequest {
       'locationData': _convertToJson(locationData),
       'scheduleData': _convertToJson(scheduleData),
       'passengerData': _convertToJson(passengerData),
+      'tripTypeData': _convertToJson(tripTypeData),
     };
     
     // Only include vehicleId if it's not null

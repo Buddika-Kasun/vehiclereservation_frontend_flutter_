@@ -1,9 +1,11 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/utils/optional_permission_manager%20copy.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/approval_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/trip_details_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
@@ -46,6 +48,176 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
   final TextEditingController _rejectionController = TextEditingController();
   bool _isProcessing = false; // Add this missing variable
   String _approverComment = ''; // Add this missing variable
+
+  // Add these helper methods
+  String _getTripTypeDisplayName(String type) {
+    switch (type.toLowerCase()) {
+      case 'normal':
+        return 'Normal';
+      case 'fixed_rate':
+        return 'Fixed Rate';
+      case 'safety_approval':
+        return 'Safety Approval';
+      default:
+        return type;
+    }
+  }
+
+  Color _getTripTypeColor(String type) {
+    switch (type.toLowerCase()) {
+      case 'normal':
+        return Colors.blue;
+      case 'fixed_rate':
+        return Colors.green;
+      case 'safety_approval':
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getTripTypeIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'normal':
+        return Icons.trip_origin;
+      case 'fixed_rate':
+        return Icons.monetization_on;
+      case 'safety_approval':
+        return Icons.security;
+      default:
+        return Icons.trip_origin;
+    }
+  }
+
+  Widget _buildTripTypeSection() {
+    if (_tripDetails?.tripType == null) {
+      return SizedBox.shrink();
+    }
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(0, 0, 0, 16),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        border: Border(bottom: BorderSide(color: Colors.grey[800]!)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Trip Type',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 12),
+
+          // Trip Type Badge
+          Container(
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: _getTripTypeColor(_tripDetails!.tripType).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: _getTripTypeColor(
+                  _tripDetails!.tripType,
+                ).withOpacity(0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: _getTripTypeColor(_tripDetails!.tripType),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Icon(
+                    _getTripTypeIcon(_tripDetails!.tripType),
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _getTripTypeDisplayName(_tripDetails!.tripType),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      if (_tripDetails!.tripType == 'fixed_rate' &&
+                          _tripDetails!.fixedRate != null)
+                        Text(
+                          'Fixed Rate: LKR ${_formatCurrency(_tripDetails!.fixedRate!)}',
+                          style: TextStyle(
+                            color: Color(0xFFF9C80E),
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _getTripTypeColor(
+                      _tripDetails!.tripType,
+                    ).withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _tripDetails!.tripType.toUpperCase(),
+                    style: TextStyle(
+                      color: _getTripTypeColor(_tripDetails!.tripType),
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Reason Field
+          if (_tripDetails?.reason != null && _tripDetails!.reason!.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(top: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Reason',
+                    style: TextStyle(color: Colors.grey[300], fontSize: 14),
+                  ),
+                  SizedBox(height: 4),
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[800],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _tripDetails!.reason!,
+                      style: TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -423,17 +595,120 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
   }
 
   Future<void> _makePhoneCall(String phoneNumber) async {
-    final url = 'tel:$phoneNumber';
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url));
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Cannot make call'),
-          backgroundColor: Colors.red,
-        ),
-      );
+    try {
+      // Clean the phone number
+      String cleanedNumber = phoneNumber.trim();
+
+      // Validate phone number format
+      if (cleanedNumber.isEmpty) {
+        _showSnackBar('Phone number is empty', Colors.red);
+        return;
+      }
+
+      // Check if we have permission first
+      final hasPermission =
+          await OptionalPermissionManager.requestPhonePermission(
+            context: context,
+            rationaleMessage: 'Phone permission is required to make calls',
+          );
+
+      if (!hasPermission) {
+        _showSnackBar('Cannot make call without permission', Colors.red);
+        return;
+      }
+
+      // Create URL with proper format
+      final url = 'tel:$cleanedNumber';
+      final uri = Uri.parse(url);
+
+      print('📞 Attempting to call: $cleanedNumber');
+      print('📞 URL: $url');
+
+      // Check if we can launch
+      bool canLaunch = await canLaunchUrl(uri);
+      print('📞 Can launch URL: $canLaunch');
+
+      if (canLaunch) {
+        await launchUrl(uri);
+        print('📞 Launched dialer successfully');
+      } else {
+        // Fallback: Try to open dialer with number manually
+        print('📞 canLaunchUrl returned false, trying alternative');
+        await _launchDialerFallback(cleanedNumber);
+      }
+    } catch (e, stackTrace) {
+      print('❌ Error making call: $e');
+      print('❌ Stack trace: $stackTrace');
+      _showSnackBar('Unable to make call: ${e.toString()}', Colors.red);
     }
+  }
+
+  // Alternative method for opening dialer
+  Future<void> _launchDialerFallback(String phoneNumber) async {
+    try {
+      // Try different URL formats
+      final String url = 'tel:$phoneNumber';
+      final Uri uri = Uri.parse(url);
+
+      // Try launching directly without checking first
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      print('❌ Fallback also failed: $e');
+
+      // Show alternative options
+      if (context.mounted) {
+        await _showNoDialerDialog(context, phoneNumber);
+      }
+    }
+  }
+
+  // Dialog when no dialer is found
+  Future<void> _showNoDialerDialog(
+    BuildContext context,
+    String phoneNumber,
+  ) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Cannot Make Call'),
+          content: Text(
+            'No phone app found to make calls.\n\n'
+            'Phone number: $phoneNumber\n\n'
+            'You can manually dial this number.',
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Copy Number'),
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: phoneNumber));
+                Navigator.of(context).pop();
+                _showSnackBar('Phone number copied to clipboard', Colors.green);
+              },
+            ),
+            TextButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showSnackBar(String message, Color color) {
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 
   void _showApprovalDialog() {
@@ -1062,6 +1337,10 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Trip Type Section - ADD THIS
+          _buildTripTypeSection(),
+          SizedBox(height: 8),
+          
           Text(
             'Trip Information',
             style: TextStyle(
@@ -1508,6 +1787,9 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
   }
 
   Widget _buildMetricsComparisonTable() {
+    final bool isFixedRateTrip = _tripDetails?.tripType == 'fixed_rate';
+    final double? fixedRateValue = _tripDetails?.fixedRate;
+
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1569,18 +1851,57 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
 
           SizedBox(height: 12),
 
-          // Cost Row
+          // Cost Row - UPDATED FOR FIXED RATE
           _buildComparisonRow(
             label: 'Cost (LKR)',
-            estimatedValue: _formatCurrency(
-              double.parse(_tripDetails!.details.route.metrics.distance) *
-                  2 *
-                  double.parse(_tripDetails?.vehicle.costPerKm ?? '0'),
-            ),
-            actualValue: _tripDetails?.status.toLowerCase() == 'completed'
+            estimatedValue: isFixedRateTrip && fixedRateValue != null
+                ? _formatCurrency(
+                    fixedRateValue,
+                  ) // Show fixed rate for estimated
+                : _formatCurrency(
+                    double.parse(_tripDetails!.details.route.metrics.distance) *
+                        2 *
+                        (double.tryParse(
+                              _tripDetails?.vehicle?.costPerKm ?? '0',
+                            ) ??
+                            0.0),
+                  ),
+            actualValue: isFixedRateTrip && fixedRateValue != null
+                ? _formatCurrency(fixedRateValue) // Show fixed rate for actual
+                : _tripDetails?.status.toLowerCase() == 'completed'
                 ? _formatCurrency(_tripDetails!.cost ?? 0)
                 : '--',
           ),
+
+          // Add fixed rate note if applicable
+          if (isFixedRateTrip && fixedRateValue != null)
+            Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.green, size: 16),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Fixed rate trip: LKR ${_formatCurrency(fixedRateValue)}',
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );

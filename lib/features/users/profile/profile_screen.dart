@@ -4,10 +4,47 @@ import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart
 import 'edit_profile_screen.dart';
 import 'change_password_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   final User user;
 
   const ProfileScreen({Key? key, required this.user}) : super(key: key);
+
+  @override
+  _ProfileScreenState createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  late User _currentUser;
+
+  // Map for role display names
+  final Map<String, String> _roleDisplayNames = {
+    'employee': 'Employee',
+    'admin': 'HOD', // Changed from 'admin' to 'HOD'
+    'hr': 'HR',
+    'security': 'Security',
+    'driver': 'Driver',
+    'supervisor':
+        'Transport Supervisor', // Changed from 'supervisor' to 'Transport Supervisor'
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _currentUser = widget.user;
+  }
+
+  // Helper method to get display name from backend role
+  String _getRoleDisplayName(UserRole role) {
+    final roleName = role.name;
+    return _roleDisplayNames[roleName] ?? role.displayName;
+  }
+
+  // Method to update user data when returning from edit screen
+  void _updateUserData(User updatedUser) {
+    setState(() {
+      _currentUser = updatedUser;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -114,15 +151,24 @@ class ProfileScreen extends StatelessWidget {
                           ),
                           child: IconButton(
                             icon: const Icon(Icons.edit, color: Colors.black),
-                            onPressed: () {
-                              Navigator.push(
+                            /*
+                            onPressed: () async {
+                              final updatedUser = await Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) =>
-                                      EditProfileScreen(user: user),
+                                  builder: (context) => EditProfileScreen(
+                                    user: _currentUser,
+                                    //onProfileUpdated: _updateUserData,
+                                  ),
                                 ),
                               );
+
+                              if (updatedUser != null) {
+                                _updateUserData(updatedUser);
+                              }
                             },
+                            */
+                            onPressed: () {},
                             padding: const EdgeInsets.all(10),
                             iconSize: 24,
                             constraints: const BoxConstraints(),
@@ -177,7 +223,6 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // All other methods remain the same...
   Widget _buildModernProfileCard() {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -230,11 +275,11 @@ class ProfileScreen extends StatelessWidget {
                   radius: 58,
                   backgroundColor: Colors.grey[900],
                   child:
-                      user.profilePicture != null &&
-                          user.profilePicture!.isNotEmpty
+                      _currentUser.profilePicture != null &&
+                          _currentUser.profilePicture!.isNotEmpty
                       ? ClipOval(
                           child: Image.network(
-                            user.profilePicture!,
+                            _currentUser.profilePicture!,
                             width: 116,
                             height: 116,
                             fit: BoxFit.cover,
@@ -256,7 +301,7 @@ class ProfileScreen extends StatelessWidget {
                 height: 20,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: user.isActive ? Colors.green : Colors.red,
+                  color: _currentUser.isActive ? Colors.green : Colors.red,
                   border: Border.all(color: Colors.grey[900]!, width: 3),
                   boxShadow: [
                     BoxShadow(
@@ -274,7 +319,7 @@ class ProfileScreen extends StatelessWidget {
 
           // Name
           Text(
-            user.displayname,
+            _currentUser.displayname,
             style: const TextStyle(
               fontSize: 24,
               color: Colors.white,
@@ -287,7 +332,7 @@ class ProfileScreen extends StatelessWidget {
 
           // Username
           Text(
-            '@${user.username}',
+            '@${_currentUser.username}',
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey[400],
@@ -312,8 +357,8 @@ class ProfileScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      _getRoleColor(user.role),
-                      _getRoleColor(user.role).withOpacity(0.8),
+                      _getRoleColor(_currentUser.role),
+                      _getRoleColor(_currentUser.role).withOpacity(0.8),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -321,7 +366,7 @@ class ProfileScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: _getRoleColor(user.role).withOpacity(0.3),
+                      color: _getRoleColor(_currentUser.role).withOpacity(0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                     ),
@@ -331,13 +376,13 @@ class ProfileScreen extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      _getRoleIcon(user.role),
+                      _getRoleIcon(_currentUser.role),
                       color: Colors.white,
                       size: 16,
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      user.role.displayName.toUpperCase(),
+                      _getRoleDisplayName(_currentUser.role).toUpperCase(),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 12,
@@ -350,7 +395,8 @@ class ProfileScreen extends StatelessWidget {
               ),
 
               // Department Chip
-              if (user.department != null && user.department!.isNotEmpty)
+              if (_currentUser.department != null &&
+                  _currentUser.department!.isNotEmpty)
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 20,
@@ -384,7 +430,7 @@ class ProfileScreen extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        user.department!.toUpperCase(),
+                        _currentUser.department!.toUpperCase(),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,
@@ -439,22 +485,23 @@ class ProfileScreen extends StatelessWidget {
               _buildInfoTile(
                 icon: Icons.email_rounded,
                 title: 'Email',
-                value: user.email ?? 'Not provided',
+                value: _currentUser.email ?? 'Not provided',
                 color: Colors.blue,
               ),
               const Divider(height: 0, color: Colors.grey),
               _buildInfoTile(
                 icon: Icons.phone_rounded,
                 title: 'Phone',
-                value: user.phone,
+                value: _currentUser.phone,
                 color: Colors.green,
               ),
-              if (user.department != null && user.department!.isNotEmpty) ...[
+              if (_currentUser.department != null &&
+                  _currentUser.department!.isNotEmpty) ...[
                 const Divider(height: 0, color: Colors.grey),
                 _buildInfoTile(
                   icon: Icons.business_rounded,
                   title: 'Department',
-                  value: user.department!,
+                  value: _currentUser.department!,
                   color: Colors.purple,
                 ),
               ],
@@ -570,6 +617,7 @@ class ProfileScreen extends StatelessWidget {
                 title: 'Change Password',
                 subtitle: 'Update your account password',
                 color: Colors.amber,
+                /*
                 onTap: () {
                   Navigator.push(
                     context,
@@ -578,6 +626,8 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   );
                 },
+                */
+                onTap: () {},
               ),
               const Divider(height: 0, color: Colors.grey),
               _buildSettingTile(
@@ -694,16 +744,16 @@ class ProfileScreen extends StatelessWidget {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: user.isActive
+                  color: _currentUser.isActive
                       ? Colors.green.withOpacity(0.1)
                       : Colors.red.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: Icon(
-                  user.isActive
+                  _currentUser.isActive
                       ? Icons.verified_user_rounded
                       : Icons.error_outline_rounded,
-                  color: user.isActive ? Colors.green : Colors.red,
+                  color: _currentUser.isActive ? Colors.green : Colors.red,
                   size: 28,
                 ),
               ),
@@ -715,7 +765,9 @@ class ProfileScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      user.isActive ? 'Active Account' : 'Inactive Account',
+                      _currentUser.isActive
+                          ? 'Active Account'
+                          : 'Inactive Account',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
@@ -724,7 +776,7 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Approval Status: ${user.isApproved}',
+                      'Role: ${_getRoleDisplayName(_currentUser.role)}',
                       style: TextStyle(color: Colors.grey[400], fontSize: 14),
                     ),
                   ],
@@ -738,19 +790,19 @@ class ProfileScreen extends StatelessWidget {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: user.isActive
+                  color: _currentUser.isActive
                       ? Colors.green.withOpacity(0.2)
                       : Colors.red.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: user.isActive ? Colors.green : Colors.red,
+                    color: _currentUser.isActive ? Colors.green : Colors.red,
                     width: 1,
                   ),
                 ),
                 child: Text(
-                  user.isActive ? 'ACTIVE' : 'INACTIVE',
+                  _currentUser.isActive ? 'ACTIVE' : 'INACTIVE',
                   style: TextStyle(
-                    color: user.isActive ? Colors.green : Colors.red,
+                    color: _currentUser.isActive ? Colors.green : Colors.red,
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1,
@@ -780,22 +832,22 @@ class ProfileScreen extends StatelessWidget {
               const SizedBox(height: 12),
 
               // Created At
-              if (user.createdAt != null) ...[
+              if (_currentUser.createdAt != null) ...[
                 _buildMetadataRow(
                   icon: Icons.add_circle_outline_rounded,
                   label: 'Joined',
-                  value: _formatDate(user.createdAt!),
+                  value: _formatDate(_currentUser.createdAt!),
                   color: Colors.blue,
                 ),
                 const SizedBox(height: 12),
               ],
 
               // Updated At
-              if (user.updatedAt != null) ...[
+              if (_currentUser.updatedAt != null) ...[
                 _buildMetadataRow(
                   icon: Icons.update_rounded,
                   label: 'Last Updated',
-                  value: _formatDate(user.updatedAt!),
+                  value: _formatDate(_currentUser.updatedAt!),
                   color: Colors.green,
                 ),
               ],
@@ -894,8 +946,8 @@ class ProfileScreen extends StatelessWidget {
   }
 
   String _getAvatarText() {
-    if (user.displayname.isNotEmpty) {
-      return user.displayname[0].toUpperCase();
+    if (_currentUser.displayname.isNotEmpty) {
+      return _currentUser.displayname[0].toUpperCase();
     }
     return 'U';
   }

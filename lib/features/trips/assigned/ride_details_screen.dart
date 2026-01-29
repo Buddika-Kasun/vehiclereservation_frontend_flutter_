@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/utils/optional_permission_manager%20copy.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/trip_details_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
@@ -15,6 +17,7 @@ import 'package:flutter/foundation.dart';
 // Import new WebSocket structure
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/websocket_manager.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/trip_handler.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/users/admin/check_list_screen.dart';
 
 class RideDetailsScreen extends StatefulWidget {
   final int tripId;
@@ -49,6 +52,11 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
   bool _isConnected = false;
   bool _isInitializing = false;
   Timer? _debounceTimer;
+
+  // Checklist state
+  bool _checkingChecklist = false;
+  bool _checklistExists = false;
+  bool _checklistChecked = false;
 
   @override
   void initState() {
@@ -206,6 +214,9 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
       setState(() {
         _isLoading = true;
         _errorMessage = '';
+        _checklistExists = false;
+        _checklistChecked = false;
+        _checkingChecklist = false;
       });
 
       final response = await ApiService.getTripById(widget.tripId);
@@ -217,6 +228,9 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
 
         // Initialize map after loading trip details
         _initializeMap();
+        
+        // Check checklist existence
+        await _checkChecklistExistence();
       } else {
         throw Exception(response['message'] ?? 'Failed to fetch trip details');
       }
@@ -229,6 +243,54 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _checkChecklistExistence() async {
+    if (!mounted) return;
+    
+    // Only check for "read" status trips where user is primary driver
+    final tripStatus = _tripDetails?.status?.toLowerCase() ?? '';
+    if (tripStatus != 'read') return;
+    
+    final isPrimaryDriver = StorageService.userData?.id ==
+        _tripDetails?.details.drivers.primary?.id;
+    if (!isPrimaryDriver) return;
+    
+    final vehicleId = _tripDetails?.vehicle.id?.toString();
+    if (vehicleId == null || vehicleId.isEmpty) return;
+    
+    setState(() {
+      _checkingChecklist = true;
+    });
+    
+    try {
+      final tripDate = _tripDetails?.startDate != null
+          ? DateFormat('yyyy-MM-dd').parse(_tripDetails!.startDate)
+          : DateTime.now();
+      
+      final exists = await ApiService.checkIfChecklistExists(
+        vehicleId: vehicleId,
+        date: tripDate,
+      );
+      
+      if (mounted) {
+        setState(() {
+          _checklistExists = exists;
+          _checkingChecklist = false;
+          _checklistChecked = true;
+        });
+      }
+      
+      print('✅ Checklist exists: $exists for vehicle $vehicleId on $tripDate');
+    } catch (e) {
+      print('❌ Error checking checklist: $e');
+      if (mounted) {
+        setState(() {
+          _checkingChecklist = false;
+          _checklistChecked = true;
+        });
+      }
     }
   }
 
@@ -577,18 +639,122 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
   }
 
   Future<void> _makePhoneCall(String phoneNumber) async {
-    final url = 'tel:$phoneNumber';
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url));
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Cannot make call'),
-          backgroundColor: Colors.red,
-        ),
-      );
+    try {
+      // Clean the phone number
+      String cleanedNumber = phoneNumber.trim();
+
+      // Validate phone number format
+      if (cleanedNumber.isEmpty) {
+        _showSnackBar('Phone number is empty', Colors.red);
+        return;
+      }
+
+      // Check if we have permission first
+      final hasPermission =
+          await OptionalPermissionManager.requestPhonePermission(
+            context: context,
+            rationaleMessage: 'Phone permission is required to make calls',
+          );
+
+      if (!hasPermission) {
+        _showSnackBar('Cannot make call without permission', Colors.red);
+        return;
+      }
+
+      // Create URL with proper format
+      final url = 'tel:$cleanedNumber';
+      final uri = Uri.parse(url);
+
+      print('📞 Attempting to call: $cleanedNumber');
+      print('📞 URL: $url');
+
+      // Check if we can launch
+      bool canLaunch = await canLaunchUrl(uri);
+      print('📞 Can launch URL: $canLaunch');
+
+      if (canLaunch) {
+        await launchUrl(uri);
+        print('📞 Launched dialer successfully');
+      } else {
+        // Fallback: Try to open dialer with number manually
+        print('📞 canLaunchUrl returned false, trying alternative');
+        await _launchDialerFallback(cleanedNumber);
+      }
+    } catch (e, stackTrace) {
+      print('❌ Error making call: $e');
+      print('❌ Stack trace: $stackTrace');
+      _showSnackBar('Unable to make call: ${e.toString()}', Colors.red);
     }
   }
+
+  // Alternative method for opening dialer
+  Future<void> _launchDialerFallback(String phoneNumber) async {
+    try {
+      // Try different URL formats
+      final String url = 'tel:$phoneNumber';
+      final Uri uri = Uri.parse(url);
+
+      // Try launching directly without checking first
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      print('❌ Fallback also failed: $e');
+
+      // Show alternative options
+      if (context.mounted) {
+        await _showNoDialerDialog(context, phoneNumber);
+      }
+    }
+  }
+
+  // Dialog when no dialer is found
+  Future<void> _showNoDialerDialog(
+    BuildContext context,
+    String phoneNumber,
+  ) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Cannot Make Call'),
+          content: Text(
+            'No phone app found to make calls.\n\n'
+            'Phone number: $phoneNumber\n\n'
+            'You can manually dial this number.',
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Copy Number'),
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: phoneNumber));
+                Navigator.of(context).pop();
+                _showSnackBar('Phone number copied to clipboard', Colors.green);
+              },
+            ),
+            TextButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showSnackBar(String message, Color color) {
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
 
   void _navigateToConflictTrip(int tripId) {
     Navigator.push(
@@ -749,6 +915,176 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
       default:
         return Colors.grey;
     }
+  }
+
+  // Add these helper methods
+  String _getTripTypeDisplayName(String type) {
+    switch (type.toLowerCase()) {
+      case 'normal':
+        return 'Normal';
+      case 'fixed_rate':
+        return 'Fixed Rate';
+      case 'safety_approval':
+        return 'Safety Approval';
+      default:
+        return type;
+    }
+  }
+
+  Color _getTripTypeColor(String type) {
+    switch (type.toLowerCase()) {
+      case 'normal':
+        return Colors.blue;
+      case 'fixed_rate':
+        return Colors.green;
+      case 'safety_approval':
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getTripTypeIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'normal':
+        return Icons.trip_origin;
+      case 'fixed_rate':
+        return Icons.monetization_on;
+      case 'safety_approval':
+        return Icons.security;
+      default:
+        return Icons.trip_origin;
+    }
+  }
+
+  Widget _buildTripTypeSection() {
+    if (_tripDetails?.tripType == null) {
+      return SizedBox.shrink();
+    }
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(0, 0, 0, 16),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        border: Border(bottom: BorderSide(color: Colors.grey[800]!)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Trip Type',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 12),
+
+          // Trip Type Badge
+          Container(
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: _getTripTypeColor(_tripDetails!.tripType).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: _getTripTypeColor(
+                  _tripDetails!.tripType,
+                ).withOpacity(0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: _getTripTypeColor(_tripDetails!.tripType),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Icon(
+                    _getTripTypeIcon(_tripDetails!.tripType),
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _getTripTypeDisplayName(_tripDetails!.tripType),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      if (_tripDetails!.tripType == 'fixed_rate' &&
+                          _tripDetails!.fixedRate != null)
+                        Text(
+                          'Fixed Rate: LKR ${_formatCurrency(_tripDetails!.fixedRate!)}',
+                          style: TextStyle(
+                            color: Color(0xFFF9C80E),
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _getTripTypeColor(
+                      _tripDetails!.tripType,
+                    ).withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _tripDetails!.tripType.toUpperCase(),
+                    style: TextStyle(
+                      color: _getTripTypeColor(_tripDetails!.tripType),
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Reason Field
+          if (_tripDetails?.reason != null && _tripDetails!.reason!.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(top: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Reason',
+                    style: TextStyle(color: Colors.grey[300], fontSize: 14),
+                  ),
+                  SizedBox(height: 4),
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[800],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _tripDetails!.reason!,
+                      style: TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   Widget _buildMapSection() {
@@ -967,6 +1303,10 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Trip Type Section - ADD THIS
+          _buildTripTypeSection(),
+          SizedBox(height: 8),
+
           Text(
             'Trip Information',
             style: TextStyle(
@@ -1226,7 +1566,7 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
             ),
           ),
         ],
-      ),
+      )
     );
   }
 
@@ -1522,7 +1862,7 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Awaiting supervisor assignment',
+                          'Vehicle assignment pending',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 14,
@@ -1911,297 +2251,6 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
     );
   }
 
-  /*
-  Widget _buildVehicleSection() {
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[900],
-        border: Border(
-          bottom: BorderSide(color: Colors.grey[800]!),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Vehicle Details',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 12),
-          
-          // Vehicle Information
-          Container(
-            padding: EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.grey[800],
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Color(0xFFF9C80E),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Icon(Icons.directions_car, color: Colors.black, size: 20),
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _tripDetails?.vehicle.model ?? 'N/A',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            _tripDetails?.vehicle.regNo ?? 'N/A',
-                            style: TextStyle(
-                              color: Colors.grey[300],
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 12),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 8,
-                  children: [
-                    _buildVehicleDetailChip(
-                      Icons.airline_seat_recline_normal,
-                      '${_tripDetails?.vehicle.seatingCapacity ?? 0} Seats',
-                    ),
-                    _buildVehicleDetailChip(
-                      Icons.event_seat,
-                      '${_tripDetails?.vehicle.seatingAvailability ?? 0} Available',
-                    ),
-                    _buildVehicleDetailChip(
-                      Icons.local_gas_station,
-                      _tripDetails?.details.vehicleDetails.specifications.fuelType ?? 'N/A',
-                    ),
-                  ],
-                ),
-                SizedBox(height: 12),
-                if (_tripDetails?.details.vehicleDetails.status.odometerLastReading != null)
-                  Row(
-                    children: [
-                      Icon(Icons.speed, color: Colors.grey[400], size: 16),
-                      SizedBox(width: 8),
-                      Text(
-                        'Last Odometer: ${_tripDetails!.details.vehicleDetails.status.odometerLastReading} km',
-                        style: TextStyle(color: Colors.grey[300], fontSize: 14),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
-          ),
-          
-          // Drivers Section
-          if (_tripDetails?.details.drivers.hasDrivers == true)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(height: 16),
-                Text(
-                  'Drivers',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: 8),
-                if (_tripDetails?.details.drivers.primary != null)
-                  _buildDriverCard(
-                    _tripDetails!.details.drivers.primary!,
-                    'Primary Driver',
-                  ),
-                if (_tripDetails?.details.drivers.secondary != null)
-                  _buildDriverCard(
-                    _tripDetails!.details.drivers.secondary!,
-                    'Secondary Driver',
-                  ),
-              ],
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildVehicleDetailChip(IconData icon, String text) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.grey[700],
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: Color(0xFFF9C80E), size: 14),
-          SizedBox(width: 6),
-          Text(
-            text,
-            style: TextStyle(color: Colors.white, fontSize: 12),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDriverCard(Driver driver, String role) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 8),
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[800],
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: role.contains('Primary') ? Colors.blue : Colors.green,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Icon(
-              Icons.person,
-              color: Colors.white,
-              size: 20,
-            ),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      driver.name,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: role.contains('Primary') 
-                            ? Colors.blue.withOpacity(0.1)
-                            : Colors.green.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        role,
-                        style: TextStyle(
-                          color: role.contains('Primary') ? Colors.blue : Colors.green,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.phone, color: Colors.grey[400], size: 14),
-                    SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        driver.phone,
-                        style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => _makePhoneCall(driver.phone),
-                      icon: Icon(Icons.call, color: Color(0xFFF9C80E), size: 20),
-                      padding: EdgeInsets.zero,
-                      constraints: BoxConstraints(),
-                      tooltip: 'Call driver',
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildApprovalSection() {
-    if (_tripDetails?.details.approval.hasApproval != true) {
-      return SizedBox.shrink();
-    }
-
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[900],
-        border: Border(
-          bottom: BorderSide(color: Colors.grey[800]!),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Approval Status',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 12),
-          if (_tripDetails?.details.approval.approvers.hod != null)
-            _buildApproverRow(
-              'HOD Approval',
-              _tripDetails!.details.approval.approvers.hod!,
-            ),
-          if (_tripDetails?.details.approval.approvers.secondary != null)
-            _buildApproverRow(
-              'Secondary Approval',
-              _tripDetails!.details.approval.approvers.secondary!,
-            ),
-          if (_tripDetails?.details.approval.approvers.safety != null)
-            _buildApproverRow(
-              'Safety Approval',
-              _tripDetails!.details.approval.approvers.safety!,
-            ),
-        ],
-      ),
-    );
-  }
-*/
   Widget _buildLocationsSection() {
     return Container(
       padding: EdgeInsets.all(16),
@@ -2610,7 +2659,6 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
     );
   }
 
-  // Add this method in the _RideDetailsScreenState class
   Widget _buildStartFinishButton() {
     // Check if the current user is the primary driver
     final isPrimaryDriver =
@@ -2623,14 +2671,46 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
     // Determine which button to show
     bool showStartButton = isPrimaryDriver && tripStatus == 'read';
     bool showEndButton = isPrimaryDriver && tripStatus == 'ongoing';
-    //bool showCancelButton = isPrimaryDriver && tripStatus == 'read';
 
     // If not driver or no valid action, show nothing
-    if (!isPrimaryDriver ||
-        (!showStartButton && !showEndButton 
-        //&& !showCancelButton
-        )) {
+    if (!isPrimaryDriver || (!showStartButton && !showEndButton)) {
       return SizedBox.shrink();
+    }
+
+    // Method to navigate to checklist screen
+    Future<void> _navigateToChecklistScreen() async {
+      final vehicleId = _tripDetails?.vehicle.id?.toString();
+      final vehicleRegNo = _tripDetails?.vehicle.regNo ?? 'N/A';
+      final userData = StorageService.userData;
+
+      if (vehicleId == null || vehicleId.isEmpty || userData == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Vehicle or user information not available'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      // Navigate to checklist screen
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChecklistScreen(
+            vehicleId: vehicleId,
+            vehicleRegNo: vehicleRegNo,
+            userId: userData.id.toString(),
+            userName: userData.displayname,
+            userRole: userData.role.toString(),
+          ),
+        ),
+      );
+
+      // When returning from checklist screen, reload trip details
+      if (mounted && result == true) {
+        await _loadTripDetails();
+      }
     }
 
     return Container(
@@ -2641,89 +2721,204 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
       ),
       child: Column(
         children: [
-          // START TRIP BUTTON
-          if (showStartButton)
-            ElevatedButton(
-              onPressed: () => _showStartTripConfirmation(),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-                minimumSize: Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.play_arrow, size: 20),
-                  SizedBox(width: 8),
-                  Text(
-                    'Start Trip',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            ),
-
-          // END TRIP BUTTON
+          // END TRIP BUTTON (unchanged)
           if (showEndButton)
-            ElevatedButton(
-              onPressed: () => _showEndTripConfirmation(),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-                minimumSize: Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.stop, size: 20),
-                  SizedBox(width: 8),
-                  Text(
-                    'End Trip',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            ),
-
-          // CANCEL BUTTON (only for 'read' status)
-          /*
-          if (showCancelButton)
             Padding(
               padding: EdgeInsets.only(top: 12),
               child: ElevatedButton(
-                onPressed: () => _showCancelConfirmationDialog(),
+                onPressed: () => _showEndTripConfirmation(),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.withOpacity(0.2),
-                  foregroundColor: Colors.red,
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
                   minimumSize: Size(double.infinity, 50),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
-                    side: BorderSide(color: Colors.red.withOpacity(0.3)),
                   ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.cancel, size: 20),
+                    Icon(Icons.stop, size: 20),
                     SizedBox(width: 8),
-                    Text('Cancel Trip', style: TextStyle(fontSize: 16)),
+                    Text(
+                      'End Trip',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
-            */
+          
+          // START TRIP SECTION (only for "read" status)
+          if (showStartButton)
+            Column(
+              children: [
+                // Checking state
+                if (_checkingChecklist)
+                  ElevatedButton(
+                    onPressed: null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey[700],
+                      foregroundColor: Colors.grey[400],
+                      minimumSize: Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Checking Vehicle...',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  )
+                
+                // Checklist exists - Show START TRIP button
+                else if (_checklistChecked && _checklistExists)
+                  ElevatedButton(
+                    onPressed: () => _showStartTripConfirmation(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      minimumSize: Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.play_arrow, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Start Trip',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                
+                // Checklist doesn't exist - Show CHECK VEHICLE button
+                else if (_checklistChecked && !_checklistExists)
+                  Column(
+                    children: [
+                      // Info message
+                      Container(
+                        margin: EdgeInsets.only(bottom: 12),
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.warning_amber, color: Colors.orange, size: 20),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Vehicle Check Required',
+                                    style: TextStyle(
+                                      color: Colors.orange,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Complete vehicle checklist before starting the trip',
+                                    style: TextStyle(
+                                      color: Colors.orange[300],
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      // Check Vehicle button
+                      ElevatedButton(
+                        onPressed: () => _navigateToChecklistScreen(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                          minimumSize: Size(double.infinity, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.checklist, size: 20),
+                            SizedBox(width: 8),
+                            Text(
+                              'Check Vehicle First',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  )
+                
+                // Still waiting for check to complete (initial state)
+                else
+                  ElevatedButton(
+                    onPressed: null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey[700],
+                      foregroundColor: Colors.grey[400],
+                      minimumSize: Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.schedule, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Verifying Vehicle Status...',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
         ],
       ),
     );
   }
-
-  // Add these new methods for start/end trip:
 
   Future<void> _showStartTripConfirmation() async {
     final result = await showDialog(
@@ -3122,7 +3317,6 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
     }
   }
 
-  // Add this method for the confirmation dialog
   Future<void> _showCancelConfirmationDialog() async {
     final result = await showDialog(
       context: context,
@@ -3174,7 +3368,6 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
     }
   }
 
-  // Add this method to handle trip cancellation
   Future<void> _cancelTrip() async {
     try {
       setState(() {
@@ -3235,7 +3428,7 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
                   ),
                 ),
               ),
-              _buildStartFinishButton(), // Add cancel button at the bottom
+              _buildStartFinishButton(),
             ],
           ),
         ),
@@ -3332,4 +3525,5 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
       ],
     );
   }
+
 }

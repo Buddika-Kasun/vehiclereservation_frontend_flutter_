@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/costCenter_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/color_generator.dart';
@@ -8,21 +9,45 @@ class CostCenterManagementScreen extends StatefulWidget {
   const CostCenterManagementScreen({Key? key}) : super(key: key);
 
   @override
-  _CostCenterManagementScreenState createState() => _CostCenterManagementScreenState();
+  _CostCenterManagementScreenState createState() =>
+      _CostCenterManagementScreenState();
 }
 
-class _CostCenterManagementScreenState extends State<CostCenterManagementScreen> {
+class _CostCenterManagementScreenState
+    extends State<CostCenterManagementScreen> {
   List<CostCenter> _costCenters = [];
+  Map<String, dynamic>? _pagination;
   int? _expandedIndex;
   bool _isLoading = true;
   bool _hasCompany = false;
   bool _hasError = false;
   String _errorMessage = '';
+  bool _isLoadingMore = false;
+  int _currentPage = 1;
+  bool _hasMoreData = true;
+  final ScrollController _scrollController = ScrollController();
+  final int _limit = 10; // Changed from 20 to 10
 
   @override
   void initState() {
     super.initState();
     _checkCompanyAndLoadCostCenters();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels ==
+        _scrollController.position.maxScrollExtent) {
+      if (_hasMoreData && !_isLoadingMore) {
+        _loadMoreCostCenters();
+      }
+    }
   }
 
   Future<void> _checkCompanyAndLoadCostCenters() async {
@@ -34,7 +59,7 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
 
       // First check if company exists
       final companyResponse = await ApiService.getCompanyStatus();
-      
+
       if (companyResponse['success'] == true) {
         setState(() {
           _hasCompany = companyResponse['data'] ?? false;
@@ -42,14 +67,16 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
 
         if (_hasCompany) {
           // Load cost centers only if company exists
-          await _loadCostCenters();
+          await _loadCostCenters(reset: true);
         } else {
           setState(() {
             _isLoading = false;
           });
         }
       } else {
-        throw Exception(companyResponse['message'] ?? 'Failed to check company status');
+        throw Exception(
+          companyResponse['message'] ?? 'Failed to check company status',
+        );
       }
     } catch (e) {
       print('Error checking company: $e');
@@ -61,15 +88,45 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
     }
   }
 
-  Future<void> _loadCostCenters() async {
+  Future<void> _loadCostCenters({bool reset = false}) async {
     try {
-      final response = await ApiService.getCostCenters();
-      
-      if (response['success'] == true) {
-        final List<dynamic> costCentersData = response['data']['costCenters'] ?? [];
+      if (reset) {
         setState(() {
-          _costCenters = costCentersData.map((data) => CostCenter.fromJson(data)).toList();
+          _currentPage = 1;
+          _hasMoreData = true;
+        });
+      }
+
+      final response = await ApiService.getCostCenters(
+        page: _currentPage,
+        limit: _limit,
+      );
+
+      if (response['success'] == true) {
+        final List<dynamic> costCentersData =
+            response['data']['costCenters'] ?? [];
+        final pagination = response['data']['pagination'] ?? {};
+        setState(() {
+          if (reset) {
+            _costCenters = costCentersData
+                .map((data) => CostCenter.fromJson(data))
+                .toList();
+          } else {
+            _costCenters.addAll(
+              costCentersData.map((data) => CostCenter.fromJson(data)).toList(),
+            );
+          }
+          _pagination = pagination;
           _isLoading = false;
+          _isLoadingMore = false;
+
+          // Check if there are more pages
+          final int totalPages = pagination['totalPages'] ?? 1;
+          final int currentPage = pagination['page'] ?? 1;
+          _hasMoreData = currentPage < totalPages;
+          if (!reset && costCentersData.isNotEmpty) {
+            _currentPage = currentPage + 1;
+          }
         });
       } else {
         throw Exception(response['message'] ?? 'Failed to load cost centers');
@@ -80,6 +137,56 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
         _hasError = true;
         _errorMessage = e.toString();
         _isLoading = false;
+        _isLoadingMore = false;
+      });
+    }
+  }
+
+  Future<void> _loadMoreCostCenters() async {
+    if (_isLoadingMore || !_hasMoreData) return;
+
+    setState(() {
+      _isLoadingMore = true;
+      if (_currentPage == 1) {
+        _currentPage = 2; // Start from page 2 when loading more
+      }
+    });
+
+    try {
+      final response = await ApiService.getCostCenters(
+        page: _currentPage,
+        limit: _limit,
+      );
+
+      if (response['success'] == true) {
+        final List<dynamic> costCentersData =
+            response['data']['costCenters'] ?? [];
+        final pagination = response['data']['pagination'] ?? {};
+
+        setState(() {
+          _costCenters.addAll(
+            costCentersData.map((data) => CostCenter.fromJson(data)).toList(),
+          );
+          _pagination = pagination;
+          _isLoadingMore = false;
+
+          // Update pagination info
+          final int totalPages = pagination['totalPages'] ?? 1;
+          final int currentPage = pagination['page'] ?? 1;
+          _hasMoreData = currentPage < totalPages;
+          if (costCentersData.isNotEmpty) {
+            _currentPage = currentPage + 1;
+          }
+        });
+      } else {
+        throw Exception(
+          response['message'] ?? 'Failed to load more cost centers',
+        );
+      }
+    } catch (e) {
+      print('Error loading more cost centers: $e');
+      setState(() {
+        _isLoadingMore = false;
       });
     }
   }
@@ -87,9 +194,9 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
   Future<void> _createCostCenter(CostCenter costCenter) async {
     try {
       final response = await ApiService.createCostCenter(costCenter.toJson());
-      
+
       if (response['success'] == true) {
-        await _loadCostCenters();
+        await _loadCostCenters(reset: true);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Cost Center created successfully')),
         );
@@ -107,10 +214,13 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
 
   Future<void> _updateCostCenter(CostCenter costCenter) async {
     try {
-      final response = await ApiService.updateCostCenter(costCenter.id, costCenter.toJson());
-      
+      final response = await ApiService.updateCostCenter(
+        costCenter.id,
+        costCenter.toJson(),
+      );
+
       if (response['success'] == true) {
-        await _loadCostCenters();
+        await _loadCostCenters(reset: true);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Cost Center updated successfully')),
         );
@@ -129,7 +239,7 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
   Future<void> _deleteCostCenter(int id, int index) async {
     try {
       final response = await ApiService.deleteCostCenter(id);
-      
+
       if (response['success'] == true) {
         setState(() {
           _costCenters.removeAt(index);
@@ -147,14 +257,15 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to delete cost center: $e')),
       );
-      //rethrow;
     }
   }
 
   String _generateShortName(String costCenterName) {
     if (costCenterName.isEmpty) return 'CC';
     final words = costCenterName.split(' ');
-    final initials = words.map((word) => word.isNotEmpty ? word[0].toUpperCase() : '').join();
+    final initials = words
+        .map((word) => word.isNotEmpty ? word[0].toUpperCase() : '')
+        .join();
     return initials;
   }
 
@@ -165,10 +276,10 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
       body: _isLoading
           ? _buildLoading()
           : _hasError
-              ? _buildErrorWidget()
-              : !_hasCompany
-                  ? _buildNoCompanyWidget()
-                  : _buildMainContent(),
+          ? _buildErrorWidget()
+          : !_hasCompany
+          ? _buildNoCompanyWidget()
+          : _buildMainContent(),
     );
   }
 
@@ -246,10 +357,7 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
             SizedBox(height: 16),
             Text(
               'You need to create a company before managing cost centers.',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[300],
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.grey[300]),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: 32),
@@ -339,7 +447,7 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
         ),
 
         SizedBox(height: 8),
-        
+
         // Available Section Header
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 24),
@@ -361,7 +469,7 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  _costCenters.length.toString(),
+                  _pagination?['total']?.toString() ?? '0',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -377,18 +485,34 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
 
         // Cost Centers List
         Expanded(
-          child: _costCenters.isEmpty 
+          child: _costCenters.isEmpty
               ? _buildEmptyState()
               : RefreshIndicator(
-                  onRefresh: _loadCostCenters,
+                  onRefresh: () => _loadCostCenters(reset: true),
                   child: ListView.builder(
+                    controller: _scrollController,
                     padding: EdgeInsets.symmetric(horizontal: 24),
-                    itemCount: _costCenters.length,
+                    itemCount: _costCenters.length + (_isLoadingMore ? 1 : 0),
                     itemBuilder: (context, index) {
+                      if (index == _costCenters.length) {
+                        // Loading more indicator
+                        return Container(
+                          margin: EdgeInsets.symmetric(vertical: 16),
+                          child: Center(
+                            child: _hasMoreData
+                                ? CircularProgressIndicator(color: Colors.white)
+                                : Text(
+                                    'No more cost centers',
+                                    style: TextStyle(color: Colors.grey[400]),
+                                  ),
+                          ),
+                        );
+                      }
+
                       final costCenter = _costCenters[index];
                       final isExpanded = _expandedIndex == index;
                       final shortName = _generateShortName(costCenter.name);
-                      
+
                       return Container(
                         margin: EdgeInsets.only(bottom: 12),
                         child: Material(
@@ -407,10 +531,17 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                               curve: Curves.easeInOut,
                               padding: EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: ColorGenerator.getRandomColor(costCenter.name).withOpacity(0.1),
+                                color: ColorGenerator.getRandomColor(
+                                  costCenter.name,
+                                ).withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(12),
-                                border: isExpanded 
-                                    ? Border.all(color: ColorGenerator.getRandomColor(costCenter.name).withOpacity(0.2), width: 2)
+                                border: isExpanded
+                                    ? Border.all(
+                                        color: ColorGenerator.getRandomColor(
+                                          costCenter.name,
+                                        ).withOpacity(0.2),
+                                        width: 2,
+                                      )
                                     : null,
                               ),
                               child: Column(
@@ -424,8 +555,12 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                                         width: 40,
                                         height: 40,
                                         decoration: BoxDecoration(
-                                          color: ColorGenerator.getRandomColor(costCenter.name),
-                                          borderRadius: BorderRadius.circular(8),
+                                          color: ColorGenerator.getRandomColor(
+                                            costCenter.name,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                         ),
                                         child: Center(
                                           child: Text(
@@ -439,34 +574,34 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                                         ),
                                       ),
                                       SizedBox(width: 12),
-                                      
+
                                       // Cost Center Info
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
-                                                Text(
-                                                  costCenter.name,
-                                                  style: TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.black,
-                                                  ),
-                                                ),
-                                                SizedBox(height: 2),
-                                                Text(
-                                                  'Budget: \$${costCenter.budget.toStringAsFixed(2)}',
-                                                  style: TextStyle(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w900,
-                                                    color: Colors.grey[700],
-                                                  ),
-                                                ),
-                                              ],
-                                            
-                                        )
+                                            Text(
+                                              costCenter.name,
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.black,
+                                              ),
+                                            ),
+                                            SizedBox(height: 2),
+                                            Text(
+                                              'Budget: LKR ${_formatBudget(costCenter.budget)}',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w900,
+                                                color: Colors.grey[700],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                      
+
                                       // Expand/Collapse Arrow
                                       Transform.rotate(
                                         angle: isExpanded ? -1.5708 : 1.5708,
@@ -478,31 +613,36 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                                       ),
                                     ],
                                   ),
-                                  
+
                                   // Expanded Details
                                   if (isExpanded) ...[
                                     SizedBox(height: 16),
                                     Divider(height: 1, color: Colors.grey[300]),
                                     SizedBox(height: 16),
-                                    
+
                                     // Details Grid
                                     Row(
                                       children: [
                                         _buildDetailItem(
                                           icon: Icons.account_balance_wallet,
                                           title: 'Allocated Budget',
-                                          value: '\$${costCenter.budget.toStringAsFixed(2)}',
+                                          value:
+                                              'LKR ${_formatBudget(costCenter.budget)}',
                                         ),
                                         SizedBox(width: 24),
                                         _buildDetailItem(
                                           icon: Icons.circle,
                                           title: 'Status',
-                                          value: costCenter.isActive ? 'Active' : 'Inactive',
-                                          valueColor: costCenter.isActive ? Colors.green : Colors.orange,
+                                          value: costCenter.isActive
+                                              ? 'Active'
+                                              : 'Inactive',
+                                          valueColor: costCenter.isActive
+                                              ? Colors.green
+                                              : Colors.orange,
                                         ),
                                       ],
                                     ),
-                            
+
                                     SizedBox(height: 20),
 
                                     Row(
@@ -510,20 +650,29 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                                         _buildDetailItem(
                                           icon: Icons.calendar_today,
                                           title: 'Created At',
-                                          value: costCenter.createdAt?.toIso8601String().split('T').first ?? 'N/A',
+                                          value:
+                                              costCenter.createdAt
+                                                  ?.toIso8601String()
+                                                  .split('T')
+                                                  .first ??
+                                              'N/A',
                                         ),
                                         SizedBox(width: 24),
                                         _buildDetailItem(
                                           icon: Icons.update,
                                           title: 'Updated At',
-                                          value: costCenter.updatedAt?.toIso8601String().split('T').first ?? 'N/A',
-                                        )
+                                          value:
+                                              costCenter.updatedAt
+                                                  ?.toIso8601String()
+                                                  .split('T')
+                                                  .first ??
+                                              'N/A',
+                                        ),
                                       ],
                                     ),
-                                          
-                                    
+
                                     SizedBox(height: 16),
-                                    
+
                                     // Action Buttons
                                     Row(
                                       children: [
@@ -533,10 +682,12 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                                             height: 46,
                                             decoration: BoxDecoration(
                                               color: AppColors.secondary,
-                                              borderRadius: BorderRadius.circular(12),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
                                               boxShadow: [
                                                 BoxShadow(
-                                                  color: AppColors.secondary.withOpacity(0.3),
+                                                  color: AppColors.secondary
+                                                      .withOpacity(0.3),
                                                   blurRadius: 8,
                                                   offset: Offset(0, 4),
                                                 ),
@@ -545,22 +696,35 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                                             child: Material(
                                               color: Colors.transparent,
                                               child: InkWell(
-                                                borderRadius: BorderRadius.circular(12),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
                                                 onTap: () {
-                                                  _showEditCostCenterDialog(index, costCenter);
+                                                  _showEditCostCenterDialog(
+                                                    index,
+                                                    costCenter,
+                                                  );
                                                 },
                                                 child: Center(
                                                   child: Row(
-                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .center,
                                                     children: [
-                                                      Icon(Icons.edit, color: AppColors.primary, size: 20),
+                                                      Icon(
+                                                        Icons.edit,
+                                                        color:
+                                                            AppColors.primary,
+                                                        size: 20,
+                                                      ),
                                                       SizedBox(width: 8),
                                                       Text(
                                                         'Edit Cost Center',
                                                         style: TextStyle(
-                                                          color: AppColors.primary,
+                                                          color:
+                                                              AppColors.primary,
                                                           fontSize: 16,
-                                                          fontWeight: FontWeight.w600,
+                                                          fontWeight:
+                                                              FontWeight.w600,
                                                         ),
                                                       ),
                                                     ],
@@ -571,17 +735,21 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                                           ),
                                         ),
                                         SizedBox(width: 12),
-                                        
+
                                         // Delete Button
                                         Container(
                                           width: 46,
                                           height: 46,
                                           decoration: BoxDecoration(
                                             color: Colors.red,
-                                            borderRadius: BorderRadius.circular(12),
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
                                             boxShadow: [
                                               BoxShadow(
-                                                color: Colors.red.withOpacity(0.3),
+                                                color: Colors.red.withOpacity(
+                                                  0.3,
+                                                ),
                                                 blurRadius: 8,
                                                 offset: Offset(0, 4),
                                               ),
@@ -590,12 +758,17 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                                           child: Material(
                                             color: Colors.transparent,
                                             child: InkWell(
-                                              borderRadius: BorderRadius.circular(12),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
                                               onTap: () {
                                                 _showDeleteConfirmation(index);
                                               },
                                               child: Center(
-                                                child: Icon(Icons.delete, color: Colors.white, size: 20),
+                                                child: Icon(
+                                                  Icons.delete,
+                                                  color: Colors.white,
+                                                  size: 20,
+                                                ),
                                               ),
                                             ),
                                           ),
@@ -617,16 +790,17 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
     );
   }
 
+  String _formatBudget(double budget) {
+    final formatter = NumberFormat('#,##0.00', 'en_US');
+    return formatter.format(budget);
+  }
+
   Widget _buildEmptyState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.account_balance_wallet,
-            size: 80,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.account_balance_wallet, size: 80, color: Colors.grey[400]),
           SizedBox(height: 16),
           Text(
             'No Cost Center Found',
@@ -639,20 +813,8 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
           SizedBox(height: 8),
           Text(
             'Create your cost center to get started',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
           ),
-          SizedBox(height: 24),
-          /*ElevatedButton(
-            onPressed: _showCreateCostCenterDialog,
-            child: Text('Create Cost Center'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.secondary,
-              foregroundColor: AppColors.primary,
-            ),
-          ),*/
         ],
       ),
     );
@@ -735,15 +897,26 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                       labelText: 'Cost Center Name *',
                       labelStyle: const TextStyle(color: Colors.grey),
                       floatingLabelStyle: const TextStyle(color: Colors.yellow),
-                      prefixIcon: const Icon(Icons.account_balance_wallet, color: Colors.yellow),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      prefixIcon: const Icon(
+                        Icons.account_balance_wallet,
+                        color: Colors.yellow,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade600, width: 1),
+                        borderSide: BorderSide(
+                          color: Colors.grey.shade600,
+                          width: 1,
+                        ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.yellow, width: 1),
+                        borderSide: const BorderSide(
+                          color: Colors.yellow,
+                          width: 1,
+                        ),
                       ),
                       filled: true,
                       fillColor: Colors.transparent,
@@ -760,23 +933,37 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                       labelText: 'Allocated Budget *',
                       labelStyle: const TextStyle(color: Colors.grey),
                       floatingLabelStyle: const TextStyle(color: Colors.yellow),
-                      prefixIcon: const Icon(Icons.attach_money, color: Colors.yellow),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      prefixIcon: const Icon(
+                        Icons.attach_money,
+                        color: Colors.yellow,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade600, width: 1),
+                        borderSide: BorderSide(
+                          color: Colors.grey.shade600,
+                          width: 1,
+                        ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.yellow, width: 1),
+                        borderSide: const BorderSide(
+                          color: Colors.yellow,
+                          width: 1,
+                        ),
                       ),
                       filled: true,
                       fillColor: Colors.transparent,
                       hintText: 'e.g., 10000.00',
                       hintStyle: const TextStyle(color: Colors.grey),
                     ),
-                    keyboardType: TextInputType.numberWithOptions(decimal: true),
-                    onChanged: (value) => budget = double.tryParse(value) ?? 0.0,
+                    keyboardType: TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    onChanged: (value) =>
+                        budget = double.tryParse(value) ?? 0.0,
                   ),
                   const SizedBox(height: 8),
 
@@ -785,8 +972,9 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text("Active Cost Center",
-                            style: TextStyle(color: Colors.white, fontSize: 16)
+                        const Text(
+                          "Active Cost Center",
+                          style: TextStyle(color: Colors.white, fontSize: 16),
                         ),
                         Transform.scale(
                           scale: 0.8,
@@ -800,13 +988,14 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                             inactiveTrackColor: Colors.transparent,
                             inactiveThumbColor: Colors.yellow.shade600,
                             activeColor: Colors.yellow[600],
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  
+
                   const SizedBox(height: 24),
 
                   Row(
@@ -815,7 +1004,10 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                         child: Container(
                           height: 50,
                           decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade600, width: 2),
+                            border: Border.all(
+                              color: Colors.grey.shade600,
+                              width: 2,
+                            ),
                             borderRadius: BorderRadius.circular(12),
                             color: Colors.transparent,
                           ),
@@ -823,7 +1015,9 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                             color: Colors.transparent,
                             child: InkWell(
                               borderRadius: BorderRadius.circular(12),
-                              onTap: _isSubmitting ? null : () => Navigator.pop(context),
+                              onTap: _isSubmitting
+                                  ? null
+                                  : () => Navigator.pop(context),
                               child: Center(
                                 child: Text(
                                   'Cancel',
@@ -839,53 +1033,67 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                         ),
                       ),
                       const SizedBox(width: 12),
-                      
+
                       Expanded(
                         child: Container(
                           height: 50,
                           decoration: BoxDecoration(
-                            color: _isSubmitting ? Colors.grey : Colors.yellow[600],
+                            color: _isSubmitting
+                                ? Colors.grey
+                                : Colors.yellow[600],
                             borderRadius: BorderRadius.circular(12),
-                            boxShadow: _isSubmitting ? [] : [
-                              BoxShadow(
-                                color: Colors.yellow.withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
+                            boxShadow: _isSubmitting
+                                ? []
+                                : [
+                                    BoxShadow(
+                                      color: Colors.yellow.withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
                           ),
                           child: Material(
                             color: Colors.transparent,
                             child: InkWell(
                               borderRadius: BorderRadius.circular(12),
-                              onTap: _isSubmitting ? null : () async {
-                                if (name.isNotEmpty && budget > 0) {
-                                  try {
-                                    setState(() {
-                                      _isSubmitting = true;
-                                    });
+                              onTap: _isSubmitting
+                                  ? null
+                                  : () async {
+                                      if (name.isNotEmpty && budget > 0) {
+                                        try {
+                                          setState(() {
+                                            _isSubmitting = true;
+                                          });
 
-                                    final newCostCenter = CostCenter(
-                                      id: 0, 
-                                      name: name, 
-                                      budget: budget, 
-                                      isActive: isActive
-                                    );
+                                          final newCostCenter = CostCenter(
+                                            id: 0,
+                                            name: name,
+                                            budget: budget,
+                                            isActive: isActive,
+                                          );
 
-                                    await _createCostCenter(newCostCenter);
+                                          await _createCostCenter(
+                                            newCostCenter,
+                                          );
 
-                                    Navigator.pop(context);
-                                  } catch (e) {
-                                    setState(() {
-                                      _isSubmitting = false;
-                                    });
-                                  }
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Please fill all required fields')),
-                                  );
-                                }
-                              },
+                                          Navigator.pop(context);
+                                        } catch (e) {
+                                          setState(() {
+                                            _isSubmitting = false;
+                                          });
+                                        }
+                                      } else {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              'Please fill all required fields',
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    },
                               child: Center(
                                 child: _isSubmitting
                                     ? SizedBox(
@@ -960,15 +1168,26 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                       labelText: 'Cost Center Name *',
                       labelStyle: const TextStyle(color: Colors.grey),
                       floatingLabelStyle: const TextStyle(color: Colors.yellow),
-                      prefixIcon: const Icon(Icons.account_balance_wallet, color: Colors.yellow),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      prefixIcon: const Icon(
+                        Icons.account_balance_wallet,
+                        color: Colors.yellow,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade600, width: 1),
+                        borderSide: BorderSide(
+                          color: Colors.grey.shade600,
+                          width: 1,
+                        ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.yellow, width: 1),
+                        borderSide: const BorderSide(
+                          color: Colors.yellow,
+                          width: 1,
+                        ),
                       ),
                       filled: true,
                       fillColor: Colors.transparent,
@@ -978,27 +1197,43 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                   const SizedBox(height: 16),
 
                   TextField(
-                    controller: TextEditingController(text: budget.toStringAsFixed(2)),
+                    controller: TextEditingController(
+                      text: budget.toStringAsFixed(2),
+                    ),
                     style: const TextStyle(color: Colors.yellow),
                     decoration: InputDecoration(
                       labelText: 'Allocated Budget *',
                       labelStyle: const TextStyle(color: Colors.grey),
                       floatingLabelStyle: const TextStyle(color: Colors.yellow),
-                      prefixIcon: const Icon(Icons.attach_money, color: Colors.yellow),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      prefixIcon: const Icon(
+                        Icons.attach_money,
+                        color: Colors.yellow,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade600, width: 1),
+                        borderSide: BorderSide(
+                          color: Colors.grey.shade600,
+                          width: 1,
+                        ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.yellow, width: 1),
+                        borderSide: const BorderSide(
+                          color: Colors.yellow,
+                          width: 1,
+                        ),
                       ),
                       filled: true,
                       fillColor: Colors.transparent,
                     ),
-                    keyboardType: TextInputType.numberWithOptions(decimal: true),
-                    onChanged: (value) => budget = double.tryParse(value) ?? 0.0,
+                    keyboardType: TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    onChanged: (value) =>
+                        budget = double.tryParse(value) ?? 0.0,
                   ),
                   const SizedBox(height: 8),
 
@@ -1007,8 +1242,9 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text("Active Cost Center",
-                            style: TextStyle(color: Colors.white, fontSize: 16)
+                        const Text(
+                          "Active Cost Center",
+                          style: TextStyle(color: Colors.white, fontSize: 16),
                         ),
                         Transform.scale(
                           scale: 0.8,
@@ -1022,13 +1258,14 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                             inactiveTrackColor: Colors.transparent,
                             inactiveThumbColor: Colors.yellow.shade600,
                             activeColor: Colors.yellow[600],
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  
+
                   const SizedBox(height: 24),
 
                   Row(
@@ -1037,7 +1274,10 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                         child: Container(
                           height: 50,
                           decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade600, width: 2),
+                            border: Border.all(
+                              color: Colors.grey.shade600,
+                              width: 2,
+                            ),
                             borderRadius: BorderRadius.circular(12),
                             color: Colors.transparent,
                           ),
@@ -1045,7 +1285,9 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                             color: Colors.transparent,
                             child: InkWell(
                               borderRadius: BorderRadius.circular(12),
-                              onTap: _isSubmitting ? null : () => Navigator.pop(context),
+                              onTap: _isSubmitting
+                                  ? null
+                                  : () => Navigator.pop(context),
                               child: Center(
                                 child: Text(
                                   'Cancel',
@@ -1061,49 +1303,55 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                         ),
                       ),
                       const SizedBox(width: 12),
-                      
+
                       Expanded(
                         child: Container(
                           height: 50,
                           decoration: BoxDecoration(
-                            color: _isSubmitting ? Colors.grey : Colors.yellow[600],
+                            color: _isSubmitting
+                                ? Colors.grey
+                                : Colors.yellow[600],
                             borderRadius: BorderRadius.circular(12),
-                            boxShadow: _isSubmitting ? [] : [
-                              BoxShadow(
-                                color: Colors.yellow.withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
+                            boxShadow: _isSubmitting
+                                ? []
+                                : [
+                                    BoxShadow(
+                                      color: Colors.yellow.withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
                           ),
                           child: Material(
                             color: Colors.transparent,
                             child: InkWell(
                               borderRadius: BorderRadius.circular(12),
-                              onTap: _isSubmitting ? null : () async {
-                                try {
-                                  setState(() {
-                                    _isSubmitting = true;
-                                  });
+                              onTap: _isSubmitting
+                                  ? null
+                                  : () async {
+                                      try {
+                                        setState(() {
+                                          _isSubmitting = true;
+                                        });
 
-                                  final updateCostCenter = CostCenter(
-                                    id: _costCenters[index].id,
-                                    name: name, 
-                                    budget: budget, 
-                                    isActive: isActive
-                                  );
+                                        final updateCostCenter = CostCenter(
+                                          id: _costCenters[index].id,
+                                          name: name,
+                                          budget: budget,
+                                          isActive: isActive,
+                                        );
 
-                                  await _updateCostCenter(
-                                    updateCostCenter
-                                  );
+                                        await _updateCostCenter(
+                                          updateCostCenter,
+                                        );
 
-                                  Navigator.pop(context);
-                                } catch (e) {
-                                  setState(() {
-                                    _isSubmitting = false;
-                                  });
-                                }
-                              },
+                                        Navigator.pop(context);
+                                      } catch (e) {
+                                        setState(() {
+                                          _isSubmitting = false;
+                                        });
+                                      }
+                                    },
                               child: Center(
                                 child: _isSubmitting
                                     ? SizedBox(
@@ -1170,10 +1418,7 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
 
                   Text(
                     'Are you sure you want to delete ${_costCenters[index].name} cost center?',
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 16,
-                    ),
+                    style: const TextStyle(color: Colors.grey, fontSize: 16),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
@@ -1184,7 +1429,10 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                         child: Container(
                           height: 50,
                           decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade600, width: 2),
+                            border: Border.all(
+                              color: Colors.grey.shade600,
+                              width: 2,
+                            ),
                             borderRadius: BorderRadius.circular(12),
                             color: Colors.transparent,
                           ),
@@ -1192,7 +1440,9 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                             color: Colors.transparent,
                             child: InkWell(
                               borderRadius: BorderRadius.circular(12),
-                              onTap: _isSubmitting ? null : () => Navigator.pop(context),
+                              onTap: _isSubmitting
+                                  ? null
+                                  : () => Navigator.pop(context),
                               child: Center(
                                 child: Text(
                                   'Cancel',
@@ -1208,39 +1458,46 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
                         ),
                       ),
                       const SizedBox(width: 12),
-                      
+
                       Expanded(
                         child: Container(
                           height: 50,
                           decoration: BoxDecoration(
                             color: _isSubmitting ? Colors.grey : Colors.red,
                             borderRadius: BorderRadius.circular(12),
-                            boxShadow: _isSubmitting ? [] : [
-                              BoxShadow(
-                                color: Colors.red.withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
+                            boxShadow: _isSubmitting
+                                ? []
+                                : [
+                                    BoxShadow(
+                                      color: Colors.red.withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
                           ),
                           child: Material(
                             color: Colors.transparent,
                             child: InkWell(
                               borderRadius: BorderRadius.circular(12),
-                              onTap: _isSubmitting ? null : () async {
-                                try {
-                                  setState(() {
-                                    _isSubmitting = true;
-                                  });
+                              onTap: _isSubmitting
+                                  ? null
+                                  : () async {
+                                      try {
+                                        setState(() {
+                                          _isSubmitting = true;
+                                        });
 
-                                  await _deleteCostCenter(_costCenters[index].id, index);
-                                  Navigator.pop(context);
-                                } catch (e) {
-                                  setState(() {
-                                    _isSubmitting = false;
-                                  });
-                                }
-                              },
+                                        await _deleteCostCenter(
+                                          _costCenters[index].id,
+                                          index,
+                                        );
+                                        Navigator.pop(context);
+                                      } catch (e) {
+                                        setState(() {
+                                          _isSubmitting = false;
+                                        });
+                                      }
+                                    },
                               child: Center(
                                 child: _isSubmitting
                                     ? SizedBox(
@@ -1274,5 +1531,4 @@ class _CostCenterManagementScreenState extends State<CostCenterManagementScreen>
       ),
     );
   }
-
 }

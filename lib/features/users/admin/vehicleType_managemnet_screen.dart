@@ -1,5 +1,6 @@
 // screens/sub_screens/admin/vehicle_type_management_screen.dart
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/vehicleType_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/color_generator.dart';
@@ -355,7 +356,7 @@ class _VehicleTypeManagementScreenState extends State<VehicleTypeManagementScree
                                             ),
                                             SizedBox(height: 2),
                                             Text(
-                                              'Cost: \$${vehicleType.costPerKm.toStringAsFixed(2)}/KM',
+                                              'Cost: LKR ${_formatCurrency(vehicleType.costPerKm)}/KM',
                                               style: TextStyle(
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.w900,
@@ -390,7 +391,7 @@ class _VehicleTypeManagementScreenState extends State<VehicleTypeManagementScree
                                         _buildDetailItem(
                                           icon: Icons.attach_money,
                                           title: 'Cost per KM',
-                                          value: '\$${vehicleType.costPerKm.toStringAsFixed(2)}',
+                                          value: 'LKR ${_formatCurrency(vehicleType.costPerKm)}',
                                         ),
                                         SizedBox(width: 24),
                                         _buildDetailItem(
@@ -534,6 +535,11 @@ class _VehicleTypeManagementScreenState extends State<VehicleTypeManagementScree
   // Helper method to format date
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
+  }
+
+  String _formatCurrency(double budget) {
+    final formatter = NumberFormat('#,##0.00', 'en_US');
+    return formatter.format(budget);
   }
 
   Widget _buildEmptyState() {
@@ -1407,4 +1413,5 @@ class _VehicleTypeManagementScreenState extends State<VehicleTypeManagementScree
       ),
     );
   }
+
 }

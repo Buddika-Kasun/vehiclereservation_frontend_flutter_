@@ -5,6 +5,7 @@ import 'package:vehiclereservation_frontend_flutter_/features/trips/review/revie
 import 'package:vehiclereservation_frontend_flutter_/features/trips/ride/rides_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/approval_user_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicleType_managemnet_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicle_all_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicle_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/assigned/assigned_rides_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/ride/trip_details_screen.dart';
@@ -331,8 +332,10 @@ class _HomeScreenState extends State<HomeScreen> {
         _navigateToDashboard();
         break;
       case 'My Vehicles':
-      case 'All Vehicles':
         _navigateToVehicles();
+        break;
+      case 'All Vehicles':
+        _navigateToAllVehicles();
         break;
       case 'My Rides':
       case 'All Rides':
@@ -431,6 +434,12 @@ class _HomeScreenState extends State<HomeScreen> {
   void _navigateToVehicles() {
     setState(() {
       _currentScreen = VehicleScreen(user: _user!);
+    });
+  }
+
+  void _navigateToAllVehicles() {
+    setState(() {
+      _currentScreen = VehicleAllScreen(user: _user!, all: true);
     });
   }
 

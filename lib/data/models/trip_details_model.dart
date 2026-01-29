@@ -21,6 +21,9 @@ class TripDetails {
   final Details details;
   final Conflicts conflicts;
   final Schedule schedule;
+  final String tripType; // 'normal', 'fixed_rate', or 'safety_approval'
+  final double? fixedRate; // nullable
+  final String? reason;
 
   TripDetails({
     required this.id,
@@ -43,6 +46,9 @@ class TripDetails {
     required this.details,
     required this.conflicts,
     required this.schedule,
+    required this.tripType,
+    this.fixedRate,
+    this.reason,
   });
 
   factory TripDetails.fromJson(Map<String, dynamic> json) {
@@ -68,6 +74,11 @@ class TripDetails {
       details: Details.fromJson(json['details'] ?? {}),
       conflicts: Conflicts.fromJson(json['details']['conflicts'] ?? {}),
       schedule: Schedule.fromJson(json['schedule'] ?? {}),
+      tripType: json['tripType'] ?? 'normal',
+      fixedRate: json['fixedRate'] != null
+          ? double.tryParse(json['fixedRate'].toString())
+          : null,
+      reason: json['reason'],
     );
   }
 }

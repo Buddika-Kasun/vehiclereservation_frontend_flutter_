@@ -13,16 +13,17 @@ import 'package:vehiclereservation_frontend_flutter_/core/utils/color_generator.
 import 'package:vehiclereservation_frontend_flutter_/core/utils/constant.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/check_list_screen.dart';
 
-class VehicleScreen extends StatefulWidget {
+class VehicleAllScreen extends StatefulWidget {
   final User user;
+  final bool? all;
 
-  const VehicleScreen({Key? key, required this.user}) : super(key: key);
+  const VehicleAllScreen({Key? key, required this.user, this.all}) : super(key: key);
 
   @override
-  _VehicleScreenState createState() => _VehicleScreenState();
+  _VehicleAllScreenState createState() => _VehicleAllScreenState();
 }
 
-class _VehicleScreenState extends State<VehicleScreen> {
+class _VehicleAllScreenState extends State<VehicleAllScreen> {
   @override
   String get namespace => 'vehicles';
   List<Vehicle> _primaryVehicles = [];
@@ -72,7 +73,13 @@ class _VehicleScreenState extends State<VehicleScreen> {
         _hasError = false;
       });
       
-      final driverId = widget.user.id;
+      int driverId = 0;
+      if(widget.all != null && widget.all == true) {
+        driverId = -1;
+      } else {
+        driverId = widget.user.id;
+      }
+      //final driverId = widget.user.id;
 
       final response = await ApiService.getDriverVehicles(driverId);
       
@@ -301,7 +308,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
         title: Padding(
           padding: EdgeInsets.fromLTRB(6, 0, 6, 0), 
           child: Text(
-            (widget.user.role == UserRole.sysadmin)
+            (widget.user.role == UserRole.sysadmin || (widget.all != null && widget.all == true))
                 ? 'All Vehicles'
                 : 'My Vehicles',
             style: TextStyle(

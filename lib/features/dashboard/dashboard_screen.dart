@@ -89,15 +89,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     switch (role) {
       case UserRole.admin:
       case UserRole.sysadmin:
+      case UserRole.hr:
         return AdminDashboardContent(
           user: _user,
-          stats: _dashboardStats?.admin,
         );
       case UserRole.driver:
         return DriverDashboardContent(user: _user);
       case UserRole.security:
         return SecurityDashboardContent(user: _user);
-      case UserRole.hr:
+      //case UserRole.hr:
       case UserRole.manager:
         return HrDashboardContent(user: _user, stats: _dashboardStats?.manager);
       case UserRole.employee:

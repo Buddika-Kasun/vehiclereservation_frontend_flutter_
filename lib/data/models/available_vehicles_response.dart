@@ -62,6 +62,7 @@ class AvailableVehicle {
   final double estimatedArrivalTime;
   final bool isInConflict;
   final ConflictTripData? conflictingTripData;
+  final String? driverConflict;
 
   AvailableVehicle({
     required this.vehicle,
@@ -70,7 +71,8 @@ class AvailableVehicle {
     required this.distanceFromStart,
     required this.estimatedArrivalTime,
     required this.isInConflict,
-    this.conflictingTripData,    
+    this.conflictingTripData,  
+    this.driverConflict,  
   });
 
   factory AvailableVehicle.fromJson(Map<String, dynamic> json) {
@@ -89,6 +91,9 @@ class AvailableVehicle {
         isInConflict: json['isInConflict']?? false,
         conflictingTripData: json['conflictingTripData'] != null 
           ? ConflictTripData.fromJson(json['conflictingTripData'])
+          : null,
+        driverConflict: json['driverConflictData'] != null
+          ? json['driverConflictData']['message']
           : null,
       );
       
