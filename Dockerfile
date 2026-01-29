@@ -1,5 +1,5 @@
 # ============================================
-# PRODUCTION FLUTTER WEB WITH SIMPLE VERSIONING
+# PRODUCTION FLUTTER WEB - WORKING VERSION
 # ============================================
 
 # Stage 1: Build
@@ -33,30 +33,23 @@ RUN mkdir -p assets && touch assets/.env
 ENV FLUTTER_WEB_USE_SKIA=false
 RUN flutter build web --release --no-source-maps --no-wasm-dry-run
 
-# ====== SIMPLE VERSIONING ======
-# Generate build version (timestamp + random)
+# ====== VERSIONING ======
+# Generate version once and use it directly
 RUN BUILD_TIME=$(date +%s) && \
     RANDOM_HASH=$(head /dev/urandom | tr -dc 'a-f0-9' | head -c8) && \
     VERSION="${RANDOM_HASH}-${BUILD_TIME}" && \
-    echo "VERSION=$VERSION" > /tmp/version.env && \
-    echo "BUILD_TIME=$BUILD_TIME" >> /tmp/version.env
-
-# Create versioned file names
-RUN source /tmp/version.env && \
-    # 1. Create versioned copies
+    # Create versioned files
     cp build/web/main.dart.js build/web/main.$VERSION.js && \
     cp build/web/flutter.js build/web/flutter.$VERSION.js && \
-    # 2. Update index.html to use versioned files
+    # Update index.html
     sed -i "s/main\.dart\.js/main.$VERSION.js/g" build/web/index.html && \
     sed -i "s/flutter\.js/flutter.$VERSION.js/g" build/web/index.html && \
-    # 3. Create version manifest
-    echo "{\"version\":\"$VERSION\",\"built\":\"$(date)\"}" > build/web/version.json
+    # Create version files
+    echo "{\"version\":\"$VERSION\",\"built\":\"$(date)\"}" > build/web/version.json && \
+    echo "window.APP_VERSION = '$VERSION';" > build/web/version.js
 
-# Remove service workers to prevent caching issues
+# Remove service workers
 RUN rm -f build/web/flutter_service_worker.js 2>/dev/null || true
-
-# Add version info to window object
-RUN echo "window.APP_VERSION = '$(cat /tmp/version.env | grep VERSION | cut -d= -f2)';" > build/web/version.js
 
 # Stage 2: Production
 FROM nginx:alpine
@@ -64,7 +57,7 @@ FROM nginx:alpine
 # Copy built files
 COPY --from=builder /app/build/web /usr/share/nginx/html
 
-# Create nginx config with proper cache control
+# Create nginx config with cache control
 RUN cat > /etc/nginx/nginx.conf << 'EOF'
 events {
 worker_connections 1024;
@@ -87,51 +80,31 @@ index index.html;
 add_header X-Frame-Options "SAMEORIGIN" always;
 add_header X-Content-Type-Options "nosniff" always;
 
-# ====== CACHE CONTROL RULES ======
+# ====== CACHE CONTROL ======
 
-# 1. Versioned assets (with hash in filename) - cache forever
+# Versioned assets - cache forever (1 year)
 location ~* \.[a-f0-9]{8,}-[0-9]+\.(js|css)$ {
 expires max;
 add_header Cache-Control "public, immutable, max-age=31536000";
-add_header Vary "Accept-Encoding";
 access_log off;
 }
 
-# 2. Static assets without version - cache for 1 week
-location ~* \.(?:ico|css|js|gif|jpe?g|png|svg|woff2?|eot|ttf|otf)$ {
+# Static assets - cache for 1 week
+location ~* \.(ico|css|js|gif|jpg|jpeg|png|svg|woff|woff2|eot|ttf|otf)$ {
 expires 7d;
 add_header Cache-Control "public, max-age=604800";
-add_header Vary "Accept-Encoding";
 access_log off;
 }
 
-# 3. HTML files - cache for 1 hour
+# HTML files - cache for 1 hour
 location ~* \.html$ {
 expires 1h;
 add_header Cache-Control "public, max-age=3600, must-revalidate";
 }
 
-# 4. Special rule for index.html - shorter cache
-location = /index.html {
-expires 1h;
-add_header Cache-Control "public, max-age=3600, must-revalidate";
-}
-
-# 5. Version manifest - no cache
-location = /version.json {
-expires -1;
-add_header Cache-Control "no-store, no-cache, must-revalidate";
-}
-
-# 6. Main SPA routing
+# Main SPA routing
 location / {
 try_files $uri $uri/ /index.html;
-}
-
-# 7. Disable logs for favicon
-location = /favicon.ico {
-log_not_found off;
-access_log off;
 }
 }
 }
