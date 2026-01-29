@@ -1,55 +1,26 @@
 # ============================================
-# PRODUCTION FLUTTER WEB - WORKING VERSION
+# WORKING FLUTTER WEB DOCKERFILE
 # ============================================
 
 # Stage 1: Build
 FROM ubuntu:22.04 AS builder
 
-# Install dependencies
-RUN apt-get update && apt-get install -y \
-    curl \
-    git \
-    unzip \
-    xz-utils \
-    && rm -rf /var/lib/apt/lists/*
-
 # Install Flutter
+RUN apt-get update && apt-get install -y curl git unzip xz-utils
 RUN git clone https://github.com/flutter/flutter.git -b stable /flutter
 ENV PATH="$PATH:/flutter/bin"
 
 WORKDIR /app
-
-# Copy pubspec for dependency caching
 COPY pubspec.yaml pubspec.lock ./
 RUN flutter pub get
-
-# Copy app code
 COPY . .
-
-# Fix: Create required assets directory
 RUN mkdir -p assets && touch assets/.env
+RUN flutter build web --release --no-source-maps
 
-# Build web app
-ENV FLUTTER_WEB_USE_SKIA=false
-RUN flutter build web --release --no-source-maps --no-wasm-dry-run
-
-# ====== VERSIONING ======
-# Generate version once and use it directly
-RUN BUILD_TIME=$(date +%s) && \
-    RANDOM_HASH=$(head /dev/urandom | tr -dc 'a-f0-9' | head -c8) && \
-    VERSION="${RANDOM_HASH}-${BUILD_TIME}" && \
-    # Create versioned files
-    cp build/web/main.dart.js build/web/main.$VERSION.js && \
-    cp build/web/flutter.js build/web/flutter.$VERSION.js && \
-    # Update index.html
-    sed -i "s/main\.dart\.js/main.$VERSION.js/g" build/web/index.html && \
-    sed -i "s/flutter\.js/flutter.$VERSION.js/g" build/web/index.html && \
-    # Create version files
-    echo "{\"version\":\"$VERSION\",\"built\":\"$(date)\"}" > build/web/version.json && \
-    echo "window.APP_VERSION = '$VERSION';" > build/web/version.js
-
-# Remove service workers
-RUN rm -f build/web/flutter_service_worker.js 2>/dev/null || true
+# Simple query string versioning
+RUN VERSION=$(date +%s) && \
+    sed -i "s/main\.dart\.js/main.dart.js?v=$VERSION/g" build/web/index.html && \
+    sed -i "s/flutter\.js/flutter.js?v=$VERSION/g" build/web/index.html
 
 # Stage 2: Production
 FROM nginx:alpine
@@ -57,54 +28,70 @@ FROM nginx:alpine
 # Copy built files
 COPY --from=builder /app/build/web /usr/share/nginx/html
 
-# Create nginx config with cache control
+# SIMPLE nginx config - NO COMPLEX REGEX
 RUN cat > /etc/nginx/nginx.conf << 'EOF'
 events {
 worker_connections 1024;
 }
 
 http {
-# Gzip compression
+# Remove default nginx config
+include /etc/nginx/mime.types;
+default_type application/octet-stream;
+
+# Simple logging
+access_log /var/log/nginx/access.log;
+error_log /var/log/nginx/error.log;
+
+# Gzip
 gzip on;
 gzip_vary on;
 gzip_min_length 1024;
 gzip_types text/plain text/css text/xml text/javascript 
-application/javascript application/json application/xml+rss;
+application/javascript application/json;
 
 server {
 listen 8080;
+server_name _;
 root /usr/share/nginx/html;
-index index.html;
 
 # Security headers
 add_header X-Frame-Options "SAMEORIGIN" always;
 add_header X-Content-Type-Options "nosniff" always;
 
-# ====== CACHE CONTROL ======
+# ====== SIMPLE CACHE CONTROL ======
 
-# Versioned assets - cache forever (1 year)
-location ~* \.[a-f0-9]{8}-[0-9]+\.(js|css)$ {
-expires max;
+# JavaScript and CSS files - with or without version query
+location ~* \.(js|css)$ {
+# Check if has version query parameter
+if ($args ~* "v=") {
 add_header Cache-Control "public, immutable, max-age=31536000";
-access_log off;
+expires max;
+}
+# No version - cache for 1 week
+if ($args !~* "v=") {
+add_header Cache-Control "public, max-age=604800";
+expires 7d;
+}
 }
 
-# Static assets - cache for 1 week
-location ~* \.(ico|css|js|gif|jpg|jpeg|png|svg|woff|woff2|eot|ttf|otf)$ {
-expires 7d;
-add_header Cache-Control "public, max-age=604800";
-access_log off;
+# Images and fonts - cache for 1 month
+location ~* \.(png|jpg|jpeg|gif|ico|svg|woff|woff2|eot|ttf|otf)$ {
+add_header Cache-Control "public, max-age=2592000";
+expires 30d;
 }
 
 # HTML files - cache for 1 hour
 location ~* \.html$ {
-expires 1h;
 add_header Cache-Control "public, max-age=3600, must-revalidate";
+expires 1h;
 }
 
 # Main SPA routing
 location / {
 try_files $uri $uri/ /index.html;
+add_header Cache-Control "public, max-age=300";
+expires 5m;
 }
 }
 }
