@@ -29,7 +29,7 @@ RUN rm /etc/nginx/conf.d/default.conf
 
 RUN printf '%s\n' \
     'server {' \
-    '  listen 0.0.0.0:$PORT;' \
+    '  listen __PORT__;' \
     '  root /usr/share/nginx/html;' \
     '  index index.html;' \
     '  gzip on;' \
@@ -43,9 +43,8 @@ RUN printf '%s\n' \
     '  }' \
     '  location / {' \
     '    try_files $uri $uri/ /index.html;' \
-    '    add_header Cache-Control "no-store";' \
     '  }' \
     '}' \
-    > /etc/nginx/conf.d/app.conf
+    > /etc/nginx/conf.d/template.conf
 
-CMD ["sh", "-c", "envsubst '$PORT' < /etc/nginx/conf.d/app.conf > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
+CMD sh -c "sed \"s/__PORT__/${PORT}/g\" /etc/nginx/conf.d/template.conf > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
