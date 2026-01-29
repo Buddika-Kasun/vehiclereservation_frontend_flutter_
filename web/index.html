@@ -3,28 +3,30 @@
 
 <head>
 
-  <!-- Add this INSIDE <head> tag of your web/index.html -->
   <script>
-    // Force update script for existing users
-    if ('serviceWorker' in navigator) {
-      // Immediately unregister any service workers
-      navigator.serviceWorker.getRegistrations().then(function (registrations) {
-        registrations.forEach(function (registration) {
-          registration.unregister();
-        });
-      });
+    (async function () {
+      try {
+        const res = await fetch('/version.js', { cache: 'no-store' });
+        const text = await res.text();
 
-      // Clear all caches
-      if ('caches' in window) {
-        caches.keys().then(function (keyList) {
-          return Promise.all(keyList.map(function (key) {
-            return caches.delete(key);
-          }));
-        });
+        const match = text.match(/APP_VERSION='(.*)'/);
+        if (!match) return;
+
+        const serverVersion = match[1];
+        const localVersion = localStorage.getItem('APP_VERSION');
+
+        if (localVersion && localVersion !== serverVersion) {
+          localStorage.setItem('APP_VERSION', serverVersion);
+          location.reload(true);
+          return;
+        }
+
+        localStorage.setItem('APP_VERSION', serverVersion);
+      } catch (e) {
+        console.log('Version check skipped');
       }
-    }
+    })();
   </script>
-
 
   <meta charset="UTF-8">
   <base href="/">
