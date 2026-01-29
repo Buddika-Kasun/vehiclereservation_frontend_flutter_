@@ -83,7 +83,7 @@ add_header X-Content-Type-Options "nosniff" always;
 # ====== CACHE CONTROL ======
 
 # Versioned assets - cache forever (1 year)
-location ~* \.[a-f0-9]{8,}-[0-9]+\.(js|css)$ {
+location ~* \.[a-f0-9]{8}-[0-9]+\.(js|css)$ {
 expires max;
 add_header Cache-Control "public, immutable, max-age=31536000";
 access_log off;
