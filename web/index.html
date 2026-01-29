@@ -3,16 +3,13 @@
 
 <head>
 
+  <script src="version.js"></script>
+  <script src="config.js"></script>
+  
   <script>
-    (async function () {
+    (function () {
       try {
-        const res = await fetch('/version.js', { cache: 'no-store' });
-        const text = await res.text();
-
-        const match = text.match(/APP_VERSION='(.*)'/);
-        if (!match) return;
-
-        const serverVersion = match[1];
+        const serverVersion = window.APP_VERSION;
         const localVersion = localStorage.getItem('APP_VERSION');
 
         if (localVersion && localVersion !== serverVersion) {
@@ -27,6 +24,7 @@
       }
     })();
   </script>
+
 
   <meta charset="UTF-8">
   <base href="/">

@@ -14,8 +14,12 @@ RUN flutter build web --release --no-source-maps --pwa-strategy=none
 
 RUN BUILD_ID=$(date +%s) && \
     echo "window.APP_VERSION='$BUILD_ID';" > build/web/version.js && \
-    sed -i "s/flutter_bootstrap.js/flutter_bootstrap.js?v=$BUILD_ID/g" build/web/index.html && \
-    sed -i "s/main.dart.js/main.dart.js?v=$BUILD_ID/g" build/web/index.html
+    echo 'window.config = {' > build/web/config.js && \
+    echo '  apiUrl: "'"${API_URL:-https://api.example.com}"'",' >> build/web/config.js && \
+    echo '  wsUrl: "'"${WS_URL:-wss://ws.example.com}"'",' >> build/web/config.js && \
+    echo '};' >> build/web/config.js && \
+    sed -i "s/main.dart.js/main.dart.js?v=$BUILD_ID/g" build/web/index.html && \
+    sed -i "s/flutter_bootstrap.js/flutter_bootstrap.js?v=$BUILD_ID/g" build/web/index.html
 
 FROM nginx:alpine
 
