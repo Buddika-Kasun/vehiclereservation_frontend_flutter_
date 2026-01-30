@@ -306,7 +306,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _navigateToFogetPwVerify() {
+  void _navigateToForgetPwVerify() {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const ForgotPasswordVerifyScreen()),
@@ -427,7 +427,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Align(
                 alignment: Alignment.centerRight,
                 child: GestureDetector(
-                  onTap: _navigateToFogetPwVerify,
+                  onTap: _navigateToForgetPwVerify,
                   child: const Text(
                     'Forgot password?',
                     style: TextStyle(

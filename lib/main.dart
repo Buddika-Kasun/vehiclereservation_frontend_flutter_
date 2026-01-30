@@ -42,6 +42,11 @@ void main() async {
   // Initialize configs safely
   try {
     await ApiConfig.init();
+
+    if (kDebugMode) {
+      ApiConfig.printCurrentConfig();
+    }
+
   } catch (e, st) {
     if (kDebugMode) print('❌ API Config init error: $e\n$st');
   }
