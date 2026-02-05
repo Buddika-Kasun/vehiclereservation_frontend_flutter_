@@ -74,7 +74,7 @@ class SideMenu extends StatelessWidget {
         items.addAll([
           MenuItem(Icons.directions_car, 'My Rides'),
           MenuItem(Icons.car_rental_sharp, 'My Vehicles'),
-          MenuItem(Icons.car_rental_sharp, 'All Vehicles'),
+          MenuItem(Icons.car_rental_sharp, 'Vehicles'),
           MenuItem(Icons.directions_car, 'Assigned Rides'),
           MenuItem(Icons.verified, 'Review Trips'),
         ]);
