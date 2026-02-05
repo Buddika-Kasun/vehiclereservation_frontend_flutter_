@@ -1771,6 +1771,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
 
     if (_passengerType == 'group' &&
         _selectedGroupUsers.isEmpty &&
+        _selectedOthers.isEmpty &&
         !_includeMeInGroup) {
       _showMessage('Please add at least one passenger to the group', false);
       return;
