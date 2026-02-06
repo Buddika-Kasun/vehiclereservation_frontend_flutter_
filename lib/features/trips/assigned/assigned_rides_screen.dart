@@ -7,8 +7,8 @@ import 'package:vehiclereservation_frontend_flutter_/data/models/driver_trip_res
 import 'package:flutter/foundation.dart';
 
 // Import new WebSocket structure
-import 'package:vehiclereservation_frontend_flutter_/core/services/ws/websocket_manager.dart';
-import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/trip_handler.dart';
+//import 'package:vehiclereservation_frontend_flutter_/core/services/ws/websocket_manager.dart';
+//import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/trip_handler.dart';
 
 class AssignedRidesScreen extends StatefulWidget {
   final int userId;
@@ -21,8 +21,8 @@ class AssignedRidesScreen extends StatefulWidget {
 
 class _AssignedRidesScreenState extends State<AssignedRidesScreen> {
   // WebSocket managers
-  final WebSocketManager _webSocketManager = WebSocketManager();
-  final TripHandler _tripHandler = TripHandler();
+  //final WebSocketManager _webSocketManager = WebSocketManager();
+  //final TripHandler _tripHandler = TripHandler();
 
   List<DriverTripCard> _trips = [];
   bool _isLoading = true;
@@ -39,8 +39,12 @@ class _AssignedRidesScreenState extends State<AssignedRidesScreen> {
   final ScrollController _scrollController = ScrollController();
 
   // WebSocket connection state
-  bool _isConnected = false;
-  bool _isInitializing = false;
+  //bool _isConnected = false;
+  //bool _isInitializing = false;
+
+  Timer? _refreshTimer;
+  bool _isRefreshingSilently = false;
+
   Timer? _debounceTimer;
 
   @override
@@ -48,17 +52,89 @@ class _AssignedRidesScreenState extends State<AssignedRidesScreen> {
     super.initState();
     _loadAssignedTrips(reset: true);
     _scrollController.addListener(_scrollListener);
-    _initializeWebSocket();
+    
+    //_initializeWebSocket();
+
+    // Start auto-refresh timer
+    _startAutoRefresh();
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
     _debounceTimer?.cancel();
-    _cleanupWebSocket();
+    //_cleanupWebSocket();
+
+    // Cancel refresh timer
+    _stopAutoRefresh();
     super.dispose();
   }
 
+  // Add auto-refresh methods
+  void _startAutoRefresh() {
+    // Start timer to refresh every 30 seconds
+    _refreshTimer = Timer.periodic(Duration(seconds: 30), (timer) {
+      if (!_isRefreshingSilently && mounted) {
+        _silentRefresh();
+      }
+    });
+  }
+
+  void _stopAutoRefresh() {
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
+  }
+
+  Future<void> _silentRefresh() async {
+    if (_isRefreshingSilently || !mounted) return;
+
+    try {
+      _isRefreshingSilently = true;
+
+      // Only refresh first page for simplicity
+      if (_page == 1) {
+        final request = DriverTripListRequest(
+          timeFilter: _timeFilter,
+          statusFilter: _statusFilter,
+          page: 1,
+          limit: _limit,
+        );
+
+        final response = await ApiService.getDriverAssignedTrips(request);
+
+        if (mounted && _hasDataChanged(response.data.trips)) {
+          setState(() {
+            _trips = response.data.trips;
+            _hasMore = response.data.hasMore;
+          });
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Silent refresh error: $e');
+      }
+    } finally {
+      _isRefreshingSilently = false;
+    }
+  }
+
+  bool _hasDataChanged(List<DriverTripCard> newTrips) {
+    if (_trips.length != newTrips.length) return true;
+
+    for (int i = 0; i < newTrips.length; i++) {
+      final newTrip = newTrips[i];
+      final oldTrip = _trips[i];
+
+      if (newTrip.id != oldTrip.id ||
+          newTrip.status != oldTrip.status ) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /*
   Future<void> _initializeWebSocket() async {
     try {
       if (mounted) {
@@ -191,6 +267,7 @@ class _AssignedRidesScreenState extends State<AssignedRidesScreen> {
       }
     });
   }
+  */
 
   void _navigateToTripDetails(DriverTripCard trip) async {
     final result = await Navigator.push(
@@ -231,6 +308,9 @@ class _AssignedRidesScreenState extends State<AssignedRidesScreen> {
         setState(() => _loadingMore = true);
       }
 
+      // Reset silent refresh flag if this is a manual refresh
+      _isRefreshingSilently = false;
+
       final request = DriverTripListRequest(
         timeFilter: _timeFilter,
         statusFilter: _statusFilter,
@@ -264,7 +344,7 @@ class _AssignedRidesScreenState extends State<AssignedRidesScreen> {
       });
     }
   }
-
+  
   Future<void> _loadMoreTrips() async {
     if (!_hasMore || _loadingMore) return;
 
@@ -327,6 +407,7 @@ class _AssignedRidesScreenState extends State<AssignedRidesScreen> {
     }
   }
 
+  /*
   void _cleanupWebSocket() async {
     try {
       await _tripHandler.dispose();
@@ -357,6 +438,7 @@ class _AssignedRidesScreenState extends State<AssignedRidesScreen> {
     // Example: final user = StorageService.userData; return user?.id.toString();
     return null;
   }
+  */
 
   @override
   Widget build(BuildContext context) {
@@ -396,6 +478,7 @@ class _AssignedRidesScreenState extends State<AssignedRidesScreen> {
                 ),
               ),
               SizedBox(width: 8),
+              /*
               Container(
                 width: 8,
                 height: 8,
@@ -412,6 +495,7 @@ class _AssignedRidesScreenState extends State<AssignedRidesScreen> {
                   ],
                 ),
               ),
+              */
             ],
           ),
           Text(
@@ -721,13 +805,10 @@ class _AssignedRidesScreenState extends State<AssignedRidesScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (_isInitializing)
-                CircularProgressIndicator(color: Color(0xFFF9C80E)),
+              CircularProgressIndicator(color: Color(0xFFF9C80E)),
               SizedBox(height: 16),
               Text(
-                _isInitializing
-                    ? 'Connecting to real-time updates...'
-                    : 'Loading assigned trips...',
+                'Loading assigned trips...',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 16,
@@ -740,4 +821,5 @@ class _AssignedRidesScreenState extends State<AssignedRidesScreen> {
       ),
     );
   }
+
 }
