@@ -1,12 +1,12 @@
 {
-    "name": "vehiclereservation_frontend_flutter_",
-    "short_name": "vehiclereservation_frontend_flutter_",
+    "name": "PCW RIDE",
+    "short_name": "PCW RIDE",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#000000",
+    "theme_color": "#000000",
+    "description": "Vehicle Reservation System",
+    "orientation": "portrait",
     "prefer_related_applications": false,
     "icons": [
         {
