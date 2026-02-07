@@ -56,83 +56,15 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
   bool _scheduleExpanded = true;
   bool _passengersExpanded = false;
 
-  // Department selection state
-  String? _selectedDepartment;
-  List<Map<String, dynamic>> _departments = [];
-  bool _loadingDepartments = false;
-
   @override
   void initState() {
     super.initState();
     _loadUserData();
-    _loadDepartments();
     _fixedRateController = TextEditingController(text: _fixedRate);
     _reasonController = TextEditingController(text: _reason);
     _repeatDaysController = TextEditingController(
       text: _repeatAfterDays.toString(),
     );
-  }
-
-  Future<void> _loadDepartments() async {
-    try {
-      setState(() {
-        _loadingDepartments = true;
-      });
-
-      final response = await ApiService.getUserDepartments(limit: 50);
-
-      print('Departments API response: ${response.toString()}');
-
-      if (response['success'] == true) {
-        final departmentsData =
-            response['data']['departments'] as List<dynamic>;
-
-        print('Found ${departmentsData.length} departments');
-
-        final activeDepartments = departmentsData
-            .where((dept) => dept['isActive'] == true)
-            .toList();
-
-        print('${activeDepartments.length} active departments');
-
-        setState(() {
-          _departments = activeDepartments
-              .map(
-                (dept) => {
-                  'id': dept['id'].toString(),
-                  'name': dept['name'] ?? 'Unknown Department',
-                },
-              )
-              .toList();
-
-          // Set first department as default if available
-          if (_departments.isNotEmpty) {
-            _selectedDepartment = _departments.first['id'];
-            print('Default department set to: ${_departments.first['name']}');
-          } else {
-            print('No active departments found');
-          }
-        });
-      } else {
-        print('Failed to load departments: ${response['message']}');
-        // Add default department option
-        _departments = [
-          {'id': 'default', 'name': 'Select Department'},
-        ];
-        _selectedDepartment = 'default';
-      }
-    } catch (e) {
-      print('Error loading departments: $e');
-      // Add default department option on error
-      _departments = [
-        {'id': 'default', 'name': 'No departments available'},
-      ];
-      _selectedDepartment = 'default';
-    } finally {
-      setState(() {
-        _loadingDepartments = false;
-      });
-    }
   }
 
   @override
@@ -457,49 +389,6 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                       ),
                     ],
                   ),
-
-                  // Department Dropdown (for all trip types)
-                  if (_departments.length > 1) ...[
-                    SizedBox(height: 16),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Cost Center(Department)',
-                          style: TextStyle(color: Colors.grey, fontSize: 14),
-                        ),
-                        SizedBox(height: 4),
-                        DropdownButtonFormField<String>(
-                                dropdownColor: Colors.grey[800],
-                                style: TextStyle(color: Colors.yellow),
-                                decoration: InputDecoration(
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 4,
-                                  ),
-                                ),
-                                value: _selectedDepartment,
-                                items: _departments.map((dept) {
-                                  return DropdownMenuItem<String>(
-                                    value: dept['id'],
-                                    child: Text(
-                                      dept['name'],
-                                      style: TextStyle(color: Colors.yellow),
-                                    ),
-                                  );
-                                }).toList(),
-                                onChanged: (value) {
-                                  setState(() {
-                                    _selectedDepartment = value;
-                                  });
-                                },
-                              ),
-                      ],
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -1771,7 +1660,6 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
 
     if (_passengerType == 'group' &&
         _selectedGroupUsers.isEmpty &&
-        _selectedOthers.isEmpty &&
         !_includeMeInGroup) {
       _showMessage('Please add at least one passenger to the group', false);
       return;
@@ -1805,9 +1693,6 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
         'tripType': _tripType,
         'fixedRate': _fixedRate,
         'reason': _reason,
-        'departmentId': _selectedDepartment != null
-            ? int.tryParse(_selectedDepartment!) // Convert string to number
-            : null,
       };
 
       final tripRequest = TripRequest(
