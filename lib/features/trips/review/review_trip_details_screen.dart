@@ -16,8 +16,9 @@ import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart';
 
 // Import new WebSocket structure
-import 'package:vehiclereservation_frontend_flutter_/core/services/ws/websocket_manager.dart';
-import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/trip_handler.dart';
+//import 'package:vehiclereservation_frontend_flutter_/core/services/ws/websocket_manager.dart';
+//import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/trip_handler.dart';
+
 import 'package:vehiclereservation_frontend_flutter_/features/trips/review/review_vehicle_selection_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/vehicle_selection_screen.dart';
 
@@ -39,8 +40,8 @@ class ReviewTripDetailsScreen extends StatefulWidget {
 
 class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
   // WebSocket managers
-  final WebSocketManager _webSocketManager = WebSocketManager();
-  final TripHandler _tripHandler = TripHandler();
+  //final WebSocketManager _webSocketManager = WebSocketManager();
+  //final TripHandler _tripHandler = TripHandler();
   
   TripDetails? _tripDetails;
   bool _isLoading = true;
@@ -53,9 +54,13 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
   LatLngBounds? _mapBounds;
 
   // WebSocket connection state
-  bool _isConnected = false;
-  bool _isInitializing = false;
+  //bool _isConnected = false;
+  //bool _isInitializing = false;
   Timer? _debounceTimer;
+
+  // Add polling timer
+  Timer? _refreshTimer;
+  bool _isRefreshingSilently = false;
 
   // Add these helper methods
   String _getTripTypeDisplayName(String type) {
@@ -231,7 +236,11 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
   void initState() {
     super.initState();
     _loadTripDetails();
-    _initializeWebSocket();
+    
+    //_initializeWebSocket();
+
+    // Start auto-refresh timer
+    _startAutoRefresh();
 
     // Add listener for route changes
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -249,10 +258,69 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
   @override
   void dispose() {
     _debounceTimer?.cancel();
-    _cleanupWebSocket();
+    // _cleanupWebSocket();
+
+    // Cancel refresh timer
+    _stopAutoRefresh();
     super.dispose();
   }
 
+  // Add auto-refresh methods
+  void _startAutoRefresh() {
+    // Start timer to refresh every 30 seconds
+    _refreshTimer = Timer.periodic(Duration(seconds: 30), (timer) {
+      if (!_isRefreshingSilently && mounted) {
+        _silentRefresh();
+      }
+    });
+  }
+
+  void _stopAutoRefresh() {
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
+  }
+
+  Future<void> _silentRefresh() async {
+    if (_isRefreshingSilently || !mounted) return;
+    
+    try {
+      _isRefreshingSilently = true;
+      
+      final response = await ApiService.getTripById(widget.tripId);
+      
+      if (response['success'] == true && response['data'] != null) {
+        final newTripDetails = TripDetails.fromJson(response['data']);
+        
+        // Check if data has changed
+        if (_hasDataChanged(newTripDetails)) {
+          setState(() {
+            _tripDetails = newTripDetails;
+          });
+          // Reinitialize map if needed
+          _initializeMap();
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Silent refresh error: $e');
+      }
+    } finally {
+      _isRefreshingSilently = false;
+    }
+  }
+
+  bool _hasDataChanged(TripDetails newTripDetails) {
+    if (_tripDetails == null) return true;
+    
+    // Compare important fields
+    return _tripDetails!.status != newTripDetails.status ||
+        _tripDetails!.updatedAt != newTripDetails.updatedAt ||
+        _tripDetails!.vehicle?.regNo != newTripDetails.vehicle?.regNo ||
+        _tripDetails!.details.drivers != newTripDetails.details.drivers ||
+        _tripDetails!.details.approval != newTripDetails.details.approval;
+  }
+
+  /*
   Future<void> _initializeWebSocket() async {
     try {
       if (mounted) {
@@ -389,37 +457,41 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
       }
     });
   }
+  */
 
   Future<void> _loadTripDetails() async {
-    try {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = '';
-      });
+  try {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
 
-      final response = await ApiService.getTripById(widget.tripId);
+    // Reset silent refresh flag if this is a manual refresh
+    _isRefreshingSilently = false;
+
+    final response = await ApiService.getTripById(widget.tripId);
+    
+    if (response['success'] == true && response['data'] != null) {
+      setState(() {
+        _tripDetails = TripDetails.fromJson(response['data']);
+      });
       
-      if (response['success'] == true && response['data'] != null) {
-        setState(() {
-          _tripDetails = TripDetails.fromJson(response['data']);
-        });
-        
-        // Initialize map after loading trip details
-        _initializeMap();
-      } else {
-        throw Exception(response['message'] ?? 'Failed to fetch trip details');
-      }
-    } catch (e) {
-      print('Error loading trip details: $e');
-      setState(() {
-        _errorMessage = 'Error loading trip details: ${e.toString()}';
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      // Initialize map after loading trip details
+      _initializeMap();
+    } else {
+      throw Exception(response['message'] ?? 'Failed to fetch trip details');
     }
+  } catch (e) {
+    print('Error loading trip details: $e');
+    setState(() {
+      _errorMessage = 'Error loading trip details: ${e.toString()}';
+    });
+  } finally {
+    setState(() {
+      _isLoading = false;
+    });
   }
+}
 
   void _initializeMap() {
     if (_tripDetails?.details.route.hasRoute == true) {
@@ -878,6 +950,7 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
     );
   }
 
+  /*
   void _cleanupWebSocket() async {
     try {
       await _tripHandler.dispose();
@@ -919,6 +992,7 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
       return null;
     }
   }
+  */
 
   Widget _buildHeader() {
     final double statusBarHeight = MediaQuery.of(context).padding.top;
@@ -953,7 +1027,9 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
-                widget.fromConflictNavigation ? Icons.arrow_back : Icons.arrow_back_ios_rounded,
+                widget.fromConflictNavigation
+                    ? Icons.arrow_back
+                    : Icons.arrow_back_ios_rounded,
                 color: Colors.black,
                 size: 20,
               ),
@@ -975,23 +1051,24 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                SizedBox(width: 8),
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _isConnected ? Colors.green : Colors.red,
-                    boxShadow: [
-                      BoxShadow(
-                        color: (_isConnected ? Colors.green : Colors.red)
-                            .withOpacity(0.3),
-                        blurRadius: 4,
-                        spreadRadius: 1,
-                      ),
-                    ],
-                  ),
-                ),
+                // Remove WebSocket status indicator
+                // SizedBox(width: 8),
+                // Container(
+                //   width: 8,
+                //   height: 8,
+                //   decoration: BoxDecoration(
+                //     shape: BoxShape.circle,
+                //     color: _isConnected ? Colors.green : Colors.red,
+                //     boxShadow: [
+                //       BoxShadow(
+                //         color: (_isConnected ? Colors.green : Colors.red)
+                //             .withOpacity(0.3),
+                //         blurRadius: 4,
+                //         spreadRadius: 1,
+                //       ),
+                //     ],
+                //   ),
+                // ),
               ],
             ),
           ),
@@ -3474,7 +3551,7 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
     );
   }
 
-  // Also update the main Scaffold in the build method:
+  // In the build method, update the condition:
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -3498,11 +3575,10 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (_isInitializing)
-                  CircularProgressIndicator(color: Color(0xFFF9C80E)),
+                CircularProgressIndicator(color: Color(0xFFF9C80E)),
                 SizedBox(height: 16),
                 Text(
-                  _isInitializing ? 'Connecting to real-time updates...' : 'Loading trip details...',
+                  'Loading trip details...',
                   style: TextStyle(color: Colors.white, fontSize: 16),
                 ),
               ],
