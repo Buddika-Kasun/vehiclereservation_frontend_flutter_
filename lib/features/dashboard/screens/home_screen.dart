@@ -337,6 +337,9 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'All Vehicles':
         _navigateToAllVehicles();
         break;
+      case 'Vehicles':
+        _navigateToVehicleManagement();
+        break;
       case 'My Rides':
       case 'All Rides':
         _navigateToRides();
