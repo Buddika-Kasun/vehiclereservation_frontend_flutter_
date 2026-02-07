@@ -2,6 +2,34 @@
 <html lang="en">
 
 <head>
+
+  <!-- Versioning and Cache Control -->
+  <script src="version.js"></script>
+  <script>
+    // Check for updates
+    if (window.APP_VERSION) {
+      const storedVersion = localStorage.getItem('app_version');
+      if (storedVersion !== window.APP_VERSION) {
+        console.log('New version detected:', window.APP_VERSION);
+
+        // Clear old service workers
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(regs => {
+            regs.forEach(reg => reg.unregister());
+          });
+        }
+
+        // Update stored version
+        localStorage.setItem('app_version', window.APP_VERSION);
+
+        // Optional: Show update notification
+        if (storedVersion) {
+          console.log('App updated from', storedVersion, 'to', window.APP_VERSION);
+        }
+      }
+    }
+  </script>
+
   <meta charset="UTF-8">
   <base href="/">
 

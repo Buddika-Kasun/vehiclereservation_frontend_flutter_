@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/forget_pw_verify_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'register_screen.dart';
@@ -305,6 +306,13 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  void _navigateToForgetPwVerify() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ForgotPasswordVerifyScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -419,7 +427,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Align(
                 alignment: Alignment.centerRight,
                 child: GestureDetector(
-                  onTap: _navigateToSignUp,
+                  onTap: _navigateToForgetPwVerify,
                   child: const Text(
                     'Forgot password?',
                     style: TextStyle(
