@@ -91,6 +91,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
               content: Text(
                 'New notification: ${notification['title'] ?? 'Notification'}',
               ),
+              
               duration: const Duration(seconds: 3),
             ),
           );
@@ -382,6 +383,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
       case 'TRIP_REJECTED':
       case 'TRIP_CANCELLED':
       case 'TRIP_COMPLETED':
+      case 'TRIP_CONFIRMED':
+      case 'TRIP_READING_START':
+      case 'TRIP_STARTED':
+      case 'TRIP_FINISHED':
         _showTripNotificationDialog(notification);
         break;
 
@@ -402,42 +407,145 @@ class _NotificationScreenState extends State<NotificationScreen> {
   void _showTripNotificationDialog(NotificationModel notification) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(notification.title),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(notification.message),
-            SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                // Navigate to trips screen
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => HomeScreen(
-                      screenName: 'my_rides',
-                      screenData: {'userId': widget.userId},
+      barrierDismissible: false, // Prevent dismissing by tapping outside
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header with icon
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.directions_car,
+                      color: Colors.blue,
+                      size: 20,
                     ),
                   ),
-                );
-              },
-              child: Text('View Trips'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Close'),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      notification.title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 20),
+
+              // Message content
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[200]!, width: 1),
+                ),
+                child: Text(
+                  notification.message,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black54,
+                    height: 1.5,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Action buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  // Close button
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.grey[600],
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'CLOSE',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+
+                  const SizedBox(width: 12),
+
+                  // View Trips button
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => HomeScreen(
+                            screenName: 'my_rides',
+                            screenData: {'userId': widget.userId},
+                          ),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      'VIEW TRIPS',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
-
+  
   void _showVehicleNotificationDialog(NotificationModel notification) {
     showDialog(
       context: context,
@@ -610,19 +718,151 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final double statusBarHeight = MediaQuery.of(context).padding.top;
+    final double appBarHeight = 80.0; // Base height for app bar content
+
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 217, 217, 217),
       body: Column(
         children: [
-          _buildTopBar(),
-          if (_isLoading || _isInitializing)
-            _buildLoadingState()
-          else if (_hasError)
-            _buildErrorState()
-          else if (_notifications.isNotEmpty)
-            _buildNotificationsList()
-          else
-            _buildEmptyState(),
+          // Top Bar with Black Background - FIXED VERSION
+          Container(
+            // Dynamic height based on status bar + app bar content
+            height: statusBarHeight + appBarHeight,
+            decoration: BoxDecoration(
+              color: Colors.black,
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(20),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.5),
+                  blurRadius: 15,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                // Status bar spacer
+                SizedBox(height: statusBarHeight),
+
+                // Main app bar content
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.yellow[600],
+                          ),
+                          child: IconButton(
+                            icon: const Icon(
+                              Icons.arrow_back,
+                              color: Colors.black,
+                            ),
+                            onPressed: () => Navigator.pop(context),
+                            padding: const EdgeInsets.all(10),
+                            iconSize: 24,
+                          ),
+                        ),
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'NOTIFICATIONS',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: _isConnected
+                                        ? Colors.green
+                                        : Colors.red,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color:
+                                            (_isConnected
+                                                    ? Colors.green
+                                                    : Colors.red)
+                                                .withOpacity(0.3),
+                                        blurRadius: 4,
+                                        spreadRadius: 1,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  _isConnected ? 'Connected' : 'Disconnected',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.yellow[600],
+                          ),
+                          child: IconButton(
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.black,
+                            ),
+                            onPressed: _notifications.isNotEmpty
+                                ? _clearAllNotifications
+                                : null,
+                            padding: const EdgeInsets.all(10),
+                            iconSize: 24,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Main content area
+          Expanded(
+            child: Builder(
+              builder: (context) {
+                if (_isLoading || _isInitializing) {
+                  return _buildLoadingState();
+                } else if (_hasError) {
+                  return _buildErrorState();
+                } else if (_notifications.isNotEmpty) {
+                  return _buildNotificationsList();
+                } else {
+                  return _buildEmptyState();
+                }
+              },
+            ),
+          ),
         ],
       ),
     );
@@ -1022,6 +1262,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
       case 'TRIP_REJECTED':
       case 'TRIP_CANCELLED':
       case 'TRIP_COMPLETED':
+      case 'TRIP_CONFIRMED':
+      case 'TRIP_READING_START':
+      case 'TRIP_STARTED':
+      case 'TRIP_FINISHED':
         return Icons.directions_car;
       case 'VEHICLE_ASSIGNED':
       case 'VEHICLE_UNASSIGNED':
@@ -1031,5 +1275,4 @@ class _NotificationScreenState extends State<NotificationScreen> {
     }
   }
 
-  
 }
