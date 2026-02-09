@@ -338,9 +338,19 @@ class _TopBarState extends State<TopBar> {
     final overlayState = Overlay.of(context);
     if (overlayState == null) return;
 
+    // Calculate position based on app bar height
+    // AppBar height is 80 + status bar height
+    final double statusBarHeight = MediaQuery.of(context).padding.top;
+    final double appBarHeight = 80.0;
+    final double totalAppBarHeight = statusBarHeight;
+
     _notificationOverlay = OverlayEntry(
-      builder: (context) =>
-          Positioned(top: 10, left: 16, right: 16, child: _buildSimplePopup()),
+      builder: (context) => Positioned(
+        top: statusBarHeight + 8, // Position below the app bar with small gap
+        left: 16,
+        right: 16,
+        child: _buildSimplePopup(),
+      ),
     );
 
     overlayState.insert(_notificationOverlay!);
@@ -348,48 +358,85 @@ class _TopBarState extends State<TopBar> {
   }
 
   Widget _buildSimplePopup() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: Colors.blue,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 8,
-            spreadRadius: 1,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.notifications, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              const Text(
-                'New Notification',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+    return GestureDetector(
+      onTap: () {
+        // Remove popup first
+        _removeNotificationPopup();
+        // Navigate to notification screen
+        _navigateToNotificationScreen();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        margin: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          color: Colors.blue,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 8,
+              spreadRadius: 1,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Notification content
+            Expanded(
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.notifications,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'New Notification',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            decoration: TextDecoration.none, // Add this
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${_unreadCount} unread notification${_unreadCount == 1 ? '' : 's'}',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                            decoration: TextDecoration.none, // Add this
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Close button
+            GestureDetector(
+              onTap: _removeNotificationPopup,
+              child: Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.2),
                 ),
+                child: const Icon(Icons.close, color: Colors.white, size: 16),
               ),
-              const SizedBox(width: 4),
-              Text(
-                '($_unreadCount unread)',
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
-              ),
-            ],
-          ),
-          GestureDetector(
-            onTap: _removeNotificationPopup,
-            child: const Icon(Icons.close, color: Colors.white, size: 18),
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -478,8 +525,8 @@ class _TopBarState extends State<TopBar> {
                 // Unread count badge
                 if (_unreadCount > 0 && !_isInitializing && !_isReconnecting)
                   Positioned(
-                    right: 8,
-                    top: 8,
+                    right: 6,
+                    top: 6,
                     child: Container(
                       padding: const EdgeInsets.all(2),
                       decoration: BoxDecoration(
@@ -487,8 +534,8 @@ class _TopBarState extends State<TopBar> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       constraints: const BoxConstraints(
-                        minWidth: 16,
-                        minHeight: 16,
+                        minWidth: 18,
+                        minHeight: 18,
                       ),
                       child: Text(
                         _unreadCount > 9 ? '9+' : _unreadCount.toString(),
@@ -574,4 +621,5 @@ class _TopBarState extends State<TopBar> {
     }
     return 'U';
   }
+
 }
