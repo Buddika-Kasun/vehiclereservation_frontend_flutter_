@@ -42,6 +42,7 @@ void main() async {
   await _requestPermissions();
 
   // Initialize configs safely
+  /*
   try {
     await ApiConfig.init();
   } catch (e, st) {
@@ -52,6 +53,15 @@ void main() async {
     await WebSocketConfig.init();
   } catch (e, st) {
     if (kDebugMode) print('❌ WebSocket Config init error: $e\n$st');
+  }
+  */
+
+  // Initialize configs safely - ADD THIS ORDER
+  try {
+    await ApiConfig.init();
+    await WebSocketConfig.init(); // THIS MUST BE CALLED BEFORE ANY USE
+  } catch (e, st) {
+    if (kDebugMode) print('❌ Config init error: $e\n$st');
   }
 
   // Initialize storage

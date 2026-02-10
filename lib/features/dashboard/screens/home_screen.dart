@@ -53,8 +53,8 @@ class _HomeScreenState extends State<HomeScreen> {
   //final UserHandler _userHandler = UserHandler();
   WebSocketManager get _webSocketManager => GlobalWebSocket.instance;
   late NotificationHandler _notificationHandler;
-  late TripHandler _tripHandler;
-  late UserHandler _userHandler;
+  //late TripHandler _tripHandler;
+  //late UserHandler _userHandler;
 
   User? _user;
   String? _token;
@@ -97,8 +97,8 @@ class _HomeScreenState extends State<HomeScreen> {
       
       // Create handlers with global instance
       _notificationHandler = NotificationHandler();
-      _tripHandler = TripHandler();
-      _userHandler = UserHandler();
+      //_tripHandler = TripHandler();
+      //_userHandler = UserHandler();
       
       // Initialize handlers
       await _notificationHandler.initialize(
@@ -106,6 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
         userId: _user!.id.toString(),
       );
       
+      /*
       await _tripHandler.initialize(
         token: _token!,
         userId: _user!.id.toString(),
@@ -115,13 +116,14 @@ class _HomeScreenState extends State<HomeScreen> {
         token: _token!,
         userId: _user!.id.toString(),
       );
+      */
       
       // Connect to notifications namespace (will use reference counting)
       await _webSocketManager.connectToNamespace('notifications');
       
       // Connect to other namespaces if needed
-      await _webSocketManager.connectToNamespace('trips');
-      await _webSocketManager.connectToNamespace('users');
+      //await _webSocketManager.connectToNamespace('trips');
+      //await _webSocketManager.connectToNamespace('users');
       
       _handlersInitialized = true;
     } catch (e) {
@@ -382,9 +384,9 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       // Clean up WebSocket connections
       await _notificationHandler.dispose();
-      await _tripHandler.dispose();
-      await _userHandler.dispose();
-      await _webSocketManager.disconnectAll();
+      //await _tripHandler.dispose();
+      //await _userHandler.dispose();
+      //await _webSocketManager.disconnectAll();
       _handlersInitialized = false;
     } catch (e) {
       print('Error disconnecting WebSocket: $e');
@@ -778,8 +780,8 @@ class _HomeScreenState extends State<HomeScreen> {
     // Only dispose handlers, don't disconnect WebSocket
     if (_handlersInitialized) {
       _notificationHandler.dispose();
-      _tripHandler.dispose();
-      _userHandler.dispose();
+      //_tripHandler.dispose();
+      //_userHandler.dispose();
     }
     super.dispose();
   }  

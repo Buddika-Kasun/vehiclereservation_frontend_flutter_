@@ -541,7 +541,7 @@ class _TopBarState extends State<TopBar> {
                         _unreadCount > 9 ? '9+' : _unreadCount.toString(),
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                         ),
                         textAlign: TextAlign.center,

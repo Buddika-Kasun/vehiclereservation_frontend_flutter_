@@ -118,7 +118,7 @@ class NotificationData {
       role: json['role'],
       email: json['email'],
       phone: json['phone'],
-      userId: json['userId'],
+      userId: json['userId'] != null ? int.tryParse(json['userId'].toString()) : null,
       username: json['username'],
       displayname: json['displayname'],
       departmentId: json['departmentId'],
