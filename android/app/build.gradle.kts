@@ -4,8 +4,13 @@ import java.io.FileInputStream
 plugins {
     id("com.android.application")
     id("kotlin-android")
+
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+
+    // Add the dependency for the Google services Gradle plugin
+    id("com.google.gms.google-services") version "4.4.4" apply false
+
 }
 
 val keystoreProperties = Properties()
@@ -39,6 +44,9 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Add multiDex support if needed
+        //multiDexEnabled true
     }
 
     signingConfigs {
@@ -72,6 +80,11 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.3")
 
     // Example: Firebase dependencies (add yours as needed)
-    // implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
-    // implementation("com.google.firebase:firebase-analytics-ktx")
+    //implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+    implementation(platform("com.google.firebase:firebase-bom:34.9.0"))
+    
+    //implementation("com.google.firebase:firebase-analytics-ktx")
+    implementation("com.google.firebase:firebase-analytics")
+    //implementation 'com.google.firebase:firebase-messaging:23.4.0'
+    //implementation 'androidx.multidex:multidex:2.0.1'
 }

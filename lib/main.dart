@@ -84,7 +84,7 @@ void main() async {
   } catch (e, st) {
     if (kDebugMode) print('❌ Firebase init error: $e\n$st');
   }
-
+  
   // Initialize connectivity service
   try {
     await ConnectivityService().initialize();

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/firebase_notification_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/forget_pw_verify_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
@@ -32,6 +33,9 @@ class _LoginScreenState extends State<LoginScreen> {
         _usernameController.text,
         _passwordController.text,
       );
+
+      // Send FCM token to backend
+      await FirebaseNotificationService().onUserLogin();
       
       _showSuccessDialog(res['message'] ?? "Login Successful!");
             

@@ -1,5 +1,8 @@
 // File: lib/screens/home_screen.dart
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/firebase_notification_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/global_websocket.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/review/review_trip_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/ride/rides_screen.dart';
@@ -391,6 +394,9 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       print('Error disconnecting WebSocket: $e');
     }
+
+    // Clear FCM token from backend (optional)
+    await FirebaseNotificationService().onUserLogout();
 
     // Clear storage and navigate to login
     await StorageService.clearUserData();
