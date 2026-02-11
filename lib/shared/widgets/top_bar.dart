@@ -97,7 +97,14 @@ class _TopBarState extends State<TopBar> {
           _loadUnreadCount();
 
           if (event == 'notification' || event == 'notification_update') {
-            _showSimpleNotificationPopup();
+
+            int? newCount;
+            if (message['data'] != null &&
+                message['data']['unreadCount'] != null) {
+              newCount = message['data']['unreadCount'];
+            }
+
+            _showSimpleNotificationPopup(newCount);
           }
         }
       });
@@ -122,7 +129,8 @@ class _TopBarState extends State<TopBar> {
       };
 
       _notificationHandler.onNewNotification = (notificationData) {
-        _showSimpleNotificationPopup();
+        int? newCount = notificationData['unreadCount'];
+        _showSimpleNotificationPopup(newCount);
         _loadUnreadCount();
       };
 
@@ -316,7 +324,7 @@ class _TopBarState extends State<TopBar> {
         });
   }
 
-  void _showSimpleNotificationPopup() {
+  void _showSimpleNotificationPopup([int? newCount]) {
     if (!mounted || _showNotification) return;
 
     // Cancel any existing timer
@@ -326,7 +334,7 @@ class _TopBarState extends State<TopBar> {
     _removeNotificationPopup();
 
     // Create new overlay
-    _createSimplePopup();
+    _createSimplePopup(newCount ?? _unreadCount + 1);
 
     // Auto-hide after 5 seconds
     _notificationTimer = Timer(const Duration(seconds: 5), () {
@@ -334,7 +342,7 @@ class _TopBarState extends State<TopBar> {
     });
   }
 
-  void _createSimplePopup() {
+  void _createSimplePopup([int displayCount = 0]) {
     final overlayState = Overlay.of(context);
     if (overlayState == null) return;
 
@@ -349,7 +357,7 @@ class _TopBarState extends State<TopBar> {
         top: statusBarHeight + 8, // Position below the app bar with small gap
         left: 16,
         right: 16,
-        child: _buildSimplePopup(),
+        child: _buildSimplePopup(displayCount),
       ),
     );
 
@@ -357,7 +365,7 @@ class _TopBarState extends State<TopBar> {
     _showNotification = true;
   }
 
-  Widget _buildSimplePopup() {
+  Widget _buildSimplePopup(int displayCount) {
     return GestureDetector(
       onTap: () {
         // Remove popup first
@@ -408,7 +416,7 @@ class _TopBarState extends State<TopBar> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${_unreadCount} unread notification${_unreadCount == 1 ? '' : 's'}',
+                          '${displayCount} unread notification${_unreadCount == 1 ? '' : 's'}',
                           style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 12,

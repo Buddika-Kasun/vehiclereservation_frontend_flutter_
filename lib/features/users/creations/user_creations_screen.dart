@@ -16,10 +16,13 @@ class UserCreationsScreen extends StatefulWidget {
   final String userId;
   final String token;
 
+  final Map<String, dynamic>? screenData;
+
   const UserCreationsScreen({
       Key? key,
       required this.userId,
-      required this.token
+      required this.token,
+      this.screenData,
     }) : super(key: key);
 
   @override
@@ -66,6 +69,19 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
   @override
   void initState() {
     super.initState();
+
+    // ADD THIS CODE at the beginning of initState:
+    if (widget.screenData?['filter'] != null) {
+      final filter = widget.screenData!['filter'].toString().toLowerCase();
+      if (filter == 'pending') {
+        _selectedFilter = 'Pending';
+      } else if (filter == 'approved') {
+        _selectedFilter = 'Approved';
+      } else if (filter == 'rejected') {
+        _selectedFilter = 'Rejected';
+      }
+    }
+    
     _loadDepartments();
     _loadUserCreations();
     //_initializeWebSocket();

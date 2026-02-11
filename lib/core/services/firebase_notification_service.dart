@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/auth_manager.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/utils/navigation_helper.dart';
 
 // Top-level background message handler
 @pragma('vm:entry-point')
@@ -328,6 +329,9 @@ class FirebaseNotificationService {
   void _handleNotificationClick(RemoteMessage message) {
     print("🖱️ Notification clicked: ${message.data}");
 
+    // Mark notification as read
+    _markNotificationAsRead(message.data);
+
     _notificationStream.add(message.data);
     _navigateToNotificationScreen(message.data);
   }
@@ -339,10 +343,32 @@ class FirebaseNotificationService {
       final payloadData = _parsePayload(payload);
       print("📱 Local notification clicked: $payloadData");
 
+      // Mark notification as read
+      _markNotificationAsRead(payloadData);
+
       _notificationStream.add(payloadData);
       _navigateToNotificationScreen(payloadData);
     } catch (e) {
       print("Payload parse error: $e");
+    }
+  }
+
+  Future<void> _markNotificationAsRead(Map<String, dynamic> data) async {
+    try {
+      final notificationId = data['id']?.toString();
+
+      if (notificationId != null && notificationId.isNotEmpty) {
+        print("📝 Marking notification as read: $notificationId");
+
+        // Call your API to mark notification as read
+        await ApiService.markNotificationAsRead(notificationId);
+
+        print("✅ Notification marked as read: $notificationId");
+      } else {
+        print("⚠️ No notification ID found in data");
+      }
+    } catch (e) {
+      print("❌ Error marking notification as read: $e");
     }
   }
 
@@ -368,26 +394,89 @@ class FirebaseNotificationService {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final context = AuthManager.navigatorKey.currentContext;
       if (context != null) {
-        final type = data['type']?.toString().toLowerCase() ?? 'general';
+        final type = data['type']?.toString().toUpperCase() ?? 'GENERAL';
         final id = data['id']?.toString();
+        final tripId =
+            int.tryParse(data['tripId']?.toString() ?? id ?? '0') ?? 0;
 
+        // Use NavigationHelper which already has all your navigation logic
         switch (type) {
+          // User registration notifications
+          case 'USER_REGISTERED':
+            NavigationHelper.toUserCreations('pending');
+            break;
+          case 'USER_APPROVED':
+            NavigationHelper.toUserCreations('approved');
+            break;
+          case 'USER_REJECTED':
+            NavigationHelper.toUserCreations('rejected');
+            break;
+
+          // REQUESTER or PASSENGER related notifications
+          case 'TRIP_CREATED':
+          case 'TRIP_CANCELLED':
+          case 'TRIP_CANCELLED_REQUESTER':
+          case 'TRIP_APPROVED':
+          case 'TRIP_REJECTED':
+          case 'TRIP_READING_START_FOR_PASSENGER':
+          case 'TRIP_STARTED_FOR_PASSENGER':
+          case 'TRIP_FINISHED_FOR_REQUESTER':
+          case 'TRIP_COMPLETED_FOR_REQUESTER':
+            NavigationHelper.toMyRideTripDetails(tripId);
+            break;
+
+          // SUPERVISOR related notifications
+          case 'TRIP_CREATED_AS_DRAFT':
+          case 'TRIP_CONFIRMED':
+          case 'TRIP_CANCELLED_SUPERVISOR':
+          case 'TRIP_STARTED_FOR_SUPERVISOR':
+          case 'TRIP_FINISHED_FOR_SUPERVISOR':
+          case 'TRIP_COMPLETED_FOR_SUPERVISOR':
+            NavigationHelper.toReviewTripDetails(tripId);
+            break;
+
+          // APPROVER related notifications
+          case 'TRIP_CONFIRMED_FOR_APPROVAL':
+          case 'TRIP_APPROVED_BY_APPROVER':
+          case 'TRIP_REJECTED_BY_APPROVER':
+            NavigationHelper.toApprovalTripDetails(tripId);
+            break;
+
+          // DRIVER related notifications
+          case 'TRIP_APPROVED_FOR_DRIVER':
+          case 'TRIP_READING_START_FOR_DRIVER':
+          case 'TRIP_STARTED':
+          case 'TRIP_FINISHED':
+          case 'TRIP_COMPLETED_FOR_DRIVER':
+            NavigationHelper.toAssignRideTripDetails(tripId);
+            break;
+
+          // SECURITY related notifications
+          case 'TRIP_APPROVED_FOR_SECURITY':
+          case 'TRIP_READING_START':
+          case 'TRIP_STARTED_FOR_SECURITY':
+          case 'TRIP_COMPLETED':
+            NavigationHelper.toMeterReading();
+            break;
+
+          // Keep backward compatibility with old notification types
           case 'trip_requested':
-            Navigator.pushNamed(context, '/trips/${id ?? ''}/review');
+            NavigationHelper.toReviewTripDetails(tripId);
             break;
           case 'trip_approved':
           case 'trip_rejected':
           case 'new_trip':
-            Navigator.pushNamed(context, '/trips/${id ?? ''}');
+            NavigationHelper.toMyRideTripDetails(tripId);
             break;
           case 'approval':
-            Navigator.pushNamed(context, '/approvals/${id ?? ''}');
+            NavigationHelper.toNotifications();
             break;
           case 'message':
-            Navigator.pushNamed(context, '/messages');
+            NavigationHelper.toNotifications();
             break;
+
           default:
-            Navigator.pushNamed(context, '/notifications');
+            NavigationHelper.toNotifications();
         }
       }
     });
@@ -469,4 +558,5 @@ class FirebaseNotificationService {
     _notificationStream.close();
     _isInitialized = false;
   }
+
 }

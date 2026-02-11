@@ -249,6 +249,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _currentScreen = UserCreationsScreen(
             userId: _user!.id.toString(),
             token: _token!,
+            screenData: data,
           );
           break;
         case 'trip_approvals':

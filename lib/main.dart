@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/config/api_config.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/config/websocket_config.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/routes/app_routes.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/routes/route_generator.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/connectivity_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/server_health_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/firebase_tester.dart';
@@ -287,10 +289,15 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ),
       ),
       debugShowCheckedModeBanner: false,
-      home: const WelcomeScreen(),
+      
+      //home: const WelcomeScreen(),
+      initialRoute: AppRoutes.welcome,
+      onGenerateRoute: RouteGenerator.generateRoute,
+
       routes: {
         '/admin': (context) => const AdminLoginScreen(),
       },
+      
       builder: (context, child) {
         return ConnectionOverlay(
           child: GestureDetector(
