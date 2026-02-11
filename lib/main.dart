@@ -8,6 +8,7 @@ import 'package:vehiclereservation_frontend_flutter_/core/config/api_config.dart
 import 'package:vehiclereservation_frontend_flutter_/core/config/websocket_config.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/connectivity_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/server_health_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/utils/firebase_tester.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/app_updates/admin_login_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/welcome/welcome_screen.dart';
@@ -80,6 +81,9 @@ void main() async {
 
   // Initialize Firebase notifications
   try {
+
+    await FirebaseTester.test(); // Run Firebase configuration tests
+
     await FirebaseNotificationService().initialize();
   } catch (e, st) {
     if (kDebugMode) print('❌ Firebase init error: $e\n$st');
