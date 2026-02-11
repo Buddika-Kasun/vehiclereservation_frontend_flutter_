@@ -1295,7 +1295,22 @@ class ApiService {
   ) async {
     try {
       return await authenticatedApiCall(
-        'notifications/$notificationId/read',
+        'notifications/read/$notificationId',
+        method: 'PUT',
+        body: {},
+      );
+    } catch (e) {
+      print('Error marking notification as read: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> markNotificationAsUnread(
+    String notificationId,
+  ) async {
+    try {
+      return await authenticatedApiCall(
+        'notifications/unread/$notificationId',
         method: 'PUT',
         body: {},
       );
@@ -1323,11 +1338,23 @@ class ApiService {
   ) async {
     try {
       return await authenticatedApiCall(
-        'notifications/$notificationId',
+        'notifications/delete/$notificationId',
         method: 'DELETE',
       );
     } catch (e) {
       print('Error deleting notification: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> deleteAllNotification() async {
+    try {
+      return await authenticatedApiCall(
+        'notifications/delete-all',
+        method: 'DELETE',
+      );
+    } catch (e) {
+      print('Error deleting all notifications: $e');
       rethrow;
     }
   }
@@ -1773,7 +1800,7 @@ class ApiService {
       print('❌ Error deleting FCM token: $e');
     } 
   }
-  
+
 }
 
 

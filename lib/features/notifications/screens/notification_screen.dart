@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/utils/navigation_helper.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/notification_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
@@ -197,8 +198,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
     super.dispose();
   }
 
-  
-
   void _handleRefreshEvent(Map<String, dynamic> data) {
     if (kDebugMode) {
       print('🔄 Refresh event received, reloading notifications...');
@@ -297,9 +296,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
           TextButton(
             onPressed: () async {
               try {
-                await ApiService.deleteNotification(
-                  'all',
-                ); // Assuming 'all' clears all
+                await ApiService.deleteAllNotification(); // Assuming 'all' clears all
                 _loadNotifications();
                 _loadUnreadCount();
                 Navigator.pop(context);
@@ -367,27 +364,61 @@ class _NotificationScreenState extends State<NotificationScreen> {
     switch (notification.type) {
       // User registration notifications - go to user creations screen
       case 'USER_REGISTERED':
+        NavigationHelper.toUserCreations('pending');
+        break;
       case 'USER_APPROVED':
+        NavigationHelper.toUserCreations('approved');
+        break;
       case 'USER_REJECTED':
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => HomeScreen(screenName: 'user_creations'),
-          ),
-        );
+        NavigationHelper.toUserCreations('rejected');
         break;
 
       // Trip related notifications
+      // REQUESTER or PASSENGER related notifications
       case 'TRIP_CREATED':
+      case 'TRIP_CANCELLED':
+      case 'TRIP_CANCELLED_REQUESTER':
       case 'TRIP_APPROVED':
       case 'TRIP_REJECTED':
-      case 'TRIP_CANCELLED':
-      case 'TRIP_COMPLETED':
+      case 'TRIP_READING_START_FOR_PASSENGER':
+      case 'TRIP_STARTED_FOR_PASSENGER':
+      case 'TRIP_FINISHED_FOR_REQUESTER':
+      case 'TRIP_COMPLETED_FOR_REQUESTER':
+        NavigationHelper.toMyRideTripDetails(notification.data?.tripId ?? 0);
+        break;
+        
+      // SUPERVISOR related notifications
+      case 'TRIP_CREATED_AS_DRAFT':
       case 'TRIP_CONFIRMED':
-      case 'TRIP_READING_START':
+      case 'TRIP_CANCELLED_SUPERVISOR':
+      case 'TRIP_STARTED_FOR_SUPERVISOR':
+      case 'TRIP_FINISHED_FOR_SUPERVISOR':
+      case 'TRIP_COMPLETED_FOR_SUPERVISOR':
+        NavigationHelper.toReviewTripDetails(notification.data?.tripId ?? 0);
+        break;
+
+      // APPROVER related notifications
+      case 'TRIP_CONFIRMED_FOR_APPROVAL':
+      case 'TRIP_APPROVED_BY_APPROVER':
+      case 'TRIP_REJECTED_BY_APPROVER':
+        NavigationHelper.toApprovalTripDetails(notification.data?.tripId ?? 0);
+        break;
+
+      // DRIVER related notifications
+      case 'TRIP_APPROVED_FOR_DRIVER':
+      case 'TRIP_READING_START_FOR_DRIVER':
       case 'TRIP_STARTED':
       case 'TRIP_FINISHED':
-        _showTripNotificationDialog(notification);
+      case 'TRIP_COMPLETED_FOR_DRIVER':
+        NavigationHelper.toAssignRideTripDetails(notification.data?.tripId ?? 0);
+        break;
+
+      // SECURITY related notifications
+      case 'TRIP_APPROVED_FOR_SECURITY':
+      case 'TRIP_READING_START':
+      case 'TRIP_STARTED_FOR_SECURITY':
+      case 'TRIP_COMPLETED':
+        NavigationHelper.toMeterReading();
         break;
 
       // Vehicle related notifications
@@ -1137,7 +1168,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       ),
     );
   }
-
+/*
   Widget _buildNotificationCard(NotificationModel notification) {
     return Dismissible(
       key: Key(notification.id.toString()),
@@ -1234,7 +1265,246 @@ class _NotificationScreenState extends State<NotificationScreen> {
       ),
     );
   }
+*/
+  Widget _buildNotificationCard(NotificationModel notification) {
+    final int index = _notifications.indexOf(notification);
 
+    return Dismissible(
+      key: Key(notification.id.toString()),
+      direction: DismissDirection.horizontal,
+
+      // Left to right swipe background (Mark as Read)
+      background: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.only(left: 30),
+        decoration: BoxDecoration(
+          color: notification.read ? Colors.blue : Colors.green,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              notification.read ? Icons.mark_chat_read : Icons.mark_chat_read,
+              color: Colors.white,
+              size: 28,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              notification.read ? 'Mark as Unread' : 'Mark as Read',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
+
+      // Right to left swipe background (Delete)
+      secondaryBackground: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 30),
+        decoration: BoxDecoration(
+          color: Colors.red,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Text(
+              'Delete',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            SizedBox(width: 8),
+            Icon(Icons.delete, color: Colors.white, size: 28),
+          ],
+        ),
+      ),
+
+      onDismissed: (direction) {
+        // Remove the item immediately
+        setState(() {
+          _notifications.removeAt(index);
+        });
+
+        if (direction == DismissDirection.startToEnd) {
+          // Left swipe - Toggle read/unread
+          if (notification.read) {
+            _markAsUnread(notification.id);
+          } else {
+            _markAsRead(notification.id);
+          }
+        } else {
+          // Right swipe - Delete
+          _deleteNotification(notification.id);
+        }
+      },
+
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        child: Card(
+          elevation: 2,
+          margin: EdgeInsets.zero, // Remove Card's margin
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          color: Colors.white,
+          child: InkWell(
+            onTap: () => _handleNotificationTap(notification),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: notification.read
+                          ? Colors.grey[200]
+                          : Colors.black,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      _getNotificationIcon(notification.type),
+                      color: notification.read
+                          ? Colors.grey[600]
+                          : Colors.yellow[600],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          notification.title,
+                          style: TextStyle(
+                            fontWeight: notification.read
+                                ? FontWeight.normal
+                                : FontWeight.bold,
+                            fontSize: 16,
+                            color: notification.read
+                                ? Colors.grey[600]
+                                : Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          notification.message,
+                          style: TextStyle(
+                            color: notification.read
+                                ? Colors.grey[500]
+                                : Colors.grey[600],
+                            fontSize: 14,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _formatTime(notification.createdAt),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: notification.read
+                                    ? Colors.grey[400]
+                                    : Colors.grey[500],
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                if (notification.read)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Text(
+                                      'READ',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Text(
+                                      'NEW',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                const SizedBox(width: 8),
+                                Icon(
+                                  Icons.swipe,
+                                  size: 14,
+                                  color: Colors.grey[400],
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _markAsUnread(int notificationId) async {
+    try {
+      await ApiService.markNotificationAsUnread(notificationId.toString());
+      _loadNotifications();
+      _loadUnreadCount();
+
+      /*
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Notification marked as unread'),
+          duration: Duration(seconds: 2),
+          backgroundColor: Colors.blue,
+        ),
+      );
+      */
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to mark as unread: $e')));
+    }
+  }
+  
   String _formatTime(String timestamp) {
     try {
       final date = DateTime.parse(timestamp);
@@ -1254,18 +1524,38 @@ class _NotificationScreenState extends State<NotificationScreen> {
   IconData _getNotificationIcon(String type) {
     switch (type) {
       case 'USER_REGISTERED':
-      case 'USER_APPROVED':
-      case 'USER_REJECTED':
         return Icons.person_add;
+      case 'USER_APPROVED':
+        return Icons.person_add_alt_1;
+      case 'USER_REJECTED':
+        return Icons.person_remove;
       case 'TRIP_CREATED':
+      case 'TRIP_CANCELLED':
+      case 'TRIP_CANCELLED_REQUESTER':
       case 'TRIP_APPROVED':
       case 'TRIP_REJECTED':
-      case 'TRIP_CANCELLED':
-      case 'TRIP_COMPLETED':
+      case 'TRIP_READING_START_FOR_PASSENGER':
+      case 'TRIP_STARTED_FOR_PASSENGER':
+      case 'TRIP_FINISHED_FOR_REQUESTER':
+      case 'TRIP_COMPLETED_FOR_REQUESTER':
+      case 'TRIP_CREATED_AS_DRAFT':
       case 'TRIP_CONFIRMED':
-      case 'TRIP_READING_START':
+      case 'TRIP_CANCELLED_SUPERVISOR':
+      case 'TRIP_STARTED_FOR_SUPERVISOR':
+      case 'TRIP_FINISHED_FOR_SUPERVISOR':
+      case 'TRIP_COMPLETED_FOR_SUPERVISOR':
+      case 'TRIP_CONFIRMED_FOR_APPROVAL':
+      case 'TRIP_APPROVED_BY_APPROVER':
+      case 'TRIP_REJECTED_BY_APPROVER':
+      case 'TRIP_APPROVED_FOR_DRIVER':
+      case 'TRIP_READING_START_FOR_DRIVER':
       case 'TRIP_STARTED':
       case 'TRIP_FINISHED':
+      case 'TRIP_COMPLETED_FOR_DRIVER':
+      case 'TRIP_APPROVED_FOR_SECURITY':
+      case 'TRIP_READING_START':
+      case 'TRIP_STARTED_FOR_SECURITY':
+      case 'TRIP_COMPLETED':
         return Icons.directions_car;
       case 'VEHICLE_ASSIGNED':
       case 'VEHICLE_UNASSIGNED':

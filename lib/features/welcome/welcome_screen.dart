@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/routes/app_routes.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/update_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/update_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/login_screen.dart';
@@ -323,15 +324,31 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         final user = StorageService.userData;
         final token = await SecureStorageService().accessToken;
         if (user != null && token != null) {
+          /*
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const HomeScreen()),
           );
+          */
+
+          // Use route navigation instead of MaterialPageRoute
+          Navigator.of(
+            context,
+          ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+          
           return;
         }
       }
+
+      /*
       Navigator.of(
         context,
       ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
+      */
+      // Use route navigation
+      Navigator.of(
+        context,
+      ).pushNamedAndRemoveUntil(AppRoutes.login, (route) => false);
+      
     });
   }
 
