@@ -303,7 +303,7 @@ class FirebaseNotificationService {
             importance: Importance.max,
             priority: Priority.high,
             ticker: 'ticker',
-            icon: '@mipmap/ic_launcher',
+            icon: '@mipmap/logo',
             color: Colors.blue,
             enableVibration: true,
             playSound: true,
@@ -368,10 +368,13 @@ class FirebaseNotificationService {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final context = AuthManager.navigatorKey.currentContext;
       if (context != null) {
-        final type = data['type']?.toString() ?? 'general';
+        final type = data['type']?.toString().toLowerCase() ?? 'general';
         final id = data['id']?.toString();
 
         switch (type) {
+          case 'trip_requested':
+            Navigator.pushNamed(context, '/trips/${id ?? ''}/review');
+            break;
           case 'trip_approved':
           case 'trip_rejected':
           case 'new_trip':
