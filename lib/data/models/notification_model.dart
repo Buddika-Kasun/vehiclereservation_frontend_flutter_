@@ -91,6 +91,7 @@ class NotificationData {
   final String? email;
   final String? phone;
   final int? userId;
+  final int? tripId; // Add tripId to link notifications to specific trips
   final String? username;
   final String? displayname;
   final int? departmentId;
@@ -104,6 +105,7 @@ class NotificationData {
     this.email,
     this.phone,
     this.userId,
+    this.tripId,
     this.username,
     this.displayname,
     this.departmentId,
@@ -118,7 +120,8 @@ class NotificationData {
       role: json['role'],
       email: json['email'],
       phone: json['phone'],
-      userId: json['userId'],
+      userId: json['userId'] != null ? int.tryParse(json['userId'].toString()) : null,
+      tripId: json['tripId'] != null ? int.tryParse(json['tripId'].toString()) : null,
       username: json['username'],
       displayname: json['displayname'],
       departmentId: json['departmentId'],

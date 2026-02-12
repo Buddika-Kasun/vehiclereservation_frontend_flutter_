@@ -6,20 +6,23 @@ import 'package:vehiclereservation_frontend_flutter_/data/models/user_creation_m
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/color_generator.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/constant.dart';
-import 'package:vehiclereservation_frontend_flutter_/core/services/ws/global_websocket.dart';
+//import 'package:vehiclereservation_frontend_flutter_/core/services/ws/global_websocket.dart';
 
 // Import WebSocket structure
-import 'package:vehiclereservation_frontend_flutter_/core/services/ws/websocket_manager.dart';
-import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/user_handler.dart';
+//import 'package:vehiclereservation_frontend_flutter_/core/services/ws/websocket_manager.dart';
+//import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/user_handler.dart';
 
 class UserCreationsScreen extends StatefulWidget {
   final String userId;
   final String token;
 
+  final Map<String, dynamic>? screenData;
+
   const UserCreationsScreen({
       Key? key,
       required this.userId,
-      required this.token
+      required this.token,
+      this.screenData,
     }) : super(key: key);
 
   @override
@@ -28,8 +31,8 @@ class UserCreationsScreen extends StatefulWidget {
 
 class _UserCreationsScreenState extends State<UserCreationsScreen> {
   // WebSocket managers
-  WebSocketManager get _webSocketManager => GlobalWebSocket.instance;
-  late UserHandler _userHandler = UserHandler();
+  //WebSocketManager get _webSocketManager => GlobalWebSocket.instance;
+  //late UserHandler _userHandler = UserHandler();
 
   List<UserCreation> _allUserCreations = [];
   List<UserCreation> _displayedUserCreations = [];
@@ -59,12 +62,32 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
   bool _isInitializing = false;
   Timer? _debounceTimer;
 
+  // Add polling timer for auto-refresh
+  Timer? _refreshTimer;
+  bool _isRefreshingSilently = false;
+
   @override
   void initState() {
     super.initState();
+
+    // ADD THIS CODE at the beginning of initState:
+    if (widget.screenData?['filter'] != null) {
+      final filter = widget.screenData!['filter'].toString().toLowerCase();
+      if (filter == 'pending') {
+        _selectedFilter = 'Pending';
+      } else if (filter == 'approved') {
+        _selectedFilter = 'Approved';
+      } else if (filter == 'rejected') {
+        _selectedFilter = 'Rejected';
+      }
+    }
+    
     _loadDepartments();
     _loadUserCreations();
-    _initializeWebSocket();
+    //_initializeWebSocket();
+
+    // Start auto-refresh timer
+    _startAutoRefresh();
 
     // Add scroll listener for pagination
     _scrollController.addListener(_onScroll);
@@ -75,10 +98,90 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _debounceTimer?.cancel();
-    _cleanupWebSocket();
+    //_cleanupWebSocket();
+
+    // Cancel refresh timer
+    _stopAutoRefresh();
+
     super.dispose();
   }
 
+  // Add auto-refresh methods
+  void _startAutoRefresh() {
+    // Start timer to refresh every 30 seconds
+    _refreshTimer = Timer.periodic(Duration(seconds: 30), (timer) {
+      if (!_isRefreshingSilently && mounted) {
+        _silentRefresh();
+      }
+    });
+  }
+
+  void _stopAutoRefresh() {
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
+  }
+
+  Future<void> _silentRefresh() async {
+    if (_isRefreshingSilently || !mounted) return;
+
+    try {
+      _isRefreshingSilently = true;
+
+      // Only refresh if we're on the first page (for simplicity)
+      // You could add more sophisticated logic here
+      if (_currentPage == 1) {
+        final response = await ApiService.getUserCreations(
+          status: _selectedFilter == 'All' ? null : _selectedFilter,
+          page: 1,
+          limit: _itemsPerPage,
+        );
+
+        if (response['success'] == true && mounted) {
+          final List<dynamic> userCreationsData =
+              response['data']['users'] ?? [];
+          final total = response['data']['total'] ?? 0;
+
+          final newUserCreations = userCreationsData
+              .map((data) => UserCreation.fromJson(data))
+              .toList();
+
+          // Check if data has actually changed
+          if (_hasDataChanged(newUserCreations)) {
+            setState(() {
+              _allUserCreations = newUserCreations;
+              _displayedUserCreations = newUserCreations;
+              _total = total;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Silent refresh error: $e');
+      }
+    } finally {
+      _isRefreshingSilently = false;
+    }
+  }
+
+  bool _hasDataChanged(List<UserCreation> newUserCreations) {
+    if (_allUserCreations.length != newUserCreations.length) return true;
+
+    for (int i = 0; i < newUserCreations.length; i++) {
+      final newUser = newUserCreations[i];
+      final oldUser = _allUserCreations[i];
+
+      if (newUser.id != oldUser.id ||
+          newUser.isApproved != oldUser.isApproved ||
+          newUser.updatedAt != oldUser.updatedAt) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /*
   Future<void> _initializeWebSocket() async {
     try {
       if (mounted) {
@@ -208,6 +311,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
         return true;
     }
   }
+  */
 
   void _debounceUserRefresh(Function callback) {
     if (_debounceTimer?.isActive ?? false) {
@@ -230,6 +334,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
     }
   }
   
+  /*
   void _handleRefreshEvent(Map<String, dynamic> data) {
     final scope = data['scope']?.toString() ?? 'ALL';
 
@@ -242,6 +347,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
       _debounceRefresh();
     }
   }
+  */
 
   void _debounceRefresh() {
     if (_debounceTimer?.isActive ?? false) {
@@ -271,6 +377,9 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
         _isLoadingMore = true;
       });
     }
+
+    // Reset silent refresh flag if this is a manual refresh
+    _isRefreshingSilently = false;
 
     try {
       final response = await ApiService.getUserCreations(
@@ -534,6 +643,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
     return displayName[0].toUpperCase();
   }
 
+  /*
   void _cleanupWebSocket() async {
     try {
       await _userHandler.dispose();
@@ -551,6 +661,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
     });
     _initializeWebSocket();
   }
+  */
 
   @override
   Widget build(BuildContext context) {
@@ -582,11 +693,9 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
 
           SizedBox(height: 20),
 
-          // Loading text
+          // Loading text - remove WebSocket reference
           Text(
-            _isInitializing
-                ? 'Connecting to real-time updates...'
-                : 'Loading User Creations...',
+            'Loading User Creations...',
             style: TextStyle(
               color: Colors.white,
               fontSize: 16,
@@ -596,11 +705,9 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
 
           SizedBox(height: 8),
 
-          // Subtitle text
+          // Subtitle text - remove WebSocket reference
           Text(
-            _isInitializing
-                ? 'Please wait while we establish the connection'
-                : 'Fetching user requests...',
+            'Fetching user requests...',
             style: TextStyle(color: Colors.grey[400], fontSize: 14),
           ),
         ],
@@ -667,6 +774,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
                     ),
                   ),
                   SizedBox(width: 8),
+                  /*
                   Container(
                     width: 8,
                     height: 8,
@@ -683,6 +791,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
                       ],
                     ),
                   ),
+                  */
                 ],
               ),
               SizedBox(height: 4),
@@ -690,6 +799,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
                 'Approve or reject user registration requests',
                 style: TextStyle(fontSize: 14, color: Colors.grey[300]),
               ),
+              /*
               if (_isConnected) ...[
                 SizedBox(height: 4),
                 Text(
@@ -697,6 +807,7 @@ class _UserCreationsScreenState extends State<UserCreationsScreen> {
                   style: TextStyle(fontSize: 12, color: Colors.green[300]),
                 ),
               ]
+              */
             ],
           ),
         ),

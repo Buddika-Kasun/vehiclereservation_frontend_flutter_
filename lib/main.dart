@@ -1,12 +1,16 @@
 // lib/main.dart
 import 'dart:async';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/config/api_config.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/config/websocket_config.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/routes/app_routes.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/routes/route_generator.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/connectivity_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/server_health_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/utils/firebase_tester.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/app_updates/admin_login_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/welcome/welcome_screen.dart';
@@ -41,6 +45,7 @@ void main() async {
   await _requestPermissions();
 
   // Initialize configs safely
+  /*
   try {
     await ApiConfig.init();
   } catch (e, st) {
@@ -51,6 +56,15 @@ void main() async {
     await WebSocketConfig.init();
   } catch (e, st) {
     if (kDebugMode) print('❌ WebSocket Config init error: $e\n$st');
+  }
+  */
+
+  // Initialize configs safely - ADD THIS ORDER
+  try {
+    await ApiConfig.init();
+    await WebSocketConfig.init(); // THIS MUST BE CALLED BEFORE ANY USE
+  } catch (e, st) {
+    if (kDebugMode) print('❌ Config init error: $e\n$st');
   }
 
   // Initialize storage
@@ -69,11 +83,14 @@ void main() async {
 
   // Initialize Firebase notifications
   try {
+
+    await FirebaseTester.test(); // Run Firebase configuration tests
+
     await FirebaseNotificationService().initialize();
   } catch (e, st) {
     if (kDebugMode) print('❌ Firebase init error: $e\n$st');
   }
-
+  
   // Initialize connectivity service
   try {
     await ConnectivityService().initialize();
@@ -100,6 +117,10 @@ Future<void> _requestPermissions() async {
     debugPrint('Web platform detected. Skipping permissions.');
     return;
   }
+
+  // Check Android version
+  //final androidInfo = await DeviceInfoPlugin().androidInfo;
+  //final sdkVersion = androidInfo.version.sdkInt;
   
   final permissions = [
     //Permission.location,
@@ -114,8 +135,8 @@ Future<void> _requestPermissions() async {
     // Storage permissions (for file uploads, profile pictures)
     //Permission.photos, // For iOS
     //Permission.mediaLibrary, // For iOS
-    Permission.storage, // For Android
-    Permission.accessMediaLocation, // For Android 11+
+    //Permission.storage, // For Android
+    //Permission.accessMediaLocation, // For Android 11+
 
     // Network permissions (implicitly granted but good to check)
     //Permission.accessNotificationPolicy,
@@ -268,10 +289,15 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ),
       ),
       debugShowCheckedModeBanner: false,
-      home: const WelcomeScreen(),
+      
+      //home: const WelcomeScreen(),
+      initialRoute: AppRoutes.welcome,
+      onGenerateRoute: RouteGenerator.generateRoute,
+
       routes: {
         '/admin': (context) => const AdminLoginScreen(),
       },
+      
       builder: (context, child) {
         return ConnectionOverlay(
           child: GestureDetector(

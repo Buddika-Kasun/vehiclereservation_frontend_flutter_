@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart'; // Add this import
+import 'package:vehiclereservation_frontend_flutter_/core/services/firebase_notification_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/available_vehicles_response.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/checklist_models.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/driver_trip_response.dart';
@@ -37,6 +38,7 @@ class ApiService {
     final res = json.decode(response.body);
 
     if (res['success'] == true) {
+
       // Save tokens securely
       await SecureStorageService().saveTokens(
         accessToken: res['data']['accessToken'],
@@ -44,13 +46,13 @@ class ApiService {
       );
 
       // Convert the user map to User object and save
-    final userMap = res['data']['user'] as Map<String, dynamic>;
-    final user = User.fromJson(userMap);
-    
-    await StorageService.saveUserData(
-      userData: user,
-      originalJson: userMap
-    );
+      final userMap = res['data']['user'] as Map<String, dynamic>;
+      final user = User.fromJson(userMap);
+      
+      await StorageService.saveUserData(
+        userData: user,
+        originalJson: userMap
+      );
 
       return res;
     } else {
@@ -1293,7 +1295,22 @@ class ApiService {
   ) async {
     try {
       return await authenticatedApiCall(
-        'notifications/$notificationId/read',
+        'notifications/read/$notificationId',
+        method: 'PUT',
+        body: {},
+      );
+    } catch (e) {
+      print('Error marking notification as read: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> markNotificationAsUnread(
+    String notificationId,
+  ) async {
+    try {
+      return await authenticatedApiCall(
+        'notifications/unread/$notificationId',
         method: 'PUT',
         body: {},
       );
@@ -1321,11 +1338,23 @@ class ApiService {
   ) async {
     try {
       return await authenticatedApiCall(
-        'notifications/$notificationId',
+        'notifications/delete/$notificationId',
         method: 'DELETE',
       );
     } catch (e) {
       print('Error deleting notification: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> deleteAllNotification() async {
+    try {
+      return await authenticatedApiCall(
+        'notifications/delete-all',
+        method: 'DELETE',
+      );
+    } catch (e) {
+      print('Error deleting all notifications: $e');
       rethrow;
     }
   }
@@ -1718,28 +1747,59 @@ class ApiService {
   }
   
   static Future<bool> checkIfChecklistExists({
-  required String vehicleId,
-  required DateTime date,
-}) async {
-  try {
-    final formattedDate = DateFormat('yyyy-MM-dd').format(date);
-    
-    print('🔍 Checking if checklist exists for vehicle $vehicleId on $formattedDate');
-    
-    final response = await authenticatedApiCall(
-      'checklist/vehicle/$vehicleId/date/$formattedDate/exists',
-      method: 'GET',
-    );
-    
-    print('📥 Exists check response: $response');
-    print('  exists value: ${response['exists']}');
-    
-    return response['exists'] ?? false;
-  } catch (e) {
-    print('❌ Error checking checklist existence: $e');
-    return false;
+    required String vehicleId,
+    required DateTime date,
+  }) async {
+    try {
+      final formattedDate = DateFormat('yyyy-MM-dd').format(date);
+      
+      print('🔍 Checking if checklist exists for vehicle $vehicleId on $formattedDate');
+      
+      final response = await authenticatedApiCall(
+        'checklist/vehicle/$vehicleId/date/$formattedDate/exists',
+        method: 'GET',
+      );
+      
+      print('📥 Exists check response: $response');
+      print('  exists value: ${response['exists']}');
+      
+      return response['exists'] ?? false;
+    } catch (e) {
+      print('❌ Error checking checklist existence: $e');
+      return false;
+    }
   }
-}
+
+  static Future<void> updateFcmToken({
+    required fcmToken
+  }) async {
+    try {
+      print('🔄 Updating FCM token: $fcmToken');
+      await authenticatedApiCall(
+        'notifications/update-fcm-token',
+        method: 'PUT',
+        body: {
+          'fcmToken': fcmToken,
+        },
+      );
+      print('✅ FCM token updated successfully');
+    } catch (e) {
+      print('❌ Error updating FCM token: $e');
+    }
+  }
+
+  static Future<void> deleteFcmToken() async {
+    try {
+      print('🔄 Deleting FCM token');
+      await authenticatedApiCall(
+        'notifications/delete-fcm-token',
+        method: 'DELETE',
+      );
+      print('✅ FCM token deleted successfully');
+    } catch (e) {
+      print('❌ Error deleting FCM token: $e');
+    } 
+  }
 
 }
 

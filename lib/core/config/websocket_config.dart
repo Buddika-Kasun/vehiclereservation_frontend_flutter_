@@ -13,9 +13,15 @@ class WebSocketConfig {
   }
 
   static String get socketIoBaseUrl {
-    return ApiConfig.wsUrl;
+    try {
+      return ApiConfig.wsUrl;
+    } catch (e) {
+      print('⚠️ WebSocketConfig not fully initialized, using direct env');
+      return dotenv.get('WS_URL', fallback: '');
+    }
   }
 
+  /*
   static Map<String, dynamic> get options {
     return {
       'transports': ['websocket'],
@@ -27,15 +33,16 @@ class WebSocketConfig {
       'autoConnect': false,
     };
   }
-
+  */
+  
   // WebSocket connection configuration
   static Map<String, dynamic> get connectionOptions {
     return {
-      'transports': ['polling', 'websocket'], // polling first, then websocket
+      'transports': ['websocket', 'polling'], // websocket first, then polling
       'path': ApiConfig.wsPath,
       'timeout': 30000,
       'reconnection': true,
-      'reconnectionAttempts': 5,
+      'reconnectionAttempts': 10,
       'reconnectionDelay': 1000,
       'reconnectionDelayMax': 5000,
       'autoConnect': true,
@@ -74,6 +81,7 @@ class WebSocketConfig {
   */
 
 // Get WebSocket URL for Socket.IO
+/*
 static String get socketIoUrl {
   if (!_initialized) {
     throw Exception('WebSocketConfig not initialized');
@@ -101,6 +109,47 @@ static String get socketIoUrl {
 
   return cleanUrl;
 }
+*/
+
+static String get socketIoUrl {
+    try {
+      final baseUrl = ApiConfig.wsBaseUrl;
+      String cleanUrl = baseUrl;
+      if (cleanUrl.endsWith('/')) {
+        cleanUrl = cleanUrl.substring(0, cleanUrl.length - 1);
+      }
+
+      if (isSecure) {
+        if (!cleanUrl.startsWith('wss://') && !cleanUrl.startsWith('https://')) {
+          cleanUrl = 'wss://${cleanUrl.replaceAll(RegExp(r'^.*://'), '')}';
+        }
+      } else {
+        if (!cleanUrl.startsWith('ws://') && !cleanUrl.startsWith('http://')) {
+          cleanUrl = 'ws://${cleanUrl.replaceAll(RegExp(r'^.*://'), '')}';
+        }
+      }
+
+      return cleanUrl;
+    } catch (e) {
+      print('⚠️ Using fallback WebSocket URL from env');
+      final wsUrl = dotenv.get('WS_URL', fallback: '');
+      if (wsUrl.isEmpty) throw Exception('WS_URL not configured');
+      return wsUrl;
+    }
+  }
+
+  // Other getters remain the same but remove _initialized checks
+  static Map<String, dynamic> get options {
+    return {
+      'transports': ['websocket'],
+      'path': ApiConfig.wsPath ?? '/socket.io', // Add fallback
+      'reconnection': true,
+      'reconnectionAttempts': 10,
+      'reconnectionDelay': 1000,
+      'timeout': 20000,
+      'autoConnect': false,
+    };
+  }
 
 // Get WebSocket URL for specific namespace
 static String getNamespaceUrl(String namespace) {

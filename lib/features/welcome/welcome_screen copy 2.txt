@@ -2,10 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:vehiclereservation_frontend_flutter_/core/routes/app_routes.dart';
-import 'package:vehiclereservation_frontend_flutter_/core/services/pending_navigation_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/update_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/core/utils/navigation_helper.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/update_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/login_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
@@ -13,7 +10,6 @@ import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storag
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/shared/widgets/download_progress_dialog.dart';
 import 'package:vehiclereservation_frontend_flutter_/shared/widgets/update_dialog.dart';
-import 'package:vehiclereservation_frontend_flutter_/shared/widgets/installation_progress_dialog.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -118,139 +114,34 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         fileName: update.originalFileName ?? 'update_v${update.version}.apk',
         fileSize: update.fileSize,
         downloadTask: (onProgress) async {
-          try {
-            await _updateService.downloadAndInstallUpdate(
-              downloadUrl: update.downloadUrl!,
-              fileName:
-                  update.originalFileName ?? 'update_v${update.version}.apk',
-              context: context, // Pass context here
-              onDownloadProgress: onProgress,
-              onDownloadComplete: (message) {
-                // Close download dialog
-                Navigator.of(context).pop();
-
-                // Show installation dialog
-                _showInstallationDialog(update);
-              },
-              onInstallStart: (message) {
-                // Update installation dialog
-                _updateInstallationDialog(message);
-              },
-              onInstallComplete: (message) {
-                // Show final message and proceed
-                _showInstallationCompleteDialog(update, message);
-              },
-              onError: (error) {
-                Navigator.of(context).pop();
-                _showErrorDialog('Update failed: $error');
-              },
-            );
-          } catch (e) {
-            Navigator.of(context).pop();
-            _showErrorDialog('Update error: $e');
-          }
-        },
-      ),
-    );
-  }
-
-  void _showInstallationDialog(AppUpdate update) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => InstallationProgressDialog(
-        update: update,
-        onCancel: () {
-          Navigator.of(context).pop();
-          _proceedToApp();
-        },
-      ),
-    );
-  }
-
-  void _updateInstallationDialog(String message) {
-    // Find and update the installation dialog
-    final context = this.context;
-    if (context != null && mounted) {
-      final dialogContext = context
-          .findAncestorStateOfType<State<InstallationProgressDialog>>();
-      if (dialogContext != null && dialogContext.mounted) {
-        // Update the dialog state if needed
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-    }
-  }
-
-  void _showInstallationCompleteDialog(AppUpdate update, String message) {
-    // Close any open dialogs
-    Navigator.of(context).popUntil((route) => route.isFirst);
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Installation Started'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.check_circle, size: 60, color: Colors.green),
-            const SizedBox(height: 20),
-            Text(
-              'Update ${update.version}',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 10),
-            const Text(
-              'The system installer will now open. Please follow the on-screen instructions to complete the installation.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 20),
-            const LinearProgressIndicator(),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              // The app will close when installer opens
-              Future.delayed(const Duration(seconds: 3), () {
-                if (mounted) {
-                  _proceedToApp();
-                }
-              });
-            },
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showErrorDialog(String error) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Update Error'),
-        content: Text(error),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
+          await _updateService.downloadUpdate(
+            downloadUrl: update.downloadUrl!,
+            fileName:
+                update.originalFileName ?? 'update_v${update.version}.apk',
+            onProgress: onProgress,
+            onComplete: (message) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(message), backgroundColor: Colors.green),
+              );
               _proceedToApp();
             },
-            child: const Text('Continue'),
-          ),
-        ],
+            onError: (error) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Update failed: $error'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+              _proceedToApp();
+            },
+          );
+        },
       ),
-    );
+    ).then((success) {
+      if (success == true) {
+        _proceedToApp();
+      }
+    });
   }
 
   void _redirectToStore(AppUpdate? update) {
@@ -326,141 +217,17 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         final user = StorageService.userData;
         final token = await SecureStorageService().accessToken;
         if (user != null && token != null) {
-          /*
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const HomeScreen()),
           );
-          */
-
-          // Use route navigation instead of MaterialPageRoute
-          Navigator.of(
-            context,
-          ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
-          
-          // After navigation, handle pending notification
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _handlePendingNotification();
-          });
-
           return;
         }
       }
-
-      /*
       Navigator.of(
         context,
       ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
-      */
-      // Use route navigation
-      Navigator.of(
-        context,
-      ).pushNamedAndRemoveUntil(AppRoutes.login, (route) => false);
-      
     });
   }
-
-  void _handlePendingNotification() {
-    final pendingData = PendingNavigationService().getPendingNotification();
-    if (pendingData != null && !PendingNavigationService().isNavigating) {
-      print("📱 Handling pending notification from welcome screen");
-      PendingNavigationService().isNavigating = true;
-      
-      // Small delay to ensure HomeScreen is fully loaded
-      Future.delayed(const Duration(milliseconds: 500), () {
-        _navigateToNotificationScreen(pendingData);
-        PendingNavigationService().clearPendingNotification();
-      });
-    }
-  }
-
-  void _navigateToNotificationScreen(Map<String, dynamic> data) {
-
-    // Your existing navigation logic
-    final type = data['type']?.toString().toUpperCase() ?? 'GENERAL';
-    final id = data['id']?.toString();
-    final tripId = int.tryParse(data['tripId']?.toString() ?? id ?? '0') ?? 0;
-
-    // Navigate using your existing switch statement
-    switch (type) {
-      // User registration notifications
-      case 'USER_REGISTERED':
-        NavigationHelper.toUserCreations('pending');
-        break;
-      case 'USER_APPROVED':
-        NavigationHelper.toUserCreations('approved');
-        break;
-      case 'USER_REJECTED':
-        NavigationHelper.toUserCreations('rejected');
-        break;
-
-      // REQUESTER or PASSENGER related notifications
-      case 'TRIP_CREATED':
-      case 'TRIP_CANCELLED':
-      case 'TRIP_CANCELLED_REQUESTER':
-      case 'TRIP_APPROVED':
-      case 'TRIP_REJECTED':
-      case 'TRIP_READING_START_FOR_PASSENGER':
-      case 'TRIP_STARTED_FOR_PASSENGER':
-      case 'TRIP_FINISHED_FOR_REQUESTER':
-      case 'TRIP_COMPLETED_FOR_REQUESTER':
-        NavigationHelper.toMyRideTripDetails(tripId);
-        break;
-
-      // SUPERVISOR related notifications
-      case 'TRIP_CREATED_AS_DRAFT':
-      case 'TRIP_CONFIRMED':
-      case 'TRIP_CANCELLED_SUPERVISOR':
-      case 'TRIP_STARTED_FOR_SUPERVISOR':
-      case 'TRIP_FINISHED_FOR_SUPERVISOR':
-      case 'TRIP_COMPLETED_FOR_SUPERVISOR':
-        NavigationHelper.toReviewTripDetails(tripId);
-        break;
-
-      // APPROVER related notifications
-      case 'TRIP_CONFIRMED_FOR_APPROVAL':
-      case 'TRIP_APPROVED_BY_APPROVER':
-      case 'TRIP_REJECTED_BY_APPROVER':
-        NavigationHelper.toApprovalTripDetails(tripId);
-        break;
-
-      // DRIVER related notifications
-      case 'TRIP_APPROVED_FOR_DRIVER':
-      case 'TRIP_READING_START_FOR_DRIVER':
-      case 'TRIP_STARTED':
-      case 'TRIP_FINISHED':
-      case 'TRIP_COMPLETED_FOR_DRIVER':
-        NavigationHelper.toAssignRideTripDetails(tripId);
-        break;
-
-      // SECURITY related notifications
-      case 'TRIP_APPROVED_FOR_SECURITY':
-      case 'TRIP_READING_START':
-      case 'TRIP_STARTED_FOR_SECURITY':
-      case 'TRIP_COMPLETED':
-        NavigationHelper.toMeterReading();
-        break;
-
-      // Keep backward compatibility with old notification types
-      case 'trip_requested':
-        NavigationHelper.toReviewTripDetails(tripId);
-        break;
-      case 'trip_approved':
-      case 'trip_rejected':
-      case 'new_trip':
-        NavigationHelper.toMyRideTripDetails(tripId);
-        break;
-      case 'approval':
-        NavigationHelper.toNotifications();
-        break;
-      case 'message':
-        NavigationHelper.toNotifications();
-        break;
-
-      default:
-        NavigationHelper.toNotifications();
-    }
-  }
-
 
   @override
   void dispose() {
@@ -499,14 +266,15 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               ),
             ),
 
-            // Main content
+            // Main content - Single Column to avoid overlap
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                // Top spacer
                 SizedBox(height: size.height * 0.1),
 
-                // Logo
+                // Large visible logo - INCREASED SIZE
                 FadeTransition(
                   opacity: _fadeAnimation,
                   child: ScaleTransition(
@@ -536,6 +304,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
+                          // Outer glow
                           Container(
                             width: double.infinity,
                             height: double.infinity,
@@ -552,6 +321,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               ),
                             ),
                           ),
+
+                          // Logo container - INCREASED SIZE
                           Container(
                             width: isSmallScreen
                                 ? size.width * 0.5
@@ -588,7 +359,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
                 SizedBox(height: size.height * 0.04),
 
-                // App name
+                // App name - CLEAR AND VISIBLE
                 FadeTransition(
                   opacity: _fadeAnimation,
                   child: Padding(
@@ -605,6 +376,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           ),
                         ),
                         const SizedBox(height: 15),
+
+                        // PCW RIDE with strong yellow gradient
                         Container(
                           padding: const EdgeInsets.symmetric(
                             vertical: 10,
@@ -647,7 +420,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             ),
                           ),
                         ),
+
                         const SizedBox(height: 15),
+
                         Text(
                           "Vehicle Reservation System",
                           style: TextStyle(
@@ -663,9 +438,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                   ),
                 ),
 
+                // Spacer to push progress bar down
                 Expanded(child: Container()),
 
-                // Loading progress
+                // Loading progress - FIXED POSITION
                 Container(
                   margin: EdgeInsets.only(
                     bottom: size.height * 0.18,
@@ -714,7 +490,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               ],
             ),
 
-            // Footer
+            // Footer - FIXED AT BOTTOM
             Positioned(
               bottom: 30,
               left: 0,
@@ -801,12 +577,15 @@ class _ParticlePainter extends CustomPainter {
       final y = rng.nextDouble() * size.height;
       final radius = rng.nextDouble() * 3 + 1;
 
+      // Animate particle movement
       final offsetX = 10 * sin(animationValue * 2 * pi + i);
       final offsetY = 10 * cos(animationValue * 2 * pi + i);
 
+      // Draw particle with yellow color
       paint.color = Colors.yellow.withOpacity(0.1 + rng.nextDouble() * 0.1);
       canvas.drawCircle(Offset(x + offsetX, y + offsetY), radius, paint);
 
+      // Draw glow
       paint.color = Colors.yellow.withOpacity(0.05);
       canvas.drawCircle(Offset(x + offsetX, y + offsetY), radius * 3, paint);
     }
