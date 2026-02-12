@@ -17,6 +17,8 @@ import 'package:vehiclereservation_frontend_flutter_/core/services/storage_servi
 import 'package:vehiclereservation_frontend_flutter_/core/config/api_config.dart';
 import 'dart:math' as math;
 
+import 'package:vehiclereservation_frontend_flutter_/data/new_models/trip_card_model.dart';
+
 int min(int a, int b) => math.min(a, b);
 
 class ApiService {
@@ -1162,21 +1164,38 @@ class ApiService {
   }
 
   static Future<DriverTripResponse> getDriverAssignedTrips(
-      DriverTripListRequest request,
-    ) async {
-      try {
-        return await ApiService.authenticatedApiCall(
-          'trips/driver-assigned',
-          method: 'POST',
-          body: request.toJson(),
-        ).then((response) {
-          return DriverTripResponse.fromJson(response);
-        });
-      } catch (e) {
-        print('Error getting driver trips: $e');
-        rethrow;
-      }
+    DriverTripListRequest request,
+  ) async {
+    try {
+      return await ApiService.authenticatedApiCall(
+        'trips/driver-assigned',
+        method: 'POST',
+        body: request.toJson(),
+      ).then((response) {
+        return DriverTripResponse.fromJson(response);
+      });
+    } catch (e) {
+      print('Error getting driver trips: $e');
+      rethrow;
     }
+  }
+
+  static Future<TripCardResponse> getDriverAssignedTripsNew(
+    TripCardListRequest request,
+  ) async {
+    try {
+      return await ApiService.authenticatedApiCall(
+        'trips/driver-assigned',
+        method: 'POST',
+        body: request.toJson(),
+      ).then((response) {
+        return TripCardResponse.fromJson(response);
+      });
+    } catch (e) {
+      print('Error getting driver trips: $e');
+      rethrow;
+    }
+  }
 
   static Future<Map<String, dynamic>> startTrip(int tripId) async {
     return await authenticatedApiCall('trips/start/$tripId', method: 'POST');
