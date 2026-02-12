@@ -3,7 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/firebase_notification_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/pending_navigation_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/global_websocket.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/utils/navigation_helper.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/review/review_trip_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/ride/rides_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/approval_user_screen.dart';
@@ -76,6 +78,118 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _checkAuthentication();
+
+    // Check for pending notification after initialization
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _handlePendingNotification();
+    });
+  }
+
+  void _handlePendingNotification() {
+    final pendingData = PendingNavigationService().getPendingNotification();
+    if (pendingData != null && !PendingNavigationService().isNavigating) {
+      print("📱 Handling pending notification from home screen");
+      PendingNavigationService().isNavigating = true;
+
+      // Navigate to the notification screen
+      _navigateToNotificationScreen(pendingData);
+      PendingNavigationService().clearPendingNotification();
+    }
+  }
+
+  // Add this method to handle notification navigation from HomeScreen
+  void _navigateToNotificationScreen(Map<String, dynamic> data) {
+    if (_user == null || _token == null) {
+      print("⏳ User not ready, storing notification for later");
+      PendingNavigationService().setPendingNotification(data);
+      return;
+    }
+
+    // Your existing navigation logic
+    final type = data['type']?.toString().toUpperCase() ?? 'GENERAL';
+    final id = data['id']?.toString();
+    final tripId = int.tryParse(data['tripId']?.toString() ?? id ?? '0') ?? 0;
+
+    // Navigate using your existing switch statement
+    switch (type) {
+      // User registration notifications
+      case 'USER_REGISTERED':
+        NavigationHelper.toUserCreations('pending');
+        break;
+      case 'USER_APPROVED':
+        NavigationHelper.toUserCreations('approved');
+        break;
+      case 'USER_REJECTED':
+        NavigationHelper.toUserCreations('rejected');
+        break;
+
+      // REQUESTER or PASSENGER related notifications
+      case 'TRIP_CREATED':
+      case 'TRIP_CANCELLED':
+      case 'TRIP_CANCELLED_REQUESTER':
+      case 'TRIP_APPROVED':
+      case 'TRIP_REJECTED':
+      case 'TRIP_READING_START_FOR_PASSENGER':
+      case 'TRIP_STARTED_FOR_PASSENGER':
+      case 'TRIP_FINISHED_FOR_REQUESTER':
+      case 'TRIP_COMPLETED_FOR_REQUESTER':
+        NavigationHelper.toMyRideTripDetails(tripId);
+        break;
+
+      // SUPERVISOR related notifications
+      case 'TRIP_CREATED_AS_DRAFT':
+      case 'TRIP_CONFIRMED':
+      case 'TRIP_CANCELLED_SUPERVISOR':
+      case 'TRIP_STARTED_FOR_SUPERVISOR':
+      case 'TRIP_FINISHED_FOR_SUPERVISOR':
+      case 'TRIP_COMPLETED_FOR_SUPERVISOR':
+        NavigationHelper.toReviewTripDetails(tripId);
+        break;
+
+      // APPROVER related notifications
+      case 'TRIP_CONFIRMED_FOR_APPROVAL':
+      case 'TRIP_APPROVED_BY_APPROVER':
+      case 'TRIP_REJECTED_BY_APPROVER':
+        NavigationHelper.toApprovalTripDetails(tripId);
+        break;
+
+      // DRIVER related notifications
+      case 'TRIP_APPROVED_FOR_DRIVER':
+      case 'TRIP_READING_START_FOR_DRIVER':
+      case 'TRIP_STARTED':
+      case 'TRIP_FINISHED':
+      case 'TRIP_COMPLETED_FOR_DRIVER':
+        NavigationHelper.toAssignRideTripDetails(tripId);
+        break;
+
+      // SECURITY related notifications
+      case 'TRIP_APPROVED_FOR_SECURITY':
+      case 'TRIP_READING_START':
+      case 'TRIP_STARTED_FOR_SECURITY':
+      case 'TRIP_COMPLETED':
+        NavigationHelper.toMeterReading();
+        break;
+
+      // Keep backward compatibility with old notification types
+      case 'trip_requested':
+        NavigationHelper.toReviewTripDetails(tripId);
+        break;
+      case 'trip_approved':
+      case 'trip_rejected':
+      case 'new_trip':
+        NavigationHelper.toMyRideTripDetails(tripId);
+        break;
+      case 'approval':
+        NavigationHelper.toNotifications();
+        break;
+      case 'message':
+        NavigationHelper.toNotifications();
+        break;
+
+      default:
+        NavigationHelper.toNotifications();
+    }
+    
   }
 
   @override
