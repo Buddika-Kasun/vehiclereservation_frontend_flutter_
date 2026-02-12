@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/trip_list_response.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/review/review_trip_details_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/ride/trip_details_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/ride_(Users)/ride_details_screen.dart';
 
-class ReviewTripScreen extends StatefulWidget {
+class RidesScreen extends StatefulWidget {
   final int userId;
 
-  const ReviewTripScreen({Key? key, required this.userId}) : super(key: key);
+  const RidesScreen({Key? key, required this.userId}) : super(key: key);
 
   @override
-  _ReviewTripScreenState createState() => _ReviewTripScreenState();
+  _RidesScreenState createState() => _RidesScreenState();
 }
 
-class _ReviewTripScreenState extends State<ReviewTripScreen> {
+class _RidesScreenState extends State<RidesScreen> {
   List<TripCard> _trips = [];
   bool _isLoading = true;
   bool _loadingMore = false;
@@ -24,7 +23,7 @@ class _ReviewTripScreenState extends State<ReviewTripScreen> {
 
   // Filters
   TimeFilter _timeFilter = TimeFilter.today; // today, week, month, all
-  TripStatus? _statusFilter = TripStatus.draft;
+  TripStatus? _statusFilter;
 
   final ScrollController _scrollController = ScrollController();
 
@@ -47,7 +46,7 @@ class _ReviewTripScreenState extends State<ReviewTripScreen> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ReviewTripDetailsScreen(
+        builder: (context) => TripDetailsScreen(
           tripId: trip.id,
         ),
       ),
@@ -91,7 +90,7 @@ class _ReviewTripScreenState extends State<ReviewTripScreen> {
         limit: _limit,
       );
       
-      final response = await ApiService.getSupervisorTrips(request);
+      final response = await ApiService.getUserTrips(request);
       
       if (reset) {
         setState(() {
@@ -135,12 +134,7 @@ class _ReviewTripScreenState extends State<ReviewTripScreen> {
   void _setTimeFilter(TimeFilter filter) {
     setState(() {
       _timeFilter = filter;
-      if(filter == TimeFilter.today) {
-        _statusFilter = TripStatus.draft;
-      }
-      else {
-        _statusFilter = null;
-      }
+      _statusFilter = null; // Reset status filter when time filter changes
     });
     _loadUserTrips(reset: true);
   }
@@ -160,7 +154,6 @@ class _ReviewTripScreenState extends State<ReviewTripScreen> {
       case 'completed': return Colors.grey[700]!;
       case 'canceled': return Colors.red;
       case 'rejected': return Colors.red[300]!;
-      case 'draft': return Colors.deepOrangeAccent;
       default: return Colors.grey;
     }
   }
@@ -198,8 +191,7 @@ class _ReviewTripScreenState extends State<ReviewTripScreen> {
               _buildTimeFilterRow(),
               
               // Status filter dropdown
-              if(_timeFilter == TimeFilter.today)
-                _buildStatusFilterRow(),
+              _buildStatusFilterRow(),
               
               // Content
               Expanded(
@@ -208,7 +200,7 @@ class _ReviewTripScreenState extends State<ReviewTripScreen> {
             ],
           ),
           
-          if (_isLoading) _buildLoadingOverlay(),
+          if (_isLoading && _trips.isEmpty) _buildLoadingOverlay(),
         ],
       ),
     );
@@ -222,7 +214,7 @@ class _ReviewTripScreenState extends State<ReviewTripScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Review Trips',
+            'Rides',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -273,65 +265,50 @@ class _ReviewTripScreenState extends State<ReviewTripScreen> {
   }
 
   Widget _buildStatusFilterRow() {
+    final statuses = [
+      {'label': 'All Status', 'value': null},
+      {'label': 'Pending', 'value': TripStatus.pending},
+      {'label': 'Approved', 'value': TripStatus.approved},
+      {'label': 'Ongoing', 'value': TripStatus.ongoing},
+      {'label': 'Completed', 'value': TripStatus.completed},
+      {'label': 'Canceled', 'value': TripStatus.canceled},
+      {'label': 'Rejected', 'value': TripStatus.rejected},
+    ];
+    
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       color: Colors.black,
       child: Row(
         children: [
-          // Pending Button
           Expanded(
-            child: GestureDetector(
-              onTap: () => _setStatusFilter(TripStatus.draft),
-              child: Container(
-                height: 40,
-                decoration: BoxDecoration(
-                  color: _statusFilter == TripStatus.draft
-                      ? Colors.yellow[600]
-                      : Colors.grey[900],
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(8),
-                    bottomLeft: Radius.circular(8),
-                  ),
-                  border: Border.all(color: Colors.grey[800]!),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'Draft',
-                  style: TextStyle(
-                    color: _statusFilter == TripStatus.draft
-                        ? Colors.black
-                        : Colors.white,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 14,
-                  ),
-                ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[900],
+                borderRadius: BorderRadius.circular(8),
               ),
-            ),
-          ),
-
-          // Reviewed Button
-          Expanded(
-            child: GestureDetector(
-              onTap: () => _setStatusFilter(null), // Show all trips (reviewed)
-              child: Container(
-                height: 40,
-                decoration: BoxDecoration(
-                  color: _statusFilter == null
-                      ? Colors.yellow[600]
-                      : Colors.grey[900],
-                  borderRadius: BorderRadius.only(
-                    topRight: Radius.circular(8),
-                    bottomRight: Radius.circular(8),
-                  ),
-                  border: Border.all(color: Colors.grey[800]!),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'All',
-                  style: TextStyle(
-                    color: _statusFilter == null ? Colors.black : Colors.white,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 14,
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<TripStatus?>(
+                  value: _statusFilter,
+                  isExpanded: true,
+                  icon: Icon(Icons.arrow_drop_down, color: Colors.white),
+                  dropdownColor: Colors.grey[900],
+                  style: TextStyle(color: Colors.white),
+                  items: statuses.map((status) {
+                    return DropdownMenuItem<TripStatus?>(
+                      value: status['value'] as TripStatus?,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(
+                          status['label'] as String,
+                          style: TextStyle(fontSize: 14),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (value) => _setStatusFilter(value),
+                  hint: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Text('Filter by status', style: TextStyle(color: Colors.grey)),
                   ),
                 ),
               ),
@@ -487,7 +464,44 @@ class _ReviewTripScreenState extends State<ReviewTripScreen> {
                         ],
                       ),
                     ),
+
                     
+                  // Type label
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: trip.tripTypeColor.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: trip.tripTypeColor, width: 1),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: trip.tripTypeColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          trip.tripTypeLabel,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(width: 4),
+                        // Type tooltip
+                        Tooltip(
+                          message: trip.tripTypeFullText,
+                          child: Icon(Icons.info_outline, color: Colors.grey, size: 16),
+                        ),
+                      ],
+                    ),
+                  ),
                   
                   //SizedBox(width: 12),
 

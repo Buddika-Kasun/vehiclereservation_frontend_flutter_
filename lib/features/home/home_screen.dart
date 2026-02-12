@@ -6,14 +6,14 @@ import 'package:vehiclereservation_frontend_flutter_/core/services/firebase_noti
 import 'package:vehiclereservation_frontend_flutter_/core/services/pending_navigation_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/global_websocket.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/navigation_helper.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/review/review_trip_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/ride/rides_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/review_(Supervisors)/review_trips_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/ride_(Users)/rides_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/approval_user_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicleType_managemnet_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicle_all_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicle_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/assigned/assigned_rides_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/ride/trip_details_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/assigned_(Drivers)/assigned_rides_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/ride_(Users)/ride_details_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
@@ -22,10 +22,10 @@ import 'package:vehiclereservation_frontend_flutter_/shared/widgets/top_bar.dart
 import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/login_screen.dart';
 
 // Import all the screens
-import 'package:vehiclereservation_frontend_flutter_/features/dashboard/dashboard_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/ride/meter_reading_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/dashboard/dashboard_common_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/reading_(Security)/meter_reading_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/creations/user_creations_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/approval/approvals_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/approval_(Approvers)/approvals_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/company_management_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/department_management_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/cost_center_management_screen.dart';

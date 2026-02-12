@@ -19,8 +19,8 @@ import 'package:flutter/foundation.dart';
 //import 'package:vehiclereservation_frontend_flutter_/core/services/ws/websocket_manager.dart';
 //import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/trip_handler.dart';
 
-import 'package:vehiclereservation_frontend_flutter_/features/trips/review/review_vehicle_selection_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/vehicle_selection_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/review_(Supervisors)/review_trip_vehicle_selection_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/trip_creation/vehicle_selection_screen.dart';
 
 class ReviewTripDetailsScreen extends StatefulWidget {
   final int tripId;

@@ -50,6 +50,7 @@ class DriverTripData {
 
 class DriverTripCard {
   final int id;
+  final String requesterName;
   final String vehicleModel;
   final String vehicleRegNo;
   final String status;
@@ -67,6 +68,7 @@ class DriverTripCard {
 
   DriverTripCard({
     required this.id,
+    required this.requesterName,
     required this.vehicleModel,
     required this.vehicleRegNo,
     required this.status,
@@ -86,6 +88,7 @@ class DriverTripCard {
   factory DriverTripCard.fromJson(Map<String, dynamic> json) {
     return DriverTripCard(
       id: json['id'],
+      requesterName: json['requesterName'] ?? 'Unknown',
       vehicleModel: json['vehicleModel'] ?? 'Unknown',
       vehicleRegNo: json['vehicleRegNo'] ?? 'Unknown',
       status: json['status'],

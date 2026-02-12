@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/trip_booking_response.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/trip_request_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/vehicle_selection_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/trip_creation/vehicle_selection_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/constant.dart';

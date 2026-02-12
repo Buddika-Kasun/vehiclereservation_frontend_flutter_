@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/global_websocket.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/websocket_manager.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/home/home_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/notifications/screens/notification_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/profile/profile_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
