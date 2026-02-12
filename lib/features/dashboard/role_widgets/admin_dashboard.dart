@@ -1417,7 +1417,7 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
                 child: Padding(
                   padding: EdgeInsets.symmetric(
                     horizontal: isSmallScreen ? 16 : 24,
-                    vertical: 16,
+                    vertical: 8,
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
