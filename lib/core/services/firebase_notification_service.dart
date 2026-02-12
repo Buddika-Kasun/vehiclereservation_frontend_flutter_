@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/pending_navigation_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/auth_manager.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/navigation_helper.dart';
@@ -16,42 +17,16 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
   try {
     await Firebase.initializeApp();
-    print("✅ Firebase initialized in background");
   } catch (e) {
     print("❌ Background Firebase init error: $e");
     return;
   }
 
-  // Initialize local notifications
-  final FlutterLocalNotificationsPlugin localNotifications =
-      FlutterLocalNotificationsPlugin();
+  // Store notification data for when app opens
+  PendingNavigationService().setPendingNotification(message.data);
 
-  // Android notification details
-  const AndroidNotificationDetails androidPlatformChannelSpecifics =
-      AndroidNotificationDetails(
-        'high_importance_channel',
-        'High Importance Notifications',
-        channelDescription: 'This channel is used for important notifications.',
-        importance: Importance.max,
-        priority: Priority.high,
-        ticker: 'ticker',
-      );
-
-  const NotificationDetails platformChannelSpecifics = NotificationDetails(
-    android: androidPlatformChannelSpecifics,
-  );
-
-  // Show notification
-  if (message.notification != null) {
-    await localNotifications.show(
-      0,
-      message.notification!.title,
-      message.notification!.body,
-      platformChannelSpecifics,
-      payload: message.data.toString(),
-    );
-    print("📨 Background notification shown");
-  }
+  // DON'T show notification here - Let Firebase system notification handle it
+  print("📦 Notification data stored for terminated state");
 }
 
 class FirebaseNotificationService {
@@ -79,12 +54,10 @@ class FirebaseNotificationService {
     try {
       await _initializeForMobile();
       _isInitialized = true;
-
       print("✅ Firebase Notification Service Initialization COMPLETE");
-      print("   Firebase Available: $_firebaseAvailable");
     } catch (e) {
       print("❌ Firebase Notification Service Initialization FAILED: $e");
-      _isInitialized = true; // Mark as initialized anyway
+      _isInitialized = true;
     }
   }
 
@@ -92,60 +65,35 @@ class FirebaseNotificationService {
     print("📱 Initializing Firebase for Mobile...");
 
     try {
-      // 1. Initialize Firebase
-      print("Step 1: Initializing Firebase Core...");
       await Firebase.initializeApp();
       print("✅ Firebase Core initialized");
 
-      // 2. Initialize Firebase Messaging
-      print("Step 2: Initializing Firebase Messaging...");
       _fcm = FirebaseMessaging.instance;
       _firebaseAvailable = true;
       print("✅ Firebase Messaging initialized");
 
-      // 3. Configure Android notification channel
-      print("Step 3: Configuring notification channel...");
       await _configureAndroidNotificationChannel();
       print("✅ Notification channel configured");
 
-      // 4. Initialize Local Notifications
-      print("Step 4: Initializing local notifications...");
       await _initLocalNotifications();
       print("✅ Local notifications initialized");
 
-      // 5. Request Permissions
-      print("Step 5: Requesting permissions...");
       await _requestPermissions();
       print("✅ Permissions requested");
 
-      // 6. Configure message handlers
-      print("Step 6: Configuring message handlers...");
       await _configureMessageHandlers();
       print("✅ Message handlers configured");
 
-      // 7. Get and save token
-      print("Step 7: Getting FCM token...");
       await _getAndSaveToken();
       print("✅ Token retrieval complete");
 
-      // 8. Handle initial message
-      print("Step 8: Checking initial messages...");
       await _handleInitialMessage();
       print("✅ Initial message check complete");
 
       print("🎉 Firebase Mobile initialization SUCCESSFUL");
     } catch (e, stack) {
-      print("❌ Firebase Mobile initialization FAILED");
-      print("Error: $e");
-      print("Stack trace: $stack");
-      print("\n⚠️ TROUBLESHOOTING:");
-      print("1. Check if google-services.json exists in android/app/");
-      print("2. Verify Firebase packages in pubspec.yaml");
-      print("3. Check Android build.gradle files");
-      print("4. Ensure correct package name in Firebase Console");
-
+      print("❌ Firebase Mobile initialization FAILED: $e");
       _firebaseAvailable = false;
-      // Don't rethrow - let app continue without Firebase
     }
   }
 
@@ -173,7 +121,7 @@ class FirebaseNotificationService {
     if (!_firebaseAvailable) return;
 
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('@mipmap/ic_notification');
 
     const DarwinInitializationSettings initializationSettingsDarwin =
         DarwinInitializationSettings(
@@ -200,7 +148,7 @@ class FirebaseNotificationService {
     if (!_firebaseAvailable || _fcm == null) return;
 
     try {
-      NotificationSettings settings = await _fcm!.requestPermission(
+      await _fcm!.requestPermission(
         alert: true,
         announcement: false,
         badge: true,
@@ -209,8 +157,6 @@ class FirebaseNotificationService {
         provisional: false,
         sound: true,
       );
-
-      print('📋 Permission Status: ${settings.authorizationStatus}');
     } catch (e) {
       print("❌ Permission request error: $e");
     }
@@ -219,42 +165,29 @@ class FirebaseNotificationService {
   Future<void> _configureMessageHandlers() async {
     if (!_firebaseAvailable || _fcm == null) return;
 
-    // Handle foreground messages
+    // Handle foreground messages - SHOW LOCAL NOTIFICATION
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
 
-    // Handle notification clicks
+    // Handle notification clicks - from BOTH system and local notifications
     FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationClick);
 
-    // Set background message handler
+    // Background handler - NO NOTIFICATION, just store data
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
     // Listen to token refresh
     _fcm!.onTokenRefresh.listen((newToken) {
-      print("🔄 FCM Token Refreshed: ${newToken.substring(0, 20)}...");
       _onTokenRefresh(newToken);
     });
   }
 
   Future<void> _getAndSaveToken() async {
-    if (!_firebaseAvailable || _fcm == null) {
-      print("⚠️ Firebase not available, skipping token retrieval");
-      return;
-    }
+    if (!_firebaseAvailable || _fcm == null) return;
 
     try {
-      print("🔍 Requesting FCM token...");
       String? token = await _fcm!.getToken();
-
       if (token != null) {
-        print("✅ FCM Token received (${token.length} chars)");
-        print("   First 20 chars: ${token.substring(0, 20)}...");
-
         await SecureStorageService().saveFcmToken(token);
-        print("✅ Token saved to secure storage");
-
         await _sendTokenToBackend(token);
-      } else {
-        print("❌ No FCM token received from Firebase");
       }
     } catch (e) {
       print("❌ Error getting FCM token: $e");
@@ -267,27 +200,29 @@ class FirebaseNotificationService {
     try {
       RemoteMessage? initialMessage = await _fcm!.getInitialMessage();
       if (initialMessage != null) {
-        print("📱 App opened from notification");
-        _handleNotificationClick(initialMessage);
+        print("📱 App opened from terminated state via notification");
+        // Store for later navigation
+        PendingNavigationService().setPendingNotification(initialMessage.data);
+        // Mark as read immediately
+        await _markNotificationAsRead(initialMessage.data);
       }
     } catch (e) {
       print("Initial message error: $e");
     }
   }
 
+  // FOREGROUND: Show local notification (only notification shown)
   void _handleForegroundMessage(RemoteMessage message) {
-    print("📨 Foreground message: ${message.messageId}");
-    print("   Title: ${message.notification?.title}");
-    print("   Body: ${message.notification?.body}");
-    print("   Data: ${message.data}");
+    print("📨 Foreground message received");
 
-    // Emit to stream
-    _notificationStream.add(message.data);
-
-    // Create local notification
+    // Show local notification (this is the ONLY notification when app is foreground)
     _showLocalNotification(message);
+
+    // Emit to stream for in-app UI
+    _notificationStream.add(message.data);
   }
 
+  // Show local notification - used ONLY for foreground state
   void _showLocalNotification(RemoteMessage message) {
     if (!_firebaseAvailable) return;
 
@@ -304,8 +239,8 @@ class FirebaseNotificationService {
             importance: Importance.max,
             priority: Priority.high,
             ticker: 'ticker',
-            icon: '@mipmap/logo',
-            color: Colors.blue,
+            icon: '@mipmap/ic_notification',
+            color: Color(0xFFF9C80E),
             enableVibration: true,
             playSound: true,
           );
@@ -315,60 +250,99 @@ class FirebaseNotificationService {
       );
 
       _localNotifications.show(
-        notification.hashCode,
+        data['id']?.hashCode ?? notification.hashCode,
         notification.title,
         notification.body,
         platformChannelSpecifics,
         payload: data.toString(),
       );
 
-      print("📱 Local notification shown");
+      print("📱 Local notification shown (foreground)");
     }
   }
 
+  // NOTIFICATION CLICK HANDLER - For BOTH system and local notifications
   void _handleNotificationClick(RemoteMessage message) {
-    print("🖱️ Notification clicked: ${message.data}");
+    print("🖱️ Notification clicked");
 
-    // Mark notification as read
-    _markNotificationAsRead(message.data);
+    // Mark as read FIRST
+    _markNotificationAsRead(message.data)
+        .then((_) {
+          print("✅ Mark as read completed");
+        })
+        .catchError((e) {
+          print("❌ Mark as read failed: $e");
+        });
 
+    // Add to stream
     _notificationStream.add(message.data);
+
+    // Store for navigation
+    PendingNavigationService().setPendingNotification(message.data);
+
+    // Navigate
     _navigateToNotificationScreen(message.data);
   }
 
+  // LOCAL NOTIFICATION CLICK HANDLER
   void _handleLocalNotificationClick(String? payload) {
     if (payload == null || payload.isEmpty) return;
 
     try {
       final payloadData = _parsePayload(payload);
-      print("📱 Local notification clicked: $payloadData");
+      print("📱 Local notification clicked");
 
-      // Mark notification as read
-      _markNotificationAsRead(payloadData);
+      // Mark as read
+      _markNotificationAsRead(payloadData)
+          .then((_) {
+            print("✅ Local notification marked as read");
+          })
+          .catchError((e) {
+            print("❌ Local notification mark as read failed: $e");
+          });
 
       _notificationStream.add(payloadData);
+      PendingNavigationService().setPendingNotification(payloadData);
       _navigateToNotificationScreen(payloadData);
     } catch (e) {
       print("Payload parse error: $e");
     }
   }
 
+  // IMPROVED: Mark as read with better error handling and retry
   Future<void> _markNotificationAsRead(Map<String, dynamic> data) async {
     try {
       final notificationId = data['id']?.toString();
 
-      if (notificationId != null && notificationId.isNotEmpty) {
-        print("📝 Marking notification as read: $notificationId");
+      if (notificationId == null || notificationId.isEmpty) {
+        // Try alternative ID formats
+        final altId =
+            data['notificationId']?.toString() ??
+            data['notification_id']?.toString() ??
+            data['notifId']?.toString();
 
-        // Call your API to mark notification as read
-        await ApiService.markNotificationAsRead(notificationId);
-
-        print("✅ Notification marked as read: $notificationId");
-      } else {
-        print("⚠️ No notification ID found in data");
+        if (altId != null && altId.isNotEmpty) {
+          print("📝 Using alternative ID: $altId");
+          await ApiService.markNotificationAsRead(altId).timeout(
+            const Duration(seconds: 5),
+            onTimeout: () => throw TimeoutException("API timeout"),
+          );
+          print("✅ Notification marked as read: $altId");
+        }
+        return;
       }
+
+      print("📝 Marking notification as read: $notificationId");
+
+      await ApiService.markNotificationAsRead(notificationId).timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => throw TimeoutException("API timeout"),
+      );
+
+      print("✅ Notification marked as read: $notificationId");
     } catch (e) {
       print("❌ Error marking notification as read: $e");
+      // Don't throw - we don't want to break navigation
     }
   }
 
@@ -393,114 +367,82 @@ class FirebaseNotificationService {
   void _navigateToNotificationScreen(Map<String, dynamic> data) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final context = AuthManager.navigatorKey.currentContext;
-      if (context != null) {
-        final type = data['type']?.toString().toUpperCase() ?? 'GENERAL';
-        final id = data['id']?.toString();
-        final tripId =
-            int.tryParse(data['tripId']?.toString() ?? id ?? '0') ?? 0;
+      if (context == null) {
+        print("⏳ Context not ready, will retry later");
+        PendingNavigationService().setPendingNotification(data);
+        return;
+      }
 
-        // Use NavigationHelper which already has all your navigation logic
-        switch (type) {
-          // User registration notifications
-          case 'USER_REGISTERED':
-            NavigationHelper.toUserCreations('pending');
-            break;
-          case 'USER_APPROVED':
-            NavigationHelper.toUserCreations('approved');
-            break;
-          case 'USER_REJECTED':
-            NavigationHelper.toUserCreations('rejected');
-            break;
+      final type = data['type']?.toString().toUpperCase() ?? 'GENERAL';
+      final id = data['id']?.toString();
+      final tripId = int.tryParse(data['tripId']?.toString() ?? id ?? '0') ?? 0;
 
-          // REQUESTER or PASSENGER related notifications
-          case 'TRIP_CREATED':
-          case 'TRIP_CANCELLED':
-          case 'TRIP_CANCELLED_REQUESTER':
-          case 'TRIP_APPROVED':
-          case 'TRIP_REJECTED':
-          case 'TRIP_READING_START_FOR_PASSENGER':
-          case 'TRIP_STARTED_FOR_PASSENGER':
-          case 'TRIP_FINISHED_FOR_REQUESTER':
-          case 'TRIP_COMPLETED_FOR_REQUESTER':
-            NavigationHelper.toMyRideTripDetails(tripId);
-            break;
+      print("🚀 Navigating to notification type: $type, tripId: $tripId");
 
-          // SUPERVISOR related notifications
-          case 'TRIP_CREATED_AS_DRAFT':
-          case 'TRIP_CONFIRMED':
-          case 'TRIP_CANCELLED_SUPERVISOR':
-          case 'TRIP_STARTED_FOR_SUPERVISOR':
-          case 'TRIP_FINISHED_FOR_SUPERVISOR':
-          case 'TRIP_COMPLETED_FOR_SUPERVISOR':
-            NavigationHelper.toReviewTripDetails(tripId);
-            break;
-
-          // APPROVER related notifications
-          case 'TRIP_CONFIRMED_FOR_APPROVAL':
-          case 'TRIP_APPROVED_BY_APPROVER':
-          case 'TRIP_REJECTED_BY_APPROVER':
-            NavigationHelper.toApprovalTripDetails(tripId);
-            break;
-
-          // DRIVER related notifications
-          case 'TRIP_APPROVED_FOR_DRIVER':
-          case 'TRIP_READING_START_FOR_DRIVER':
-          case 'TRIP_STARTED':
-          case 'TRIP_FINISHED':
-          case 'TRIP_COMPLETED_FOR_DRIVER':
-            NavigationHelper.toAssignRideTripDetails(tripId);
-            break;
-
-          // SECURITY related notifications
-          case 'TRIP_APPROVED_FOR_SECURITY':
-          case 'TRIP_READING_START':
-          case 'TRIP_STARTED_FOR_SECURITY':
-          case 'TRIP_COMPLETED':
-            NavigationHelper.toMeterReading();
-            break;
-
-          // Keep backward compatibility with old notification types
-          case 'trip_requested':
-            NavigationHelper.toReviewTripDetails(tripId);
-            break;
-          case 'trip_approved':
-          case 'trip_rejected':
-          case 'new_trip':
-            NavigationHelper.toMyRideTripDetails(tripId);
-            break;
-          case 'approval':
-            NavigationHelper.toNotifications();
-            break;
-          case 'message':
-            NavigationHelper.toNotifications();
-            break;
-
-          default:
-            NavigationHelper.toNotifications();
-        }
+      switch (type) {
+        case 'USER_REGISTERED':
+          NavigationHelper.toUserCreations('pending');
+          break;
+        case 'USER_APPROVED':
+          NavigationHelper.toUserCreations('approved');
+          break;
+        case 'USER_REJECTED':
+          NavigationHelper.toUserCreations('rejected');
+          break;
+        case 'TRIP_CREATED':
+        case 'TRIP_CANCELLED':
+        case 'TRIP_CANCELLED_REQUESTER':
+        case 'TRIP_APPROVED':
+        case 'TRIP_REJECTED':
+        case 'TRIP_READING_START_FOR_PASSENGER':
+        case 'TRIP_STARTED_FOR_PASSENGER':
+        case 'TRIP_FINISHED_FOR_REQUESTER':
+        case 'TRIP_COMPLETED_FOR_REQUESTER':
+          NavigationHelper.toMyRideTripDetails(tripId);
+          break;
+        case 'TRIP_CREATED_AS_DRAFT':
+        case 'TRIP_CONFIRMED':
+        case 'TRIP_CANCELLED_SUPERVISOR':
+        case 'TRIP_STARTED_FOR_SUPERVISOR':
+        case 'TRIP_FINISHED_FOR_SUPERVISOR':
+        case 'TRIP_COMPLETED_FOR_SUPERVISOR':
+          NavigationHelper.toReviewTripDetails(tripId);
+          break;
+        case 'TRIP_CONFIRMED_FOR_APPROVAL':
+        case 'TRIP_APPROVED_BY_APPROVER':
+        case 'TRIP_REJECTED_BY_APPROVER':
+          NavigationHelper.toApprovalTripDetails(tripId);
+          break;
+        case 'TRIP_APPROVED_FOR_DRIVER':
+        case 'TRIP_READING_START_FOR_DRIVER':
+        case 'TRIP_STARTED':
+        case 'TRIP_FINISHED':
+        case 'TRIP_COMPLETED_FOR_DRIVER':
+          NavigationHelper.toAssignRideTripDetails(tripId);
+          break;
+        case 'TRIP_APPROVED_FOR_SECURITY':
+        case 'TRIP_READING_START':
+        case 'TRIP_STARTED_FOR_SECURITY':
+        case 'TRIP_COMPLETED':
+          NavigationHelper.toMeterReading();
+          break;
+        default:
+          NavigationHelper.toNotifications();
       }
     });
   }
 
   Future<String?> getToken() async {
-    if (!_firebaseAvailable || _fcm == null) {
-      print("⚠️ Firebase not available, cannot get token");
-      return null;
-    }
-
+    if (!_firebaseAvailable || _fcm == null) return null;
     try {
       return await _fcm!.getToken();
     } catch (e) {
-      print("❌ Error getting token: $e");
       return null;
     }
   }
 
   Future<void> _onTokenRefresh(String newToken) async {
     if (!_firebaseAvailable) return;
-
-    print("🔄 Token refresh detected");
-
     await SecureStorageService().saveFcmToken(newToken);
     await _sendTokenToBackend(newToken);
   }
@@ -508,48 +450,32 @@ class FirebaseNotificationService {
   Future<void> _sendTokenToBackend(String token) async {
     try {
       final isLoggedIn = await SecureStorageService().isUserLoggedIn();
-      if (!isLoggedIn) {
-        print("⚠️ User not logged in, saving token for later");
-        return;
-      }
-
-      print("📤 Sending token to backend...");
+      if (!isLoggedIn) return;
       await ApiService.updateFcmToken(fcmToken: token);
-      print("✅ Token sent to backend successfully");
     } catch (e) {
       print("❌ Error sending token to backend: $e");
     }
   }
 
   Future<void> sendTokenToBackend() async {
-    if (!_firebaseAvailable) {
-      print("❌ Firebase not available, cannot send token to backend");
-      return;
-    }
-
+    if (!_firebaseAvailable) return;
     final token = await getToken();
     if (token != null) {
       await _sendTokenToBackend(token);
-    } else {
-      print("❌ No token available to send to backend");
     }
   }
 
   Future<void> onUserLogin() async {
-    print("👤 User logged in - sending token to backend");
     await sendTokenToBackend();
   }
 
   Future<void> onUserLogout() async {
     try {
       await ApiService.deleteFcmToken();
-      print("✅ Token deleted from backend on logout");
     } catch (e) {
       print("❌ Error deleting token on logout: $e");
     }
-
     await SecureStorageService().saveFcmToken('');
-    print("✅ Local FCM token cleared");
   }
 
   bool get isFirebaseAvailable => _firebaseAvailable;
@@ -558,5 +484,4 @@ class FirebaseNotificationService {
     _notificationStream.close();
     _isInitialized = false;
   }
-
 }
