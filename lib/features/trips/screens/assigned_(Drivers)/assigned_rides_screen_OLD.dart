@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/assigned_(Drivers)/assigned_ride_details_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/ride_(Users)/ride_details_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/assigned_(Drivers)/assigned_ride_details_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/driver_trip_response.dart';
 import 'package:flutter/foundation.dart';

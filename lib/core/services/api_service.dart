@@ -989,6 +989,23 @@ class ApiService {
     }
   }
 
+  static Future<TripCardResponse> getUserTripsNew(
+    TripCardListRequest request
+  ) async {
+    try {
+      return await ApiService.authenticatedApiCall(
+        'trips/user-trips',
+        method: 'POST',
+        body: request.toJson(),
+      ).then((response) {
+        return TripCardResponse.fromJson(response);
+      });
+    } catch (e) {
+      print('Error getting driver trips: $e');
+      rethrow;
+    }
+  }
+
   static Future<TripListResponse> getSupervisorTrips(TripListRequest request) async {
     try {
       //print('Getting user trips with filters: ${request.toJson()}');
@@ -1012,6 +1029,23 @@ class ApiService {
       }
     } catch (e) {
       //print('Error in getUserTrips: $e');
+      rethrow;
+    }
+  }
+
+  static Future<TripCardResponse> getSupervisorTripsNew(
+    TripCardListRequest request,
+  ) async {
+    try {
+      return await ApiService.authenticatedApiCall(
+        'trips/supervisor-trips',
+        method: 'POST',
+        body: request.toJson(),
+      ).then((response) {
+        return TripCardResponse.fromJson(response);
+      });
+    } catch (e) {
+      print('Error getting driver trips: $e');
       rethrow;
     }
   }
@@ -1040,6 +1074,24 @@ class ApiService {
       rethrow;
     }
   }
+
+  static Future<TripCardResponse> getPendingApprovalsNew(
+    TripCardListRequest request
+  ) async {
+    try {
+      return await ApiService.authenticatedApiCall(
+        'trips/pending-approvals-new',
+        method: 'POST',
+        body: request.toJson(),
+      ).then((response) {
+        return TripCardResponse.fromJson(response);
+      });
+    } catch (e) {
+      print('Error getting driver trips: $e');
+      rethrow;
+    }
+  }
+
 
   // Dashboard API methods
   static Future<DashboardStats> getDashboardStats() async {
@@ -1097,7 +1149,6 @@ class ApiService {
     );
   }
 
-//
 // Add these methods to your ApiService class
   static Future<Map<String, dynamic>> approveScheduledTrip(
     int masterTripId,
@@ -1136,6 +1187,23 @@ class ApiService {
       method: 'POST',
       body: request,
     );
+  }
+
+  static Future<TripCardResponse> getTripsForMeterReadingNew(
+    TripCardListRequest request,
+  ) async {
+    try {
+      return await ApiService.authenticatedApiCall(
+        'trips/for-meter-reading-new',
+        method: 'POST',
+        body: request.toJson(),
+      ).then((response) {
+        return TripCardResponse.fromJson(response);
+      });
+    } catch (e) {
+      print('Error getting driver trips: $e');
+      rethrow;
+    }
   }
 
   static Future<Map<String, dynamic>> getReadTrips(

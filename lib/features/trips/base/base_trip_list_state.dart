@@ -37,6 +37,9 @@ abstract class BaseTripListState<T extends StatefulWidget> extends State<T> {
   Future<void> fetchTrips({required bool reset, bool silent = false});
   String getScreenTitle();
   String getScreenSubtitle();
+  String getEmptyStateMessage();
+  String getLoadingMessage();
+  String getErrorMessage();
   VoidCallback? getRefreshAction();
 
   @override
@@ -138,7 +141,7 @@ abstract class BaseTripListState<T extends StatefulWidget> extends State<T> {
       }
     });
   }
-
+  
   void setTimeFilter(String filter) {
     setState(() {
       timeFilter = filter;

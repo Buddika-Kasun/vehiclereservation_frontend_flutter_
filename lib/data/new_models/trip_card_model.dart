@@ -75,56 +75,78 @@ class TripCardData {
 
 class TripCardModel {
   final int id;
-  final String requesterName;
-  final String? vehicleModel;
-  final String? vehicleRegNo;
   final String status;
   final DateTime date;
   final String time;
+  final String? requesterName;
+  final String? tripUserType;
+  final String? vehicleModel;
+  final String? vehicleRegNo;
   final String? startLocation;
   final String? endLocation;
   final List<int>? conflictingTripIds;
-  final int passengerCount;
+  final int? passengerCount;
   final String? purpose;
-  final String driverAssignment; // primary, secondary, none
-  final bool isPrimaryDriver;
-  final String odometerStatus; // complete, start_only, none
+  final String? driverAssignment; // primary, secondary, none
+  final bool? isPrimaryDriver;
+  final String? odometerStatus; // complete, start_only, none
   final Map<String, dynamic>? odometerLog;
+
+  final OdometerReading? odometerReading;
+
+  final DriverDetails? driver;
+
+  // NEW FIELDS FOR SCHEDULED TRIPS
   final bool? isScheduled;
   final bool? isInstance;
+  final int? masterTripId;
+  final int? instanceCount;
+  final List<int>? instanceIds;
 
   TripCardModel({
     required this.id,
-    required this.requesterName,
-    this.vehicleModel,
-    this.vehicleRegNo,
     required this.status,
     required this.date,
     required this.time,
+    this.requesterName,
+    this.tripUserType,
+    this.vehicleModel,
+    this.vehicleRegNo,
     this.startLocation,
     this.endLocation,
     this.conflictingTripIds,
-    required this.passengerCount,
+    this.passengerCount,
     this.purpose,
-    required this.driverAssignment,
-    required this.isPrimaryDriver,
-    required this.odometerStatus,
+    this.driverAssignment,
+    this.isPrimaryDriver,
+    this.odometerStatus,
     this.odometerLog,
     this.isScheduled,
     this.isInstance,
+    this.masterTripId,
+    this.instanceCount,
+    this.instanceIds,
+
+    this.odometerReading,
+
+    this.driver,
   });
 
   factory TripCardModel.fromJson(Map<String, dynamic> json) {
+
+    final dateStr = json['date'] ?? json['startDate'] ?? DateTime.now();
+
     return TripCardModel(
       id: json['id'],
       requesterName: json['requesterName'] ?? 'Unknown',
+      tripUserType: json['tripUserType'] ?? 'R',
       vehicleModel: json['vehicleModel'] ?? 'Unknown',
       vehicleRegNo: json['vehicleRegNo'] ?? 'Unknown',
-      status: json['status'],
-      date: DateTime.parse(json['startDate']),
-      time: json['startTime'],
-      startLocation: json['startLocation'],
-      endLocation: json['endLocation'],
+      status: json['status'] ?? 'Unknown',
+      date: DateTime.parse(dateStr),
+      time: json['startTime'] ?? json['time'] ?? '00:00',
+      startLocation: json['startLocation'] ?? 'Unknown',
+      endLocation: json['endLocation'] ?? 'Unknown',
       conflictingTripIds: json['conflictingTripIds'] != null
           ? List<int>.from(json['conflictingTripIds'])
           : null,
@@ -138,6 +160,92 @@ class TripCardModel {
           : null,
       isScheduled: json['isScheduled'] ?? false,
       isInstance: json['isInstance'] ?? false,
+      masterTripId: json['masterTripId'],
+      instanceCount: json['instanceCount'] ?? 0,
+      instanceIds: json['instanceIds'] != null
+          ? List<int>.from(json['instanceIds'])
+          : null,
+
+      odometerReading: json['odometerReading'] != null
+          ? OdometerReading.fromJson(json['odometerReading'])
+          : null,
+
+      driver: json['driver'] != null
+          ? DriverDetails.fromJson(json['driver'])
+          : null,
+    );
+  }
+}
+
+class OdometerReading {
+  final double? startReading;
+  final double? endReading;
+  final DateTime? startRecordedAt;
+  final DateTime? endRecordedAt;
+  final String? startRecordedBy;
+  final String? endRecordedBy;
+
+  OdometerReading({
+    this.startReading,
+    this.endReading,
+    this.startRecordedAt,
+    this.endRecordedAt,
+    this.startRecordedBy,
+    this.endRecordedBy,
+  });
+
+  factory OdometerReading.fromJson(Map<String, dynamic> json) {
+    double? parseReading(dynamic value) {
+      if (value == null) return null;
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value);
+      return null;
+    }
+
+    DateTime? parseDateTime(dynamic value) {
+      if (value == null) return null;
+      if (value is String) {
+        try {
+          return DateTime.parse(value);
+        } catch (e) {
+          return null;
+        }
+      }
+      return null;
+    }
+
+    String? parseRecordedBy(dynamic value) {
+      if (value == null) return null;
+      if (value is String) return value;
+      if (value is Map<String, dynamic>) return value['name']?.toString();
+      return null;
+    }
+
+    return OdometerReading(
+      startReading: parseReading(json['startReading']),
+      endReading: parseReading(json['endReading']),
+      startRecordedAt: parseDateTime(json['startRecordedAt']),
+      endRecordedAt: parseDateTime(json['endRecordedAt']),
+      startRecordedBy: parseRecordedBy(json['startRecordedBy']),
+      endRecordedBy: parseRecordedBy(json['endRecordedBy']),
+    );
+  }
+}
+
+class DriverDetails {
+  final int id;
+  final String name;
+  final String? phone;
+  final String? role;
+
+  DriverDetails({required this.id, required this.name, this.phone, this.role});
+
+  factory DriverDetails.fromJson(Map<String, dynamic> json) {
+    return DriverDetails(
+      id: json['id'] ?? 0,
+      name: json['name'] ?? 'Not Assigned',
+      phone: json['phone'],
+      role: json['role'],
     );
   }
 }

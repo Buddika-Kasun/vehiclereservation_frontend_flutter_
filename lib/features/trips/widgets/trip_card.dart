@@ -1,7 +1,7 @@
 // lib/features/trips/widgets/trip_card.dart
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/new_models/trip_card_model.dart';
-
+import 'package:vehiclereservation_frontend_flutter_/features/trips/utils/helper_methods.dart';
 class TripCard<T extends TripCardModel> extends StatelessWidget {
   final T trip;
   final VoidCallback onTap;
@@ -9,6 +9,7 @@ class TripCard<T extends TripCardModel> extends StatelessWidget {
   final bool showVehicleInfo;
   final bool showLocationInfo;
   final bool showScheduleInfo;
+  final bool showTripType;
 
   const TripCard({
     Key? key,
@@ -18,6 +19,7 @@ class TripCard<T extends TripCardModel> extends StatelessWidget {
     this.showVehicleInfo = true,
     this.showLocationInfo = true,
     this.showScheduleInfo = false,
+    this.showTripType = false,
   }) : super(key: key);
 
   @override
@@ -66,56 +68,45 @@ class TripCard<T extends TripCardModel> extends StatelessWidget {
     );
   }
 
-  /*
-  Widget _buildHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          'Trip #${trip.id}',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Row(
-          children: [
-            if (trailing != null) trailing!,
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: _getStatusColor(trip.status).withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                trip.status.toUpperCase(),
-                style: TextStyle(
-                  color: _getStatusColor(trip.status),
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-  */
   Widget _buildHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Trip ID
-        Text(
-          'Trip #${trip.id}',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+
+        Row(
+          children: [
+            // Trip user type
+            if (showTripType && trip.tripUserType != null)
+              Container(
+                margin: const EdgeInsets.only(right: 2),
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                width: 25,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: tripTypeColor(trip.tripUserType!).withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: Text(
+                  tripTypeLabel(trip.tripUserType!),
+                  style: TextStyle(
+                    color: tripTypeColor(trip.tripUserType!),
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+
+            // Trip ID
+            Text(
+              'Trip #${trip.id}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
 
         // Badges Row
@@ -128,18 +119,18 @@ class TripCard<T extends TripCardModel> extends StatelessWidget {
                 margin: const EdgeInsets.only(right: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.2),
+                  color: Colors.blueAccent.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.repeat, size: 12, color: Colors.blue),
+                    const Icon(Icons.repeat, size: 12, color: Colors.blueAccent),
                     const SizedBox(width: 4),
                     const Text(
                       'Scheduled',
                       style: TextStyle(
-                        color: Colors.blue,
+                        color: Colors.blueAccent,
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                       ),
@@ -154,7 +145,7 @@ class TripCard<T extends TripCardModel> extends StatelessWidget {
                 margin: const EdgeInsets.only(right: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.purple.withOpacity(0.2),
+                  color: Colors.purpleAccent.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
@@ -163,13 +154,13 @@ class TripCard<T extends TripCardModel> extends StatelessWidget {
                     const Icon(
                       Icons.event_note,
                       size: 12,
-                      color: Colors.purple,
+                      color: Colors.purpleAccent,
                     ),
                     const SizedBox(width: 4),
                     const Text(
                       'Instance',
                       style: TextStyle(
-                        color: Colors.purple,
+                        color: Colors.purpleAccent,
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                       ),
@@ -183,15 +174,15 @@ class TripCard<T extends TripCardModel> extends StatelessWidget {
 
             // Status Badge
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: _getStatusColor(trip.status).withOpacity(0.2),
+                color: getStatusColor(trip.status).withOpacity(0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 trip.status.toUpperCase(),
                 style: TextStyle(
-                  color: _getStatusColor(trip.status),
+                  color: getStatusColor(trip.status),
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                 ),
@@ -209,26 +200,36 @@ class TripCard<T extends TripCardModel> extends StatelessWidget {
         const Icon(Icons.person_outline_sharp, color: Colors.blue, size: 16),
         const SizedBox(width: 6),
         Text(
-          trip.requesterName,
-          style: TextStyle(color: Colors.grey[300], fontSize: 14),
+          trip.requesterName ?? 'Unknown',
+          style: TextStyle(color: Colors.grey[300], fontSize: 14, fontWeight: FontWeight.w700),
         ),
         const Spacer(),
         if (showVehicleInfo && trip.vehicleModel != null)
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                trip.vehicleModel!,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                children: [
+                  Text(
+                    trip.vehicleModel!,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.directions_car,
+                    color: Colors.blueGrey,
+                    size: 16,
+                  ),
+                ],
               ),
               if (trip.vehicleRegNo != null)
                 Text(
                   trip.vehicleRegNo!,
-                  style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                  style: TextStyle(color: Colors.amber[900], fontSize: 12),
                 ),
             ],
           ),
@@ -299,25 +300,6 @@ class TripCard<T extends TripCardModel> extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending':
-        return Colors.orange;
-      case 'approved':
-        return Colors.green;
-      case 'ongoing':
-        return Colors.blue;
-      case 'completed':
-        return Colors.grey[700]!;
-      case 'canceled':
-        return Colors.red;
-      case 'rejected':
-        return Colors.red[300]!;
-      default:
-        return Colors.grey;
-    }
   }
 
 }

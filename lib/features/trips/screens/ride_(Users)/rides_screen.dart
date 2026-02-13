@@ -1,11 +1,9 @@
-// lib/features/trips/assigned_(Drivers)/assigned_rides_screen.dart
+// lib/features/trips/rides_(Users)/rides_screen.dart
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/new_models/trip_card_model.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/assigned_(Drivers)/assigned_ride_details_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/ride_(Users)/ride_details_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/models/driver_trip_response.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/base/base_trip_list_state.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/ride_(Users)/ride_details_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/trip_header.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/time_filter_row.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/status_filter_dropdown.dart';
@@ -13,21 +11,30 @@ import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/trip
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/trip_list_content.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/loading_overlay.dart';
 
-class AssignedRidesScreen extends StatefulWidget {
+class RidesScreen extends StatefulWidget {
   final int userId;
 
-  const AssignedRidesScreen({Key? key, required this.userId}) : super(key: key);
+  const RidesScreen({Key? key, required this.userId}) : super(key: key);
 
   @override
-  _AssignedRidesScreenState createState() => _AssignedRidesScreenState();
+  _RidesScreenState createState() => _RidesScreenState();
 }
 
-class _AssignedRidesScreenState extends BaseTripListState<AssignedRidesScreen> {
+class _RidesScreenState extends BaseTripListState<RidesScreen> {
   @override
-  String getScreenTitle() => 'Assigned Rides';
+  String getScreenTitle() => 'My Rides';
 
   @override
-  String getScreenSubtitle() => 'Trips where you are the driver';
+  String getScreenSubtitle() => 'Trips where you are the requester';
+
+  @override
+  String getEmptyStateMessage() => 'No trips found';
+
+  @override
+  String getLoadingMessage() => 'Loading trips...';
+
+  @override
+  String getErrorMessage() => 'Error loading trips';
 
   @override
   VoidCallback? getRefreshAction() => refreshTrips;
@@ -58,7 +65,7 @@ class _AssignedRidesScreenState extends BaseTripListState<AssignedRidesScreen> {
         limit: limit,
       );
 
-      final response = await ApiService.getDriverAssignedTripsNew(request);
+      final response = await ApiService.getUserTripsNew(request);
 
       final newTrips = response.data.trips;
 
@@ -88,9 +95,9 @@ class _AssignedRidesScreenState extends BaseTripListState<AssignedRidesScreen> {
         });
       }
     } catch (e) {
-      print('Error loading assigned trips: $e');
+      print('${getErrorMessage()}: $e');
       setState(() {
-        errorMessage = 'Error loading assigned trips: ${e.toString()}';
+        errorMessage = '${getErrorMessage()}: ${e.toString()}';
         isLoading = false;
         loadingMore = false;
       });
@@ -101,7 +108,7 @@ class _AssignedRidesScreenState extends BaseTripListState<AssignedRidesScreen> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => RideDetailsScreen(tripId: trip.id),
+        builder: (context) => TripDetailsScreen(tripId: trip.id),
       ),
     );
 
@@ -116,7 +123,7 @@ class _AssignedRidesScreenState extends BaseTripListState<AssignedRidesScreen> {
       backgroundColor: Colors.black,
       body: LoadingOverlay(
         isLoading: isLoading && trips.isEmpty,
-        loadingMessage: 'Loading assigned trips...',
+        loadingMessage: getLoadingMessage(),
         child: Column(
           children: [
             TripHeader(
@@ -131,6 +138,18 @@ class _AssignedRidesScreenState extends BaseTripListState<AssignedRidesScreen> {
             StatusFilterDropdown(
               currentFilter: statusFilter,
               onFilterSelected: setStatusFilter,
+              statusFilters: [
+                {'label': 'All Status', 'value': null},
+                {'label': 'Draft', 'value': 'draft'},
+                {'label': 'Pending', 'value': 'pending'},
+                {'label': 'Canceled', 'value': 'canceled'},
+                {'label': 'Approved', 'value': 'approved'},
+                {'label': 'Rejected', 'value': 'rejected'},
+                {'label': 'Meter Read', 'value': 'read'},
+                {'label': 'Ongoing', 'value': 'ongoing'},
+                {'label': 'Finished', 'value': 'finished'},
+                {'label': 'Completed', 'value': 'completed'},
+              ],
             ),
             Expanded(
               child: TripListContent(
@@ -141,13 +160,14 @@ class _AssignedRidesScreenState extends BaseTripListState<AssignedRidesScreen> {
                 errorMessage: errorMessage,
                 hasMore: hasMore,
                 onRetry: refreshTrips,
-                emptyStateMessage: 'No assigned trips found',
+                emptyStateMessage: getEmptyStateMessage(),
                 buildTripCard: (trip) => TripCard<TripCardModel>(
                   trip: trip,
                   onTap: () => _navigateToTripDetails(trip),
                   showVehicleInfo: true,
                   showLocationInfo: true,
-                  showScheduleInfo: false,
+                  showScheduleInfo: true,
+                  showTripType: true,
                 ),
               ),
             ),

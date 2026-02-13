@@ -8,7 +8,7 @@ import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/employee_dashboard.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/hr_dashboard.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/security_dashboard.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/trip_creation/create_trip_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/trip_creation/create_trip_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';

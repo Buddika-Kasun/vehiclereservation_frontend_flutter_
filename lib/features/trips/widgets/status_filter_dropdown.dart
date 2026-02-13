@@ -1,27 +1,36 @@
 // lib/features/trips/widgets/status_filter_dropdown.dart
 import 'package:flutter/material.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/utils/helper_methods.dart';
 
 class StatusFilterDropdown extends StatelessWidget {
   final String? currentFilter;
+  final List<Map<String, dynamic>> statusFilters;
   final Function(String?) onFilterSelected;
 
   const StatusFilterDropdown({
     Key? key,
     required this.currentFilter,
+    required this.statusFilters,
     required this.onFilterSelected,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final statuses = [
+
+    /*
+    final statusFilters = [
       {'label': 'All Status', 'value': null},
+      {'label': 'Draft', 'value': 'draft'},
       {'label': 'Pending', 'value': 'pending'},
-      {'label': 'Approved', 'value': 'approved'},
-      {'label': 'Ongoing', 'value': 'ongoing'},
-      {'label': 'Completed', 'value': 'completed'},
       {'label': 'Canceled', 'value': 'canceled'},
+      {'label': 'Approved', 'value': 'approved'},
       {'label': 'Rejected', 'value': 'rejected'},
+      {'label': 'Meter Read', 'value': 'read'},
+      {'label': 'Ongoing', 'value': 'ongoing'},
+      {'label': 'Finished', 'value': 'finished'},
+      {'label': 'Completed', 'value': 'completed'},
     ];
+    */
 
     return Container(
       padding: const EdgeInsets.fromLTRB(0, 8, 0, 14),
@@ -46,7 +55,7 @@ class StatusFilterDropdown extends StatelessWidget {
                   ),
                   dropdownColor: Colors.grey[900],
                   style: const TextStyle(color: Colors.white, fontSize: 14),
-                  items: statuses.map((status) {
+                  items: statusFilters.map((status) {
                     return DropdownMenuItem<String?>(
                       value: status['value'] as String?,
                       child: Padding(
@@ -62,7 +71,7 @@ class StatusFilterDropdown extends StatelessWidget {
                                 height: 10,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: _getStatusColor(
+                                  color: getStatusColor(
                                     status['value'] as String,
                                   ),
                                 ),
@@ -96,25 +105,6 @@ class StatusFilterDropdown extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending':
-        return Colors.orange;
-      case 'approved':
-        return Colors.green;
-      case 'ongoing':
-        return Colors.blue;
-      case 'completed':
-        return Colors.grey[700]!;
-      case 'canceled':
-        return Colors.red;
-      case 'rejected':
-        return Colors.red[300]!;
-      default:
-        return Colors.grey;
-    }
   }
 
 }
