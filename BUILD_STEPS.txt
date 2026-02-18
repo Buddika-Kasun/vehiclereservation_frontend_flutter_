@@ -1,6 +1,6 @@
 # 1. Stop any gradle daemons (from android folder)
 cd android 
-./gradlew --stop 
+./gradlew --clean 
 cd ..
 
 # If you want to clear C drive cache too:

@@ -2,7 +2,10 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/routes/app_routes.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/pending_navigation_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/update_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/utils/navigation_helper.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/update_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/login_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
@@ -323,17 +326,141 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         final user = StorageService.userData;
         final token = await SecureStorageService().accessToken;
         if (user != null && token != null) {
+          /*
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const HomeScreen()),
           );
+          */
+
+          // Use route navigation instead of MaterialPageRoute
+          Navigator.of(
+            context,
+          ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+          
+          // After navigation, handle pending notification
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _handlePendingNotification();
+          });
+
           return;
         }
       }
+
+      /*
       Navigator.of(
         context,
       ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
+      */
+      // Use route navigation
+      Navigator.of(
+        context,
+      ).pushNamedAndRemoveUntil(AppRoutes.login, (route) => false);
+      
     });
   }
+
+  void _handlePendingNotification() {
+    final pendingData = PendingNavigationService().getPendingNotification();
+    if (pendingData != null && !PendingNavigationService().isNavigating) {
+      print("📱 Handling pending notification from welcome screen");
+      PendingNavigationService().isNavigating = true;
+      
+      // Small delay to ensure HomeScreen is fully loaded
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _navigateToNotificationScreen(pendingData);
+        PendingNavigationService().clearPendingNotification();
+      });
+    }
+  }
+
+  void _navigateToNotificationScreen(Map<String, dynamic> data) {
+
+    // Your existing navigation logic
+    final type = data['type']?.toString().toUpperCase() ?? 'GENERAL';
+    final id = data['id']?.toString();
+    final tripId = int.tryParse(data['tripId']?.toString() ?? id ?? '0') ?? 0;
+
+    // Navigate using your existing switch statement
+    switch (type) {
+      // User registration notifications
+      case 'USER_REGISTERED':
+        NavigationHelper.toUserCreations('pending');
+        break;
+      case 'USER_APPROVED':
+        NavigationHelper.toUserCreations('approved');
+        break;
+      case 'USER_REJECTED':
+        NavigationHelper.toUserCreations('rejected');
+        break;
+
+      // REQUESTER or PASSENGER related notifications
+      case 'TRIP_CREATED':
+      case 'TRIP_CANCELLED':
+      case 'TRIP_CANCELLED_REQUESTER':
+      case 'TRIP_APPROVED':
+      case 'TRIP_REJECTED':
+      case 'TRIP_READING_START_FOR_PASSENGER':
+      case 'TRIP_STARTED_FOR_PASSENGER':
+      case 'TRIP_FINISHED_FOR_REQUESTER':
+      case 'TRIP_COMPLETED_FOR_REQUESTER':
+        NavigationHelper.toMyRideTripDetails(tripId);
+        break;
+
+      // SUPERVISOR related notifications
+      case 'TRIP_CREATED_AS_DRAFT':
+      case 'TRIP_CONFIRMED':
+      case 'TRIP_CANCELLED_SUPERVISOR':
+      case 'TRIP_STARTED_FOR_SUPERVISOR':
+      case 'TRIP_FINISHED_FOR_SUPERVISOR':
+      case 'TRIP_COMPLETED_FOR_SUPERVISOR':
+        NavigationHelper.toReviewTripDetails(tripId);
+        break;
+
+      // APPROVER related notifications
+      case 'TRIP_CONFIRMED_FOR_APPROVAL':
+      case 'TRIP_APPROVED_BY_APPROVER':
+      case 'TRIP_REJECTED_BY_APPROVER':
+        NavigationHelper.toApprovalTripDetails(tripId);
+        break;
+
+      // DRIVER related notifications
+      case 'TRIP_APPROVED_FOR_DRIVER':
+      case 'TRIP_READING_START_FOR_DRIVER':
+      case 'TRIP_STARTED':
+      case 'TRIP_FINISHED':
+      case 'TRIP_COMPLETED_FOR_DRIVER':
+        NavigationHelper.toAssignRideTripDetails(tripId);
+        break;
+
+      // SECURITY related notifications
+      case 'TRIP_APPROVED_FOR_SECURITY':
+      case 'TRIP_READING_START':
+      case 'TRIP_STARTED_FOR_SECURITY':
+      case 'TRIP_COMPLETED':
+        NavigationHelper.toMeterReading();
+        break;
+
+      // Keep backward compatibility with old notification types
+      case 'trip_requested':
+        NavigationHelper.toReviewTripDetails(tripId);
+        break;
+      case 'trip_approved':
+      case 'trip_rejected':
+      case 'new_trip':
+        NavigationHelper.toMyRideTripDetails(tripId);
+        break;
+      case 'approval':
+        NavigationHelper.toNotifications();
+        break;
+      case 'message':
+        NavigationHelper.toNotifications();
+        break;
+
+      default:
+        NavigationHelper.toNotifications();
+    }
+  }
+
 
   @override
   void dispose() {

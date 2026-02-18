@@ -77,7 +77,7 @@ class TripCard {
       status: json['status'] ?? 'pending',
       date: DateTime.parse(json['date'] ?? DateTime.now().toString()),
       time: json['time'] ?? '00:00',
-      tripType: json['tripType'] ?? 'R',
+      tripType: json['tripType'] ?? json['tripUserType'] ?? 'R',
       driverName: json['driverName'],
       startLocation: json['startLocation'],
       endLocation: json['endLocation'],
@@ -96,30 +96,30 @@ class TripCard {
   // Helper method to get trip type label
   String get tripTypeLabel {
     switch (tripType) {
-      case 'R': return 'R';
+      case 'RP': return 'RP';
       case 'RO': return 'RO';
       case 'P': return 'P';
-      case 'J': return 'J';
+      case 'JP': return 'JP';
       default: return 'R';
     }
   }
 
   String get tripTypeFullText {
     switch (tripType) {
-      case 'R': return 'Created and going';
+      case 'RP': return 'Created and going';
       case 'RO': return 'Created for others';
       case 'P': return 'Passenger in trip';
-      case 'J': return 'Joined trip';
+      case 'JP': return 'Joined trip';
       default: return 'Created trip';
     }
   }
 
   Color get tripTypeColor {
     switch (tripType) {
-      case 'R': return Colors.blue;
+      case 'RP': return Colors.blue;
       case 'RO': return Colors.purple;
       case 'P': return Colors.green;
-      case 'J': return Colors.orange;
+      case 'JP': return Colors.orange;
       default: return Colors.grey;
     }
   }

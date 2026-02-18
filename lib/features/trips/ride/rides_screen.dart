@@ -468,7 +468,7 @@ class _RidesScreenState extends State<RidesScreen> {
                     
                   // Type label
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: trip.tripTypeColor.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
@@ -476,6 +476,7 @@ class _RidesScreenState extends State<RidesScreen> {
                     ),
                     child: Row(
                       children: [
+                        /*
                         Container(
                           width: 8,
                           height: 8,
@@ -485,6 +486,7 @@ class _RidesScreenState extends State<RidesScreen> {
                           ),
                         ),
                         SizedBox(width: 6),
+                        */
                         Text(
                           trip.tripTypeLabel,
                           style: TextStyle(
@@ -493,12 +495,14 @@ class _RidesScreenState extends State<RidesScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+                        /*
                         SizedBox(width: 4),
                         // Type tooltip
                         Tooltip(
                           message: trip.tripTypeFullText,
                           child: Icon(Icons.info_outline, color: Colors.grey, size: 16),
                         ),
+                        */
                       ],
                     ),
                   ),
