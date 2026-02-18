@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/navigation_helper.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/notification_model.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/home/home_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 
 // Import new WebSocket structure

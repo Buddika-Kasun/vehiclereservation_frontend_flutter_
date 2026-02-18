@@ -1,11 +1,11 @@
 // lib/core/routes/route_generator.dart
 import 'package:flutter/material.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/approval/approval_details_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/assigned/ride_details_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/review/review_trip_details_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/ride/meter_reading_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/ride/trip_details_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/home/home_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/approval_(Approvers)/approval_details_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/assigned_(Drivers)/assigned_ride_details_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/review_(Supervisors)/review_trip_details_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/reading_(Security)/meter_reading_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/ride_(Users)/ride_details_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/welcome/welcome_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/login_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/app_updates/admin_login_screen.dart';

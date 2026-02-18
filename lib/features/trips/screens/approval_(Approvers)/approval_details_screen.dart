@@ -11,12 +11,13 @@ import 'package:vehiclereservation_frontend_flutter_/data/models/trip_details_mo
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:intl/intl.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/new_models/trip_card_model.dart';
 
 class ApprovalDetailsScreen extends StatefulWidget {
   final int tripId;
   final bool fromConflictNavigation;
   final bool fromInstanceNavigation;
-  final ApprovalTrip? tripData; // Add this parameter
+  final TripCardModel? tripData; // Add this parameter
 
   const ApprovalDetailsScreen({
     Key? key,

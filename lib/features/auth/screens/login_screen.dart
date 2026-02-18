@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/firebase_notification_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/forget_pw_verify_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/home/home_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/message_overlay.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -37,10 +38,32 @@ class _LoginScreenState extends State<LoginScreen> {
       // Send FCM token to backend
       await FirebaseNotificationService().onUserLogin();
       
-      _showSuccessDialog(res['message'] ?? "Login Successful!");
+      //_showSuccessDialog(res['message'] ?? "Login Successful!");
+
+      MessageOverlay.showSuccess(
+        context: context,
+        message: "Login Successful!",
+        duration: const Duration(seconds: 2),
+        onComplete: () {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+          );
+        },
+        position: OverlayPosition.center,
+        showBackgroundOverlay: true,
+      );
             
     } catch (e) {
-      _showErrorDialog("Login failed: $e");
+      //_showErrorDialog("Login failed: $e");
+      MessageOverlay.showError(
+        context: context,
+        message: "Login failed: $e",
+        duration: const Duration(seconds: 3),
+        showOkButton: true, // Show OK button for errors
+        position: OverlayPosition.center,
+        showBackgroundOverlay: true,
+      );
     } finally {
       setState(() {
         _isLoading = false;

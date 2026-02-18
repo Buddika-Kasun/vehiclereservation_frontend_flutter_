@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/assigned/ride_details_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/ride/trip_details_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/assigned_(Drivers)/assigned_ride_details_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/driver_trip_response.dart';
 import 'package:flutter/foundation.dart';
@@ -407,6 +406,30 @@ class _AssignedRidesScreenState extends State<AssignedRidesScreen> {
     }
   }
 
+  String _formatTime(String timeString) {
+    try {
+      // Parse the time string (assuming format like "14:30" or "14:30:00")
+      final parts = timeString.split(':');
+      int hour = int.parse(parts[0]);
+      int minute = int.parse(parts[1]);
+
+      // Determine AM/PM
+      final period = hour >= 12 ? 'PM' : 'AM';
+
+      // Convert to 12-hour format
+      hour = hour % 12;
+      hour = hour == 0 ? 12 : hour; // Convert 0 to 12 for 12 AM
+
+      // Format minute with leading zero
+      final minuteStr = minute.toString().padLeft(2, '0');
+
+      return '$hour:$minuteStr $period';
+    } catch (e) {
+      // Return original if parsing fails
+      return timeString;
+    }
+  }
+
   /*
   void _cleanupWebSocket() async {
     try {
@@ -544,6 +567,7 @@ class _AssignedRidesScreenState extends State<AssignedRidesScreen> {
     );
   }
 
+  /*
   Widget _buildStatusFilterRow() {
     final statuses = [
       {'label': 'All Status', 'value': null},
@@ -601,7 +625,95 @@ class _AssignedRidesScreenState extends State<AssignedRidesScreen> {
       ),
     );
   }
+  */
+  
+  Widget _buildStatusFilterRow() {
+    final statuses = [
+      {'label': 'All Status', 'value': null},
+      {'label': 'Pending', 'value': 'pending'},
+      {'label': 'Approved', 'value': 'approved'},
+      {'label': 'Ongoing', 'value': 'ongoing'},
+      {'label': 'Completed', 'value': 'completed'},
+      {'label': 'Canceled', 'value': 'canceled'},
+      {'label': 'Rejected', 'value': 'rejected'},
+    ];
 
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+      color: Colors.black,
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              margin: EdgeInsets.symmetric(horizontal: 16), // Add right margin
+              padding: EdgeInsets.symmetric(horizontal: 4),
+              decoration: BoxDecoration(
+                color: Colors.grey[900],
+                borderRadius: BorderRadius.circular(8),
+                //border: Border.all(color: Colors.grey[800]!, width: 1),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String?>(
+                  value: _statusFilter,
+                  isExpanded: true,
+                  icon: Padding(
+                    padding: EdgeInsets.only(right: 12),
+                    child: Icon(Icons.arrow_drop_down, color: Colors.white),
+                  ),
+                  dropdownColor: Colors.grey[900],
+                  style: TextStyle(color: Colors.white, fontSize: 14),
+                  items: statuses.map((status) {
+                    return DropdownMenuItem<String?>(
+                      value: status['value'] as String?,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        child: Row(
+                          children: [
+                            if (status['value'] != null) ...[
+                              Container(
+                                width: 10,
+                                height: 10,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: _getStatusColor(
+                                    status['value'] as String,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                            ],
+                            Text(
+                              status['label'] as String,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (value) => _setStatusFilter(value),
+                  hint: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(
+                      'Filter by status',
+                      style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
   Widget _buildContent() {
     if (_isLoading && _trips.isEmpty) {
       return Container();
@@ -675,7 +787,7 @@ class _AssignedRidesScreenState extends State<AssignedRidesScreen> {
           _navigateToTripDetails(trip);
         },
         child: Padding(
-          padding: EdgeInsets.all(16),
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -710,17 +822,33 @@ class _AssignedRidesScreenState extends State<AssignedRidesScreen> {
 
               SizedBox(height: 12),
 
-              Text(
-                trip.vehicleModel,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                trip.vehicleRegNo,
-                style: TextStyle(color: Colors.grey[400], fontSize: 12),
+              Row(
+                children: [
+                  Icon(Icons.person_outline_sharp, color: Colors.blue[400], size: 16),
+                  SizedBox(width: 6),
+                  Text(
+                    trip.requesterName,
+                    style: TextStyle(color: Colors.grey[300], fontSize: 14),
+                  ),
+                  Spacer(),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        trip.vehicleModel,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        trip.vehicleRegNo,
+                        style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                      ),
+                    ]
+                  )
+                ],
               ),
 
               SizedBox(height: 12),
@@ -733,11 +861,12 @@ class _AssignedRidesScreenState extends State<AssignedRidesScreen> {
                     _formatDate(trip.date),
                     style: TextStyle(color: Colors.grey[300], fontSize: 14),
                   ),
-                  SizedBox(width: 16),
+                  SizedBox(width: 24),
+                  //Spacer(),
                   Icon(Icons.access_time, color: Colors.grey[400], size: 16),
-                  SizedBox(width: 8),
+                  SizedBox(width: 6),
                   Text(
-                    trip.time,
+                    _formatTime(trip.time),
                     style: TextStyle(color: Colors.grey[300], fontSize: 14),
                   ),
                 ],
@@ -747,11 +876,28 @@ class _AssignedRidesScreenState extends State<AssignedRidesScreen> {
                 SizedBox(height: 12),
                 Row(
                   children: [
+                    Icon(Icons.location_on, color: Colors.green[400], size: 16),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${trip.startLocation ?? "Unknown"}',
+                        style: TextStyle(color: Colors.grey[300], fontSize: 14),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+
+              if (trip.endLocation != null) ...[
+                SizedBox(height: 4),
+                Row(
+                  children: [
                     Icon(Icons.location_on, color: Colors.red[400], size: 16),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        '${trip.startLocation ?? "Unknown"} to ${trip.endLocation ?? "Unknown"}',
+                        '${trip.endLocation ?? "Unknown"}',
                         style: TextStyle(color: Colors.grey[300], fontSize: 14),
                         overflow: TextOverflow.ellipsis,
                       ),

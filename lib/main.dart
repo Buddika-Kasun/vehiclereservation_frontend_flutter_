@@ -12,7 +12,7 @@ import 'package:vehiclereservation_frontend_flutter_/core/services/connectivity_
 import 'package:vehiclereservation_frontend_flutter_/core/services/server_health_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/firebase_tester.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/app_updates/admin_login_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/home/home_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/welcome/welcome_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/login_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';

@@ -10,7 +10,7 @@ import 'package:vehiclereservation_frontend_flutter_/data/models/update_model.da
 import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/login_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/home/home_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/shared/widgets/download_progress_dialog.dart';
 import 'package:vehiclereservation_frontend_flutter_/shared/widgets/update_dialog.dart';
 import 'package:vehiclereservation_frontend_flutter_/shared/widgets/installation_progress_dialog.dart';
