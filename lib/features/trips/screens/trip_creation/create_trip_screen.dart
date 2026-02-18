@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/home/home_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/trip_creation/schedule_passenger_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/nominatim_search_service.dart';
@@ -41,17 +42,65 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
   double _totalDistance = 0.0;
   double _totalDuration = 0.0;
   bool _showRoutePanel = false;
+  
+  List<Map<String, dynamic>> _departments = [];
 
   @override
   void initState() {
     super.initState();
     _getCurrentLocation();
+    _loadDepartments();
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadDepartments() async {
+    try {
+
+      final response = await ApiService.getUserDepartments(limit: 50);
+
+      print('Departments API response: ${response.toString()}');
+
+      if (response['success'] == true) {
+        final departmentsData =
+            response['data']['departments'] as List<dynamic>;
+
+        print('Found ${departmentsData.length} departments');
+
+        final activeDepartments = departmentsData
+            .where((dept) => dept['isActive'] == true)
+            .toList();
+
+        print('${activeDepartments.length} active departments');
+
+        setState(() {
+          _departments = activeDepartments
+              .map(
+                (dept) => {
+                  'id': dept['id'].toString(),
+                  'name': dept['name'] ?? 'Unknown Department',
+                },
+              )
+              .toList();
+        });
+      } else {
+        print('Failed to load departments: ${response['message']}');
+        // Add default department option
+        _departments = [
+          {'id': 'default', 'name': 'Select Department'},
+        ];
+      }
+    } catch (e) {
+      print('Error loading departments: $e');
+      // Add default department option on error
+      _departments = [
+        {'id': 'default', 'name': 'No departments available'},
+      ];
+    }
   }
 
   void _togglePanelExpansion() {
@@ -713,6 +762,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
     MaterialPageRoute(
       builder: (context) => SchedulePassengersScreen(
         locationData: locationData,
+        departmentData: _departments,
       ),
     ),
   );
