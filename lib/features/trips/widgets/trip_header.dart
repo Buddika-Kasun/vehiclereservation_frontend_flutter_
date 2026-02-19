@@ -21,7 +21,7 @@ class TripHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 0, 16, 10),
+      padding: const EdgeInsets.fromLTRB(24, 0, 16, 5),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

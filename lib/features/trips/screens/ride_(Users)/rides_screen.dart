@@ -4,12 +4,14 @@ import 'package:vehiclereservation_frontend_flutter_/data/new_models/trip_card_m
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/base/base_trip_list_state.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/ride_(Users)/ride_details_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/utils/helper_methods.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/trip_header.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/time_filter_row.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/status_filter_dropdown.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/trip_card.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/trip_list_content.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/loading_overlay.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/users/creations/widgets/count_badge.dart';
 
 class RidesScreen extends StatefulWidget {
   final int userId;
@@ -68,11 +70,12 @@ class _RidesScreenState extends BaseTripListState<RidesScreen> {
       final response = await ApiService.getUserTripsNew(request);
 
       final newTrips = response.data.trips;
+      final newTotal = response.data.total;
 
       if (reset) {
         if (silent) {
           // Use the helper method for silent updates
-          updateTripsSilently(newTrips, response.data.hasMore);
+          updateTripsSilently(newTrips, response.data.hasMore, newTotal);
           if (mounted) {
             setState(() {
               errorMessage = '';
@@ -81,6 +84,7 @@ class _RidesScreenState extends BaseTripListState<RidesScreen> {
         } else {
           setState(() {
             trips = newTrips;
+            total = newTotal;
             hasMore = response.data.hasMore;
             isLoading = false;
             errorMessage = '';
@@ -150,6 +154,10 @@ class _RidesScreenState extends BaseTripListState<RidesScreen> {
                 {'label': 'Finished', 'value': 'finished'},
                 {'label': 'Completed', 'value': 'completed'},
               ],
+            ),
+            CountBadge(
+              totalCount: total,
+              label: '${getTripStatusLabel(statusFilter)} Trips',
             ),
             Expanded(
               child: TripListContent(

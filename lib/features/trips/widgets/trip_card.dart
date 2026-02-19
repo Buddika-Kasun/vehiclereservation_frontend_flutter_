@@ -36,7 +36,7 @@ class TripCard<T extends TripCardModel> extends StatelessWidget {
             children: [
               _buildHeader(),
               const SizedBox(height: 12),
-              _buildRequesterInfo(),
+              _buildRequesterVehicleInfo(),
               const SizedBox(height: 4),
               _buildDateTimeRow(),
               if (showLocationInfo) ...[
@@ -194,7 +194,7 @@ class TripCard<T extends TripCardModel> extends StatelessWidget {
     );
   }
 
-  Widget _buildRequesterInfo() {
+  Widget _buildRequesterVehicleInfo() {
     return Row(
       children: [
         const Icon(Icons.person_outline_sharp, color: Colors.blue, size: 16),
@@ -211,7 +211,7 @@ class TripCard<T extends TripCardModel> extends StatelessWidget {
               Row(
                 children: [
                   Text(
-                    trip.vehicleModel!,
+                    trip.vehicleModel == 'Unknown' ? 'N/A' : trip.vehicleModel!,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 14,
@@ -228,7 +228,7 @@ class TripCard<T extends TripCardModel> extends StatelessWidget {
               ),
               if (trip.vehicleRegNo != null)
                 Text(
-                  trip.vehicleRegNo!,
+                  trip.vehicleRegNo == 'Unknown' ? 'N/A' : trip.vehicleRegNo!,
                   style: TextStyle(color: Colors.amber[900], fontSize: 12),
                 ),
             ],

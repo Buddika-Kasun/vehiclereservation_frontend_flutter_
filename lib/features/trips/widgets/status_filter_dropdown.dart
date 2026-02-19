@@ -33,7 +33,7 @@ class StatusFilterDropdown extends StatelessWidget {
     */
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(0, 8, 0, 14),
+      padding: const EdgeInsets.fromLTRB(0, 8, 0, 10),
       color: Colors.black,
       child: Row(
         children: [

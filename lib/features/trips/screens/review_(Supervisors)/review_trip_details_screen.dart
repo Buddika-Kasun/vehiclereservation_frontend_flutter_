@@ -2740,7 +2740,7 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
                         // Show department for requester
                         if (passenger.department != null)
                           Text(
-                            _tripDetails!.requester.department,
+                            passenger.department!,
                             style: TextStyle(color: Colors.grey[300], fontSize: 12),
                           ),
                         SizedBox(height: 4),
@@ -2833,7 +2833,7 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
                 // Show department 
                 if (approver.department != null)
                   Text(
-                    _tripDetails!.requester.department,
+                    approver.department!,
                     style: TextStyle(color: Colors.grey[300], fontSize: 12),
                   ),
                 SizedBox(height: 4),

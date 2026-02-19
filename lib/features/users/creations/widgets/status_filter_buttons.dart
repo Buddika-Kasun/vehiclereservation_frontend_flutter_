@@ -1,14 +1,13 @@
-// lib/features/trips/widgets/time_filter_row.dart
 import 'package:flutter/material.dart';
 
-class StatusFilterDropdownCustomizedSupervisor extends StatelessWidget {
+class StatusFilterButtons extends StatelessWidget {
   final String? currentFilter;
   final Function(String?) onFilterSelected;
   final List<Map<String, dynamic>> statusFilters;
   final Color activeColor;
   final Color inactiveColor;
 
-  const StatusFilterDropdownCustomizedSupervisor({
+  const StatusFilterButtons({
     Key? key,
     this.currentFilter,
     required this.onFilterSelected,
@@ -19,9 +18,8 @@ class StatusFilterDropdownCustomizedSupervisor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 14),
       color: Colors.black,
       child: Row(
         children: [

@@ -54,3 +54,33 @@ Color tripTypeColor(String tripType) {
       return Colors.grey;
   }
 }
+
+String getTripStatusLabel(String? status) {
+  switch (status?.toLowerCase()) {
+    case 'draft':
+      return 'Draft';
+    case 'pending':
+    case 'pendingforme':
+      return 'Pending';
+    case 'approved':
+      return 'Approved';
+    case 'read':
+      return 'Read';
+    case 'ongoing':
+      return 'Ongoing';
+    case 'completed':
+      return 'Completed';
+    case 'canceled':
+      return 'Canceled';
+    case 'rejected':
+      return 'Rejected';
+    case 'finished':
+      return 'Finished';
+    case 'needread':
+      return 'Need Reading';
+    case 'alreadyread':
+      return 'Already Read';
+    default:
+      return 'All';
+  }
+}

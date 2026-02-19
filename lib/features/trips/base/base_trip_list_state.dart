@@ -8,6 +8,7 @@ import 'package:vehiclereservation_frontend_flutter_/data/new_models/trip_card_m
 abstract class BaseTripListState<T extends StatefulWidget> extends State<T> {
   // Common properties
   List<TripCardModel> trips = [];
+  int? total;
   bool isLoading = true;
   bool loadingMore = false;
   String errorMessage = '';
@@ -146,6 +147,7 @@ abstract class BaseTripListState<T extends StatefulWidget> extends State<T> {
     setState(() {
       timeFilter = filter;
       statusFilter = null;
+      total = null;
       page = 1;
     });
     fetchTrips(reset: true);
@@ -155,6 +157,7 @@ abstract class BaseTripListState<T extends StatefulWidget> extends State<T> {
     setState(() {
       statusFilter = status;
       page = 1;
+      total = null;
     });
     fetchTrips(reset: true);
   }
@@ -194,7 +197,11 @@ abstract class BaseTripListState<T extends StatefulWidget> extends State<T> {
   }
 
   // Helper method for silent refresh to update UI only when data changes
-  void updateTripsSilently(List<TripCardModel> newTrips, bool newHasMore) {
+  void updateTripsSilently(
+    List<TripCardModel> newTrips, 
+    bool newHasMore,
+    int? newTotal
+  ) {
     if (!mounted) return;
 
     // Don't update if both are empty
@@ -217,6 +224,7 @@ abstract class BaseTripListState<T extends StatefulWidget> extends State<T> {
       setState(() {
         trips = newTrips;
         hasMore = newHasMore;
+        total = newTotal;
         // Don't touch isLoading state
       });
     } else {
