@@ -538,7 +538,7 @@ class _TopBarState extends State<TopBar> {
                     child: Container(
                       padding: const EdgeInsets.all(2),
                       decoration: BoxDecoration(
-                        color: Colors.red,
+                        color: Colors.redAccent,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       constraints: const BoxConstraints(
@@ -569,12 +569,12 @@ class _TopBarState extends State<TopBar> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: _isReconnecting
-                            ? Colors.orange
+                            ? Colors.orangeAccent
                             : _isInitializing
-                            ? Colors.orange
+                            ? Colors.orangeAccent
                             : _isConnected
-                            ? Colors.green
-                            : Colors.red,
+                            ? Colors.greenAccent
+                            : Colors.redAccent,
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withOpacity(0.3),
