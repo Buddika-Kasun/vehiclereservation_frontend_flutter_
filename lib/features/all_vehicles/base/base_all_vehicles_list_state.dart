@@ -39,7 +39,7 @@ abstract class BaseAllVehiclesListState<T extends StatefulWidget>
   @override
   void initState() {
     super.initState();
-    //scrollController = ScrollController();
+    scrollController = ScrollController();
     //scrollController.addListener(_scrollListener);
     _loadInitialData();
     _startAutoRefresh();

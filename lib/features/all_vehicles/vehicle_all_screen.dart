@@ -194,7 +194,7 @@ class _VehiclesAllScreenState
               secondaryVehicles = secondaryVehiclesList;
               total = totalCount;
               hasMoreData = false; // No pagination for vehicles
-              isLoading = false;
+              //isLoading = false;
               errorMessage = '';
             });
 
