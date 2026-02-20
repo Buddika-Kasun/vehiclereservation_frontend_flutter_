@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/department_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_creation_model.dart';
-import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/color_generator.dart';
 
 class UserCreationCard extends StatefulWidget {
@@ -119,6 +118,7 @@ class _UserCreationCardState extends State<UserCreationCard> {
   @override
   Widget build(BuildContext context) {
     final shortName = _generateShortName(widget.userCreation.displayname);
+    
     final backgroundColor = ColorGenerator.getRandomColor(
       widget.userCreation.displayname,
     );
@@ -138,11 +138,12 @@ class _UserCreationCardState extends State<UserCreationCard> {
             curve: Curves.easeInOut,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: backgroundColor.withOpacity(0.1),
+              //color: backgroundColor.withOpacity(0.1),
+              color: Colors.grey[900]!,
               borderRadius: BorderRadius.circular(12),
               border: widget.isExpanded
                   ? Border.all(
-                      color: backgroundColor.withOpacity(0.2),
+                      color: Colors.grey.withOpacity(0.1),
                       width: 2,
                     )
                   : null,
@@ -184,8 +185,11 @@ class _UserCreationCardState extends State<UserCreationCard> {
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: Colors.black,
+                              //color: Colors.black,
+                              color: Colors.white,
                             ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1, 
                           ),
                           const SizedBox(height: 2),
                           Text(
@@ -193,8 +197,11 @@ class _UserCreationCardState extends State<UserCreationCard> {
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
-                              color: Colors.grey[700],
+                              //color: Colors.grey[700],
+                              color: Colors.grey[400],
                             ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1, 
                           ),
                         ],
                       ),
@@ -225,7 +232,7 @@ class _UserCreationCardState extends State<UserCreationCard> {
                   _buildInfoRow(Icons.phone, widget.userCreation.phone),
                   _buildInfoRow(Icons.email, widget.userCreation.email),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 4),
 
                   // Editable or Read-only fields
                   if (status == 'pending') ...[
@@ -288,7 +295,7 @@ class _UserCreationCardState extends State<UserCreationCard> {
                                 ? 'Change to Reject'
                                 : 'Reject',
                             color: Colors.red,
-                            onTap: widget.onReject,
+                            onTap: _showRejectConfirmation,
                           ),
                         ),
 
@@ -303,13 +310,11 @@ class _UserCreationCardState extends State<UserCreationCard> {
                                 ? 'Change to Approve'
                                 : 'Approve',
                             color: Colors.green,
-                            onTap: _canApprove
-                                ? () => widget.onApprove(
-                                    _tempSelectedRole ??
-                                        widget.userCreation.role.name,
-                                    _tempSelectedDepartmentId ?? '',
-                                  )
-                                : null,
+                            onTap: status == 'rejected'
+                                ? _showChangeToApproveConfirmation // Show change to approve dialog
+                                : (_canApprove
+                                      ? _showApproveConfirmation
+                                      : null),
                             isDisabled: status == 'pending' && !_canApprove,
                           ),
                         ),
@@ -329,15 +334,15 @@ class _UserCreationCardState extends State<UserCreationCard> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: Colors.grey[600]),
+          Icon(icon, size: 16, color: Colors.grey[400]),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               text,
               style: const TextStyle(
                 fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
               ),
             ),
           ),
@@ -350,7 +355,7 @@ class _UserCreationCardState extends State<UserCreationCard> {
     required IconData icon,
     required String title,
     required String value,
-    Color valueColor = Colors.black87,
+    Color valueColor = Colors.white,
   }) {
     return Expanded(
       child: Column(
@@ -358,14 +363,14 @@ class _UserCreationCardState extends State<UserCreationCard> {
         children: [
           Row(
             children: [
-              Icon(icon, size: 16, color: Colors.grey[600]),
+              Icon(icon, size: 16, color: Colors.grey[300]),
               const SizedBox(width: 6),
               Text(
                 title,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: Colors.grey[600],
+                  color: Colors.grey[300],
                 ),
               ),
             ],
@@ -395,14 +400,14 @@ class _UserCreationCardState extends State<UserCreationCard> {
       children: [
         Row(
           children: [
-            Icon(Icons.person, size: 16, color: Colors.grey[600]),
+            Icon(Icons.person, size: 16, color: Colors.grey[400]),
             const SizedBox(width: 8),
             const Text(
               'User Role',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: Colors.black87,
+                color: Color.fromARGB(255, 209, 209, 209),
               ),
             ),
           ],
@@ -410,13 +415,15 @@ class _UserCreationCardState extends State<UserCreationCard> {
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey[300]!),
+            border: Border.all(color: Colors.grey[600]!),
             borderRadius: BorderRadius.circular(8),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: displayValue,
               isExpanded: true,
+              dropdownColor: Colors.grey[900],
+              style: const TextStyle(color: Colors.yellow, fontSize: 14),
               items: displayItems.map((String item) {
                 return DropdownMenuItem<String>(
                   value: item,
@@ -424,10 +431,6 @@ class _UserCreationCardState extends State<UserCreationCard> {
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Text(
                       item.toUpperCase(),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
                     ),
                   ),
                 );
@@ -452,14 +455,14 @@ class _UserCreationCardState extends State<UserCreationCard> {
       children: [
         Row(
           children: [
-            Icon(Icons.business, size: 16, color: Colors.grey[600]),
+            Icon(Icons.business, size: 16, color: Colors.grey[400]),
             const SizedBox(width: 8),
             const Text(
               'Department *',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: Colors.black87,
+                color: Color.fromARGB(255, 209, 209, 209),
               ),
             ),
           ],
@@ -467,7 +470,7 @@ class _UserCreationCardState extends State<UserCreationCard> {
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey[300]!),
+            border: Border.all(color: Colors.grey[600]!),
             borderRadius: BorderRadius.circular(8),
           ),
           child: DropdownButtonHideUnderline(
@@ -478,12 +481,16 @@ class _UserCreationCardState extends State<UserCreationCard> {
                 padding: EdgeInsets.symmetric(horizontal: 12),
                 child: Text('Select Department'),
               ),
+              dropdownColor: Colors.grey[900],
+              style: const TextStyle(color: Colors.yellow, fontSize: 14),
               items: widget.availableDepartments.map((dept) {
                 return DropdownMenuItem(
                   value: dept.id.toString(),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Text(dept.name),
+                    child: Text(
+                      dept.name,
+                    ),
                   ),
                 );
               }).toList(),
@@ -576,18 +583,18 @@ class _UserCreationCardState extends State<UserCreationCard> {
 
     switch (status) {
       case 'approved':
-        backgroundColor = Colors.green;
-        textColor = Colors.white;
+        backgroundColor = Colors.greenAccent;
+        textColor = Colors.greenAccent;
         statusText = 'Approved';
         break;
       case 'rejected':
-        backgroundColor = Colors.red;
-        textColor = Colors.white;
+        backgroundColor = Colors.redAccent;
+        textColor = Colors.redAccent;
         statusText = 'Rejected';
         break;
       default:
-        backgroundColor = Colors.orange;
-        textColor = Colors.white;
+        backgroundColor = Colors.orangeAccent;
+        textColor = Colors.orangeAccent;
         statusText = 'Pending';
     }
 
@@ -595,7 +602,7 @@ class _UserCreationCardState extends State<UserCreationCard> {
       padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       margin: EdgeInsets.only(right: 8),
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: backgroundColor.withOpacity(0.2),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -606,6 +613,656 @@ class _UserCreationCardState extends State<UserCreationCard> {
           fontWeight: FontWeight.bold,
         ),
       ),
+    );
+  }
+
+  void _showRejectConfirmation() {
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          bool _isSubmitting = false;
+          final currentStatus = widget.userCreation.isApproved;
+
+          return Dialog(
+            backgroundColor: Colors.black.withOpacity(0.8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Text(
+                      'Reject',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    currentStatus == 'approved'
+                        ? 'Are you sure you want to change ${widget.userCreation.displayname} from Approved to Rejected?'
+                        : 'Are you sure you want to reject ${widget.userCreation.displayname}?',
+                    style: const TextStyle(color: Colors.grey, fontSize: 16),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          height: 50,
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: Colors.grey.shade600,
+                              width: 2,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            color: Colors.transparent,
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: _isSubmitting
+                                  ? null
+                                  : () => Navigator.pop(context),
+                              child: Center(
+                                child: Text(
+                                  'Cancel',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade400,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Container(
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: _isSubmitting ? Colors.grey : Colors.red,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: _isSubmitting
+                                ? []
+                                : [
+                                    BoxShadow(
+                                      color: Colors.red.withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: _isSubmitting
+                                  ? null
+                                  : () async {
+                                      try {
+                                        setState(() {
+                                          _isSubmitting = true;
+                                        });
+                                        Navigator.pop(context);
+                                        await widget.onReject();
+                                      } catch (e) {
+                                        setState(() {
+                                          _isSubmitting = false;
+                                        });
+                                      }
+                                    },
+                              child: Center(
+                                child: _isSubmitting
+                                    ? const SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Text(
+                                        'Reject',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showApproveConfirmation() {
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          bool _isSubmitting = false;
+          final departmentName = _getDepartmentName(_tempSelectedDepartmentId);
+          final role = _tempSelectedRole ?? widget.userCreation.role.name;
+
+          return Dialog(
+            backgroundColor: Colors.black.withOpacity(0.8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Text(
+                      'Approve User',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Are you sure you want to approve ${widget.userCreation.displayname}?',
+                    style: const TextStyle(color: Colors.grey, fontSize: 16),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[800],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Role: ${_getRoleDisplayName(role)}',
+                          style: const TextStyle(
+                            color: Colors.yellow,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Department: $departmentName',
+                          style: const TextStyle(
+                            color: Colors.yellow,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          height: 50,
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: Colors.grey.shade600,
+                              width: 2,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            color: Colors.transparent,
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: _isSubmitting
+                                  ? null
+                                  : () => Navigator.pop(context),
+                              child: Center(
+                                child: Text(
+                                  'Cancel',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade400,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Container(
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: _isSubmitting ? Colors.grey : Colors.green,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: _isSubmitting
+                                ? []
+                                : [
+                                    BoxShadow(
+                                      color: Colors.green.withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: _isSubmitting
+                                  ? null
+                                  : () async {
+                                      try {
+                                        setState(() {
+                                          _isSubmitting = true;
+                                        });
+                                        Navigator.pop(context);
+                                        await widget.onApprove(
+                                          role,
+                                          _tempSelectedDepartmentId ?? '',
+                                        );
+                                        //if (context.mounted) {
+                                        //  Navigator.pop(context);
+                                        //}
+                                      } catch (e) {
+                                        setState(() {
+                                          _isSubmitting = false;
+                                        });
+                                      }
+                                    },
+                              child: Center(
+                                child: _isSubmitting
+                                    ? const SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Text(
+                                        'Approve',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showChangeToApproveConfirmation() {
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          bool _isSubmitting = false;
+          final canApprove =
+              _tempSelectedDepartmentId != null &&
+              _tempSelectedDepartmentId!.isNotEmpty;
+
+          return Dialog(
+            backgroundColor: Colors.black.withOpacity(0.8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Center(
+                    child: Text(
+                      'Change to Approve',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Change ${widget.userCreation.displayname} from Rejected to Approved?',
+                    style: const TextStyle(color: Colors.grey, fontSize: 16),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Role Dropdown
+                  _buildRoleDropdownNew(context, setState),
+
+                  const SizedBox(height: 16),
+
+                  // Department Dropdown
+                  _buildDepartmentDropdownNew(context, setState),
+
+                  if (!canApprove) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.warning, color: Colors.orange, size: 16),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Please select a department before approval',
+                              style: TextStyle(
+                                color: Colors.orange,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 24),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          height: 50,
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: Colors.grey.shade600,
+                              width: 2,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            color: Colors.transparent,
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: _isSubmitting
+                                  ? null
+                                  : () => Navigator.pop(context),
+                              child: Center(
+                                child: Text(
+                                  'Cancel',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade400,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Container(
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: _isSubmitting || !canApprove
+                                ? Colors.grey
+                                : Colors.green,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: (_isSubmitting || !canApprove)
+                                ? []
+                                : [
+                                    BoxShadow(
+                                      color: Colors.green.withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: (_isSubmitting || !canApprove)
+                                  ? null
+                                  : () async {
+                                      try {
+                                        setState(() {
+                                          _isSubmitting = true;
+                                        });
+                                        Navigator.pop(context);
+                                        await widget.onApprove(
+                                          _tempSelectedRole ??
+                                              widget.userCreation.role.name,
+                                          _tempSelectedDepartmentId ?? '',
+                                        );
+                                        //if (context.mounted) {
+                                        //  Navigator.pop(context);
+                                        //}
+                                      } catch (e) {
+                                        setState(() {
+                                          _isSubmitting = false;
+                                        });
+                                      }
+                                    },
+                              child: Center(
+                                child: _isSubmitting
+                                    ? const SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Text(
+                                        'Approve',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // Helper dropdown widgets for the change to approve dialog
+  Widget _buildRoleDropdownNew(
+    BuildContext dialogContext,
+    StateSetter setState,
+  ) {
+    final displayValue = _getRoleDisplayName(
+      _tempSelectedRole ?? widget.userCreation.role.name,
+    );
+    final displayItems = _availableRoles.values.toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.person, size: 16, color: Colors.grey),
+            const SizedBox(width: 8),
+            const Text(
+              'User Role',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          dropdownColor: Colors.black,
+          style: const TextStyle(color: Colors.yellow),
+          decoration: InputDecoration(
+            labelStyle: const TextStyle(color: Colors.grey),
+            floatingLabelStyle: const TextStyle(color: Colors.yellow),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade600, width: 1),
+            ),
+            focusedBorder: const OutlineInputBorder(
+              //borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.yellow, width: 1),
+            ),
+            filled: true,
+            fillColor: Colors.transparent,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 16,
+            ),
+          ),
+          value: displayValue,
+          items: displayItems.map((role) {
+            return DropdownMenuItem(
+              value: role,
+              child: Text(
+                role.toUpperCase(),
+                style: const TextStyle(color: Colors.yellow),
+              ),
+            );
+          }).toList(),
+          onChanged: (displayName) {
+            if (displayName != null) {
+              setState(() {
+                _tempSelectedRole = _getRoleBackendValue(displayName);
+              });
+            }
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDepartmentDropdownNew(
+    BuildContext dialogContext,
+    StateSetter setState,
+  ) {
+    String safeCurrentDepartmentId = _tempSelectedDepartmentId ?? '';
+
+    if (widget.availableDepartments.isNotEmpty &&
+        !widget.availableDepartments.any(
+          (dept) => dept.id.toString() == safeCurrentDepartmentId,
+        )) {
+      safeCurrentDepartmentId = widget.availableDepartments.first.id.toString();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.business, size: 16, color: Colors.grey),
+            const SizedBox(width: 8),
+            const Text(
+              'Department *',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          dropdownColor: Colors.black,
+          style: const TextStyle(color: Colors.yellow),
+          decoration: InputDecoration(
+            labelStyle: const TextStyle(color: Colors.grey),
+            floatingLabelStyle: const TextStyle(color: Colors.yellow),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade600, width: 1),
+            ),
+            focusedBorder: const OutlineInputBorder(
+              //borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.yellow, width: 1),
+            ),
+            filled: true,
+            fillColor: Colors.transparent,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 16,
+            ),
+          ),
+          value: safeCurrentDepartmentId.isNotEmpty
+              ? safeCurrentDepartmentId
+              : null,
+          hint: const Text(
+            'Select Department',
+            style: TextStyle(color: Colors.grey),
+          ),
+          items: widget.availableDepartments.map((dept) {
+            return DropdownMenuItem(
+              value: dept.id.toString(),
+              child: Text(
+                dept.name,
+                style: const TextStyle(color: Colors.yellow),
+              ),
+            );
+          }).toList(),
+          onChanged: (value) {
+            setState(() {
+              _tempSelectedDepartmentId = value;
+            });
+          },
+        ),
+      ],
     );
   }
 

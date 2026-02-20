@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/new_models/trip_card_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/call_button.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/message_overlay.dart';
+import 'package:vehiclereservation_frontend_flutter_/shared/widgets/message_overlay.dart';
 
 class TripSecurityCard<T extends TripCardModel> extends StatelessWidget {
   final T trip;

@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/optional_permission_manager%20copy.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/message_overlay.dart';
+import 'package:vehiclereservation_frontend_flutter_/shared/widgets/message_overlay.dart';
 
 class CallButton extends StatelessWidget {
   final String? phoneNumber;

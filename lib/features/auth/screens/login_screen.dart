@@ -3,7 +3,7 @@ import 'package:vehiclereservation_frontend_flutter_/core/services/firebase_noti
 import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/forget_pw_verify_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/home/home_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/message_overlay.dart';
+import 'package:vehiclereservation_frontend_flutter_/shared/widgets/message_overlay.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {

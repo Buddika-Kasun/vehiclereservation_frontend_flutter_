@@ -3,11 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/department_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_creation_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/shared/widgets/message_overlay.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/trip_header.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/loading_overlay.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/users/creations/widgets/base_user_creation_list_state.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/users/creations/widgets/count_badge.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/users/creations/widgets/list_content.dart';
+import 'package:vehiclereservation_frontend_flutter_/shared/widgets/loading_overlay.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/users/creations/base/base_user_creation_list_state.dart';
+import 'package:vehiclereservation_frontend_flutter_/shared/widgets/count_badge.dart';
+import 'package:vehiclereservation_frontend_flutter_/shared/widgets/list_content.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/creations/widgets/status_filter_buttons.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/creations/widgets/user_creation_card.dart';
 
@@ -27,8 +28,7 @@ class UserCreationsScreen extends StatefulWidget {
   _UserCreationsScreenState createState() => _UserCreationsScreenState();
 }
 
-class _UserCreationsScreenState
-    extends BaseUserCreationListState<UserCreationsScreen> {
+class _UserCreationsScreenState extends BaseUserCreationListState<UserCreationsScreen> {
   List<Department> _availableDepartments = [];
 
   @override
@@ -179,6 +179,7 @@ class _UserCreationsScreenState
     final userCreation = displayedUserCreations[index];
 
     try {
+
       final response = await ApiService.approveUserCreationWithDetails(
         userCreation.id,
         role: role,
@@ -186,24 +187,44 @@ class _UserCreationsScreenState
       );
 
       if (response['success'] == true) {
-        setState(() {
-          selectedFilter = 'Approved';
-          expandedIndex = null;
-        });
-        await fetchUserCreations(reset: true);
+
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('User approved successfully')),
+          MessageOverlay.showSuccess(
+            context: context,
+            message: "User approved successfully!",
+            duration: const Duration(seconds: 2),
+            onComplete: () {
+              
+            },
+            position: OverlayPosition.top,
+            showBackgroundOverlay: true,
           );
+          await Future.delayed(const Duration(seconds: 1));
+          setState(() {
+            selectedFilter = 'Approved';
+            expandedIndex = null;
+          });
+          await fetchUserCreations(reset: true);
         }
       } else {
         throw Exception(response['message'] ?? 'Failed to approve user');
       }
     } catch (e) {
+
       if (mounted) {
+        /*
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Failed to approve user: $e')));
+        */
+        MessageOverlay.showError(
+          context: context,
+          message: "Failed to approve user: $e",
+          duration: const Duration(seconds: 3),
+          showOkButton: true, // Show OK button for errors
+          position: OverlayPosition.top,
+          showBackgroundOverlay: true,
+        );  
       }
     }
   }
@@ -212,27 +233,43 @@ class _UserCreationsScreenState
     final userCreation = displayedUserCreations[index];
 
     try {
+
       final response = await ApiService.rejectUserCreation(userCreation.id);
 
-      if (response['success'] == true) {
+      if (response['success'] == true) {  
+        isLoading = false;
+
+        if (mounted) {
+          MessageOverlay.showSuccess(
+            context: context,
+            message: "User rejected successfully!",
+            duration: const Duration(seconds: 2),
+            onComplete: () {},
+            position: OverlayPosition.top,
+            showBackgroundOverlay: true,
+          );
+        }
+        await Future.delayed(const Duration(seconds: 1));
         setState(() {
           selectedFilter = 'Rejected';
           expandedIndex = null;
         });
         await fetchUserCreations(reset: true);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('User rejected successfully')),
-          );
-        }
+
       } else {
         throw Exception(response['message'] ?? 'Failed to reject user');
       }
     } catch (e) {
+
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to reject user: $e')));
+        MessageOverlay.showError(
+          context: context,
+          message: "Failed to reject user: $e",
+          duration: const Duration(seconds: 3),
+          showOkButton: true, // Show OK button for errors
+          position: OverlayPosition.top,
+          showBackgroundOverlay: true,
+        );
       }
     }
   }
@@ -264,10 +301,7 @@ class _UserCreationsScreenState
               onFilterSelected: (value) => setFilter(value ?? 'Pending'),
               statusFilters: _statusFilters,
             ),
-            CountBadge(
-              totalCount: total,
-              label: '$selectedFilter Users'
-            ),
+            CountBadge(totalCount: total, label: '$selectedFilter Users'),
             Expanded(
               child: ListContent<UserCreation>(
                 scrollController: scrollController,

@@ -9,7 +9,7 @@ import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/revi
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/ride_(Users)/rides_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/approval_user_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicleType_managemnet_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicle_all_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/all_vehicles/vehicle_all_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicle_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/assigned_(Drivers)/assigned_rides_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/ride_(Users)/ride_details_screen.dart';

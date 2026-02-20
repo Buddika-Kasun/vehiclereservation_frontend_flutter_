@@ -11,8 +11,8 @@ import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/time
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/status_filter_dropdown.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/trip_card.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/trip_list_content.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/loading_overlay.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/users/creations/widgets/count_badge.dart';
+import 'package:vehiclereservation_frontend_flutter_/shared/widgets/loading_overlay.dart';
+import 'package:vehiclereservation_frontend_flutter_/shared/widgets/count_badge.dart';
 
 class ReviewTripScreen extends StatefulWidget {
   final int userId;
