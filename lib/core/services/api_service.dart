@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart'; // Add this import
 import 'package:vehiclereservation_frontend_flutter_/core/services/firebase_notification_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/utils/device_helper.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/available_vehicles_response.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/checklist_models.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/driver_trip_response.dart';
@@ -1857,6 +1858,7 @@ class ApiService {
     }
   }
 
+  /*
   static Future<void> updateFcmToken({
     required fcmToken
   }) async {
@@ -1874,7 +1876,36 @@ class ApiService {
       print('❌ Error updating FCM token: $e');
     }
   }
+  */
 
+  static Future<void> updateFcmToken({
+    required fcmToken,
+  }) async {
+    try {
+      print('🔄 Updating FCM token: $fcmToken');
+
+      // Get device information from helper
+      final deviceId = await DeviceHelper.getDeviceId();
+      final deviceName = await DeviceHelper.getDeviceName();
+      final deviceType = DeviceHelper.getDeviceType();
+      
+      await authenticatedApiCall(
+        'notifications/update-fcm-token-new',
+        method: 'PUT',
+        body: {
+          'fcmToken': fcmToken,
+          'deviceId': deviceId,
+          'deviceName': deviceName,
+          'deviceType': deviceType,
+        },
+      );
+      print('✅ FCM token updated successfully');
+    } catch (e) {
+      print('❌ Error updating FCM token: $e');
+    }
+  }
+
+  /*
   static Future<void> deleteFcmToken() async {
     try {
       print('🔄 Deleting FCM token');
@@ -1886,6 +1917,24 @@ class ApiService {
     } catch (e) {
       print('❌ Error deleting FCM token: $e');
     } 
+  }
+  */
+
+  static Future<void> deleteFcmToken() async {
+    try {
+      print('🔄 Deleting FCM token');
+
+      final deviceId = await DeviceHelper.getDeviceId();
+
+      await authenticatedApiCall(
+        'notifications/delete-fcm-token-new',
+        method: 'DELETE',
+        body: {'deviceId': deviceId},
+      );
+      print('✅ FCM token deleted successfully');
+    } catch (e) {
+      print('❌ Error deleting FCM token: $e');
+    }
   }
 
 }
