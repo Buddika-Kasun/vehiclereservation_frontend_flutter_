@@ -31,6 +31,8 @@ class UserCreationsScreen extends StatefulWidget {
 class _UserCreationsScreenState extends BaseUserCreationListState<UserCreationsScreen> {
   List<Department> _availableDepartments = [];
 
+  String loadingMsg = 'Loading...';
+
   @override
   void initState() {
     // Apply filter from screenData if available
@@ -98,6 +100,7 @@ class _UserCreationsScreenState extends BaseUserCreationListState<UserCreationsS
       if (reset) {
         setState(() {
           if (!silent) {
+            loadingMsg = 'Loading users...';
             isLoading = true;
           }
           currentPage = 1;
@@ -180,6 +183,11 @@ class _UserCreationsScreenState extends BaseUserCreationListState<UserCreationsS
 
     try {
 
+      setState(() {
+        loadingMsg = 'Processing...';
+        isLoading = true;
+      });
+
       final response = await ApiService.approveUserCreationWithDetails(
         userCreation.id,
         role: role,
@@ -187,6 +195,9 @@ class _UserCreationsScreenState extends BaseUserCreationListState<UserCreationsS
       );
 
       if (response['success'] == true) {
+        setState(() {
+          loadingMsg = 'Loading users...';
+        });
 
         if (mounted) {
           MessageOverlay.showSuccess(
@@ -211,6 +222,10 @@ class _UserCreationsScreenState extends BaseUserCreationListState<UserCreationsS
       }
     } catch (e) {
 
+      setState(() {
+        isLoading = false;
+      });
+
       if (mounted) {
         /*
         ScaffoldMessenger.of(
@@ -233,11 +248,17 @@ class _UserCreationsScreenState extends BaseUserCreationListState<UserCreationsS
     final userCreation = displayedUserCreations[index];
 
     try {
+      setState(() {
+        loadingMsg = 'Processing...';
+        isLoading = true;
+      });
 
       final response = await ApiService.rejectUserCreation(userCreation.id);
 
       if (response['success'] == true) {  
-        isLoading = false;
+        setState(() {
+          loadingMsg = 'Loading users...';
+        });
 
         if (mounted) {
           MessageOverlay.showSuccess(
@@ -260,6 +281,9 @@ class _UserCreationsScreenState extends BaseUserCreationListState<UserCreationsS
         throw Exception(response['message'] ?? 'Failed to reject user');
       }
     } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
 
       if (mounted) {
         MessageOverlay.showError(
@@ -287,8 +311,9 @@ class _UserCreationsScreenState extends BaseUserCreationListState<UserCreationsS
     return Scaffold(
       backgroundColor: Colors.black,
       body: LoadingOverlay(
-        isLoading: isLoading && displayedUserCreations.isEmpty,
-        loadingMessage: getLoadingMessage(),
+        //isLoading: isLoading && displayedUserCreations.isEmpty,
+        isLoading: isLoading,
+        loadingMessage: loadingMsg,
         child: Column(
           children: [
             TripHeader(
