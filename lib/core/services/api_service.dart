@@ -1928,10 +1928,10 @@ class ApiService {
 
       await authenticatedApiCall(
         'notifications/delete-fcm-token-new',
-        method: 'DELETE',
+        method: 'PUT',
         body: {'deviceId': deviceId},
       );
-      print('✅ FCM token deleted successfully');
+      print('✅ FCM token deleted successfully $deviceId');
     } catch (e) {
       print('❌ Error deleting FCM token: $e');
     }
