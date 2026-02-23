@@ -28,7 +28,7 @@ import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/appr
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/company_management_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/department_management_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/cost_center_management_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicle_management_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicle_management/vehicle_management_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/approval_management_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/notifications/screens/notification_screen.dart';
 
