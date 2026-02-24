@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/global_websocket.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/websocket_manager.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/home/home_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/notifications/screens/notification_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/profile/profile_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
@@ -30,14 +30,13 @@ class TopBar extends StatefulWidget {
 }
 
 class _TopBarState extends State<TopBar> {
-  //final NotificationHandler _notificationHandler = NotificationHandler();
-  //final WebSocketManager _webSocketManager = WebSocketManager();
   WebSocketManager get _webSocketManager => GlobalWebSocket.instance;
   late NotificationHandler _notificationHandler;
 
   int _unreadCount = 0;
   bool _isConnected = false;
   bool _isInitializing = false;
+  bool _isReconnecting = false;
 
   // Simple popup variables
   OverlayEntry? _notificationOverlay;
@@ -75,6 +74,9 @@ class _TopBarState extends State<TopBar> {
 
       // Add connection listener
       _webSocketManager.addConnectionListener('notifications', (isConnected) {
+        if (kDebugMode) {
+          print('🔌 Notification connection: $isConnected');
+        }
         if (mounted) {
           setState(() {
             _isConnected = isConnected;
@@ -85,7 +87,9 @@ class _TopBarState extends State<TopBar> {
       // Add message listener
       _webSocketManager.addMessageListener('notifications', (message) {
         final event = message['event']?.toString() ?? '';
-        print('📨 Received notification event: $event');
+        if (kDebugMode) {
+          print('📨 Received notification event: $event');
+        }
 
         if (event == 'notification' ||
             event == 'refresh' ||
@@ -93,7 +97,14 @@ class _TopBarState extends State<TopBar> {
           _loadUnreadCount();
 
           if (event == 'notification' || event == 'notification_update') {
-            _showSimpleNotificationPopup();
+
+            int? newCount;
+            if (message['data'] != null &&
+                message['data']['unreadCount'] != null) {
+              newCount = message['data']['unreadCount'];
+            }
+
+            _showSimpleNotificationPopup(newCount);
           }
         }
       });
@@ -118,11 +129,12 @@ class _TopBarState extends State<TopBar> {
       };
 
       _notificationHandler.onNewNotification = (notificationData) {
-        _showSimpleNotificationPopup();
+        int? newCount = notificationData['unreadCount'];
+        _showSimpleNotificationPopup(newCount);
         _loadUnreadCount();
       };
 
-      // Connect to notifications namespace (will use reference counting)
+      // Connect to notifications namespace
       await _webSocketManager.connectToNamespace('notifications');
 
       // Check initial connection status
@@ -149,10 +161,11 @@ class _TopBarState extends State<TopBar> {
 
   @override
   void dispose() {
-    // Only dispose handler, don't disconnect WebSocket
     _notificationHandler.dispose();
     _webSocketManager.removeConnectionListener('notifications', (_) {});
     _webSocketManager.removeMessageListener('notifications', (_) {});
+    _notificationTimer?.cancel();
+    _removeNotificationPopup();
     super.dispose();
   }
 
@@ -176,7 +189,142 @@ class _TopBarState extends State<TopBar> {
     }
   }
 
-  void _showSimpleNotificationPopup() {
+  Future<void> _handleNotificationTap() async {
+    // Remove any existing popup
+    _removeNotificationPopup();
+
+    // If already connected and not in progress, navigate immediately
+    if (_isConnected && !_isInitializing && !_isReconnecting) {
+      _navigateToNotificationScreen();
+      return;
+    }
+
+    // Show reconnecting state
+    if (mounted) {
+      setState(() {
+        _isReconnecting = true;
+      });
+    }
+
+    try {
+      // Attempt to reconnect
+      await _reconnectWebSocket();
+
+      // Wait a bit for connection to establish
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      if (mounted && _isConnected) {
+        // Connection successful, navigate
+        _navigateToNotificationScreen();
+      } else {
+        // Still not connected, show error
+        _showConnectionError();
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Reconnection failed: $e');
+      }
+      _showConnectionError();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isReconnecting = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _reconnectWebSocket() async {
+    try {
+      // Disconnect first if connected
+      if (_webSocketManager.isNamespaceConnected('notifications')) {
+        await _webSocketManager.disconnectFromNamespace('notifications');
+      }
+
+      // Reinitialize the handler
+      await _notificationHandler.initialize(
+        token: widget.token,
+        userId: widget.user.id.toString(),
+      );
+
+      // Reconnect to namespace
+      await _webSocketManager.connectToNamespace('notifications');
+
+      // Wait for connection with timeout
+      int attempts = 0;
+      const maxAttempts = 5;
+      const delay = Duration(milliseconds: 200);
+
+      while (attempts < maxAttempts && !_isConnected) {
+        await Future.delayed(delay);
+        attempts++;
+        if (kDebugMode) {
+          print('🔄 Connection attempt $attempts/$maxAttempts');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ WebSocket reconnection error: $e');
+      }
+      rethrow;
+    }
+  }
+
+  void _navigateToNotificationScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => NotificationScreen(
+          userId: widget.user.id.toString(),
+          token: widget.token,
+        ),
+      ),
+    ).then((_) {
+      _loadUnreadCount();
+    });
+  }
+
+  void _showConnectionError() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Unable to connect to notifications. Please check your connection.',
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _refreshConnection() {
+    if (mounted) {
+      setState(() {
+        _isInitializing = true;
+      });
+    }
+
+    _reconnectWebSocket()
+        .then((_) {
+          if (mounted) {
+            setState(() {
+              _isInitializing = false;
+            });
+          }
+        })
+        .catchError((e) {
+          if (kDebugMode) {
+            print('❌ Refresh connection failed: $e');
+          }
+          if (mounted) {
+            setState(() {
+              _isInitializing = false;
+            });
+          }
+        });
+  }
+
+  void _showSimpleNotificationPopup([int? newCount]) {
     if (!mounted || _showNotification) return;
 
     // Cancel any existing timer
@@ -186,24 +334,30 @@ class _TopBarState extends State<TopBar> {
     _removeNotificationPopup();
 
     // Create new overlay
-    _createSimplePopup();
+    _createSimplePopup(newCount ?? _unreadCount + 1);
 
-    // Auto-hide after 3 seconds
+    // Auto-hide after 5 seconds
     _notificationTimer = Timer(const Duration(seconds: 5), () {
       _removeNotificationPopup();
     });
   }
 
-  void _createSimplePopup() {
+  void _createSimplePopup([int displayCount = 0]) {
     final overlayState = Overlay.of(context);
     if (overlayState == null) return;
 
+    // Calculate position based on app bar height
+    // AppBar height is 80 + status bar height
+    final double statusBarHeight = MediaQuery.of(context).padding.top;
+    final double appBarHeight = 80.0;
+    final double totalAppBarHeight = statusBarHeight;
+
     _notificationOverlay = OverlayEntry(
       builder: (context) => Positioned(
-        top: 10, // Adjust based on your AppBar height
+        top: statusBarHeight + 8, // Position below the app bar with small gap
         left: 16,
         right: 16,
-        child: _buildSimplePopup(),
+        child: _buildSimplePopup(displayCount),
       ),
     );
 
@@ -211,49 +365,86 @@ class _TopBarState extends State<TopBar> {
     _showNotification = true;
   }
 
-  Widget _buildSimplePopup() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: Colors.blue,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 8,
-            spreadRadius: 1,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.notifications, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              const Text(
-                'New Notification',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+  Widget _buildSimplePopup(int displayCount) {
+    return GestureDetector(
+      onTap: () {
+        // Remove popup first
+        _removeNotificationPopup();
+        // Navigate to notification screen
+        _navigateToNotificationScreen();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        margin: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          color: Colors.blue,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 8,
+              spreadRadius: 1,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Notification content
+            Expanded(
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.notifications,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'New Notification',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            decoration: TextDecoration.none, // Add this
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${displayCount} unread notification${_unreadCount == 1 ? '' : 's'}',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                            decoration: TextDecoration.none, // Add this
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Close button
+            GestureDetector(
+              onTap: _removeNotificationPopup,
+              child: Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.2),
                 ),
+                child: const Icon(Icons.close, color: Colors.white, size: 16),
               ),
-              const SizedBox(width: 4),
-              Text(
-                '($_unreadCount unread)',
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
-              ),
-            ],
-          ),
-          GestureDetector(
-            onTap: _removeNotificationPopup,
-            child: const Icon(Icons.close, color: Colors.white, size: 18),
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -266,15 +457,6 @@ class _TopBarState extends State<TopBar> {
     _showNotification = false;
     _notificationTimer?.cancel();
     _notificationTimer = null;
-  }
-
-  void _refreshConnection() {
-    if (mounted) {
-      setState(() {
-        _isInitializing = true;
-      });
-    }
-    _initializeNotificationHandler();
   }
 
   @override
@@ -328,7 +510,7 @@ class _TopBarState extends State<TopBar> {
             Stack(
               children: [
                 IconButton(
-                  icon: _isInitializing
+                  icon: _isInitializing || _isReconnecting
                       ? SizedBox(
                           width: 24,
                           height: 24,
@@ -345,44 +527,29 @@ class _TopBarState extends State<TopBar> {
                               ? Colors.white
                               : Colors.white.withOpacity(0.5),
                         ),
-                  onPressed: _isConnected
-                      ? () {
-                          _removeNotificationPopup();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => NotificationScreen(
-                                userId: widget.user.id.toString(),
-                                token: widget.token,
-                              ),
-                            ),
-                          ).then((_) {
-                            _loadUnreadCount();
-                          });
-                        }
-                      : null,
+                  onPressed: _handleNotificationTap,
                 ),
 
                 // Unread count badge
-                if (_unreadCount > 0)
+                if (_unreadCount > 0 && !_isInitializing && !_isReconnecting)
                   Positioned(
-                    right: 8,
-                    top: 8,
+                    right: 6,
+                    top: 6,
                     child: Container(
                       padding: const EdgeInsets.all(2),
                       decoration: BoxDecoration(
-                        color: Colors.red,
+                        color: Colors.redAccent,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       constraints: const BoxConstraints(
-                        minWidth: 16,
-                        minHeight: 16,
+                        minWidth: 18,
+                        minHeight: 18,
                       ),
                       child: Text(
                         _unreadCount > 9 ? '9+' : _unreadCount.toString(),
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                         ),
                         textAlign: TextAlign.center,
@@ -401,11 +568,13 @@ class _TopBarState extends State<TopBar> {
                       height: 8,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: _isInitializing
-                            ? Colors.orange
+                        color: _isReconnecting
+                            ? Colors.orangeAccent
+                            : _isInitializing
+                            ? Colors.orangeAccent
                             : _isConnected
-                            ? Colors.green
-                            : Colors.red,
+                            ? Colors.greenAccent
+                            : Colors.redAccent,
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withOpacity(0.3),
@@ -460,4 +629,5 @@ class _TopBarState extends State<TopBar> {
     }
     return 'U';
   }
+
 }
