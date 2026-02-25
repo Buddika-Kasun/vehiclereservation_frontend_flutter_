@@ -117,6 +117,7 @@ class FirebaseNotificationService {
         ?.createNotificationChannel(channel);
   }
 
+  /*
   Future<void> _initLocalNotifications() async {
     if (!_firebaseAvailable) return;
 
@@ -142,6 +143,85 @@ class FirebaseNotificationService {
         _handleLocalNotificationClick(response.payload);
       },
     );
+  }
+  */
+  Future<void> _initLocalNotifications() async {
+    if (!_firebaseAvailable) return;
+
+    AndroidInitializationSettings initializationSettingsAndroid;
+    String selectedIcon = '';
+
+    // Test each icon option without initializing
+    final iconOptions = [
+      'ic_notification',
+      '@mipmap/ic_notification',
+      '@drawable/ic_notification',
+      '@mipmap/ic_launcher', // Ultimate fallback
+    ];
+
+    for (final icon in iconOptions) {
+      try {
+        // Just create the settings - don't initialize yet
+        final testSettings = AndroidInitializationSettings(icon);
+        selectedIcon = icon;
+        print("✅ Icon will work: $icon");
+        break;
+      } catch (e) {
+        print("⚠️ Icon not available: $icon - $e");
+        continue;
+      }
+    }
+
+    // If all failed, use app icon as last resort
+    if (selectedIcon.isEmpty) {
+      selectedIcon = '@mipmap/ic_launcher';
+      print("⚠️ Using app icon as final fallback");
+    }
+
+    // Create settings with the working icon
+    initializationSettingsAndroid = AndroidInitializationSettings(selectedIcon);
+
+    const DarwinInitializationSettings initializationSettingsDarwin =
+        DarwinInitializationSettings(
+          requestAlertPermission: false,
+          requestBadgePermission: false,
+          requestSoundPermission: false,
+        );
+
+    final InitializationSettings initializationSettings =
+        InitializationSettings(
+          android: initializationSettingsAndroid,
+          iOS: initializationSettingsDarwin,
+        );
+
+    try {
+      await _localNotifications.initialize(
+        initializationSettings,
+        onDidReceiveNotificationResponse: (NotificationResponse response) {
+          _handleLocalNotificationClick(response.payload);
+        },
+      );
+      print(
+        "✅ Local notifications initialized successfully with icon: $selectedIcon",
+      );
+    } catch (e) {
+      print("❌ Failed to initialize local notifications: $e");
+
+      // Ultimate fallback - try with null icon
+      try {
+        final fallbackAndroidSettings = AndroidNotificationDetails(
+          'high_importance_channel',
+          'High Importance Notifications',
+          importance: Importance.max,
+          priority: Priority.high,
+        );
+
+        // We can't re-initialize, so just log the error
+        print("⚠️ Notifications may not work properly");
+      } catch (fallbackError) {
+        print("❌ Complete notification failure: $fallbackError");
+      }
+    }
   }
 
   Future<void> _requestPermissions() async {
@@ -223,6 +303,7 @@ class FirebaseNotificationService {
   }
 
   // Show local notification - used ONLY for foreground state
+  /*
   void _showLocalNotification(RemoteMessage message) {
     if (!_firebaseAvailable) return;
 
@@ -260,7 +341,67 @@ class FirebaseNotificationService {
       print("📱 Local notification shown (foreground)");
     }
   }
+  */
+  void _showLocalNotification(RemoteMessage message) {
+    if (!_firebaseAvailable) return;
 
+    RemoteNotification? notification = message.notification;
+    Map<String, dynamic> data = message.data;
+
+    if (notification != null) {
+      try {
+        // Create notification details without icon first
+        AndroidNotificationDetails androidDetails;
+
+        try {
+          // Try with icon
+          androidDetails = AndroidNotificationDetails(
+            'high_importance_channel',
+            'High Importance Notifications',
+            channelDescription:
+                'This channel is used for important notifications.',
+            importance: Importance.max,
+            priority: Priority.high,
+            ticker: 'ticker',
+            icon: 'ic_notification',
+            color: const Color(0xFFF9C80E),
+            enableVibration: true,
+            playSound: true,
+            styleInformation: const DefaultStyleInformation(true, true),
+          );
+        } catch (e) {
+          // Without icon
+          androidDetails = AndroidNotificationDetails(
+            'high_importance_channel',
+            'High Importance Notifications',
+            channelDescription:
+                'This channel is used for important notifications.',
+            importance: Importance.max,
+            priority: Priority.high,
+            color: const Color(0xFFF9C80E),
+            enableVibration: true,
+            playSound: true,
+            styleInformation: const DefaultStyleInformation(true, true),
+          );
+        }
+
+        final platformDetails = NotificationDetails(android: androidDetails);
+
+        _localNotifications.show(
+          data['id']?.hashCode ?? notification.hashCode,
+          notification.title,
+          notification.body,
+          platformDetails,
+          payload: data.toString(),
+        );
+
+        print("📱 Local notification shown");
+      } catch (e) {
+        print("❌ Error showing notification: $e");
+      }
+    }
+  }
+  
   // NOTIFICATION CLICK HANDLER - For BOTH system and local notifications
   void _handleNotificationClick(RemoteMessage message) {
     print("🖱️ Notification clicked");

@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:in_app_update/in_app_update.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/routes/app_routes.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/firebase_notification_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/pending_navigation_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/navigation_helper.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
@@ -478,6 +479,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         final user = StorageService.userData;
         final token = await SecureStorageService().accessToken;
         if (user != null && token != null) {
+
+          // Send FCM token to backend
+          //await FirebaseNotificationService().sendTokenToBackend();
+
           Navigator.of(
             context,
           ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);

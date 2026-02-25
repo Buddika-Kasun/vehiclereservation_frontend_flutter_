@@ -23,3 +23,7 @@ flutter pub get
 
 # 6. Build release APK
 flutter build apk --release
+
+# for delete .gradle/cache
+taskkill /F /IM java.exe
+rmdir /s /q "C:\Users\buddi\.gradle\caches"
