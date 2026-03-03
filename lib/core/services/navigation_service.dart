@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/auth_manager.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/routes/app_routes.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
 class NavigationService {
   // Use the same navigatorKey from AuthManager
   GlobalKey<NavigatorState> get navigatorKey => AuthManager.navigatorKey;
@@ -137,6 +138,13 @@ class NavigationService {
   void toMeterReading() {
     navigateToHomeWithScreen(
       screenName: 'meter_reading',
+    );
+  }
+
+  void toAllTrips(UserRole userRole) {
+    navigateToHomeWithScreen(
+      screenName: 'all_trips',
+      screenData: {'userRole': userRole}
     );
   }
 

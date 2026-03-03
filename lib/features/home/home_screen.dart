@@ -5,6 +5,7 @@ import 'package:vehiclereservation_frontend_flutter_/core/services/firebase_noti
 import 'package:vehiclereservation_frontend_flutter_/core/services/pending_navigation_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/global_websocket.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/navigation_helper.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/all_trips_(Users)/all_trips_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/review_(Supervisors)/review_trips_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/ride_(Users)/rides_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/approval_user_screen.dart';
@@ -35,8 +36,6 @@ import 'package:vehiclereservation_frontend_flutter_/features/notifications/scre
 // Import new WebSocket structure
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/websocket_manager.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/notification_handler.dart';
-import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/trip_handler.dart';
-import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/user_handler.dart';
 
 class HomeScreen extends StatefulWidget {
   final String? screenName; // Optional screen name to navigate to
@@ -336,6 +335,12 @@ class _HomeScreenState extends State<HomeScreen> {
             //token: _token!,
           );
           break;
+        case 'all_trips':
+          _currentScreen = AllTripsScreen(
+            userRole: data?['userRole'] ?? _user!.role,
+            //token: _token!,
+          );
+          break;
         case 'trip_details':
           if (data != null && data['tripId'] != null) {
             _currentScreen = TripDetailsScreen(
@@ -347,6 +352,7 @@ class _HomeScreenState extends State<HomeScreen> {
           }
           break;
         case 'my_vehicles':
+        case 'all_vehicles':
           _currentScreen = VehicleScreen(user: data?['user'] ?? _user!);
           break;
         case 'assigned_rides':
@@ -452,17 +458,22 @@ class _HomeScreenState extends State<HomeScreen> {
         _navigateToDashboard();
         break;
       case 'My Vehicles':
-        _navigateToVehicles();
+        _navigateToMyVehicles();
         break;
+      case 'All Vehicles':
+        _navigateToVehicleManagement();
+        break;
+      /*
       case 'All Vehicles':
         _navigateToAllVehicles();
         break;
-      case 'Vehicles':
-        _navigateToVehicleManagement();
-        break;
+      */
       case 'My Rides':
       case 'All Rides':
         _navigateToRides();
+        break;
+      case 'All Trips':
+        _navigateToAllTrips();
         break;
       case 'Review Trips':
         _navigateToReviewTrips();
@@ -533,6 +544,15 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _navigateToAllTrips() {
+    setState(() {
+      _currentScreen = AllTripsScreen(
+        userRole: _user!.role,
+        //token: _token!
+      );
+    });
+  }
+
   void _navigateToReviewTrips() {
     setState(() {
       _currentScreen = ReviewTripScreen(
@@ -557,17 +577,20 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _navigateToVehicles() {
+  void _navigateToMyVehicles() {
     setState(() {
-      _currentScreen = VehicleScreen(user: _user!);
+      //_currentScreen = VehicleScreen(user: _user!);
+      _currentScreen = VehicleAllScreen(user: _user!, all: false);
     });
   }
 
+  /*
   void _navigateToAllVehicles() {
     setState(() {
       _currentScreen = VehicleAllScreen(user: _user!, all: true);
     });
   }
+  */
 
   void _navigateToUserCreations() {
     setState(() {

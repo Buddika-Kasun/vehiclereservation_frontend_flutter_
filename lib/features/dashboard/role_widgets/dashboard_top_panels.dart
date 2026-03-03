@@ -6,7 +6,7 @@ class DashboardTopPanel extends StatelessWidget {
   final UserRole userRole;
   final bool isLoading;
   final VoidCallback onCreateTrip;
-  final VoidCallback onNearbyVehicles;
+  final VoidCallback onJoinTrips;
   final VoidCallback onGoOnline;
   final VoidCallback onGoOffline;
   final VoidCallback onQuickScan;
@@ -17,7 +17,7 @@ class DashboardTopPanel extends StatelessWidget {
     required this.userRole,
     required this.isLoading,
     required this.onCreateTrip,
-    required this.onNearbyVehicles,
+    required this.onJoinTrips,
     required this.onGoOnline,
     required this.onGoOffline,
     required this.onQuickScan,
@@ -48,13 +48,13 @@ class DashboardTopPanel extends StatelessWidget {
         return SecurityTopPanel(user: user, onQuickScan: onQuickScan);
       case UserRole.hr:
       case UserRole.manager:
-        return HrTopPanel(user: user, onCreateTrip: onCreateTrip, onNearbyVehicles: onNearbyVehicles);
+        return HrTopPanel(user: user, onCreateTrip: onCreateTrip, onNearbyVehicles: onJoinTrips);
       case UserRole.admin:
       case UserRole.sysadmin:
-        return AdminTopPanel(user: user, onCreateTrip: onCreateTrip, onNearbyVehicles: onNearbyVehicles);
+        return AdminTopPanel(user: user, onCreateTrip: onCreateTrip, onNearbyVehicles: onJoinTrips);
       case UserRole.employee:
       default:
-        return EmployeeTopPanel(user: user, onCreateTrip: onCreateTrip, onNearbyVehicles: onNearbyVehicles);
+        return EmployeeTopPanel(user: user, onCreateTrip: onCreateTrip, onNearbyVehicles: onJoinTrips);
     }
   }
 }
@@ -333,7 +333,8 @@ class HrTopPanel extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            'Nearby Vehicles',
+                            //'[Nearby Vehicle]s',
+                            'Join to Trips',
                             style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                           SizedBox(width: 8),
@@ -441,7 +442,8 @@ class AdminTopPanel extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            'Nearby Vehicles',
+                            //'Nearby Vehicles',
+                            'Join to Trips',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                             ),
@@ -549,7 +551,8 @@ class EmployeeTopPanel extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            'Nearby Vehicles',
+                            //'Nearby Vehicles',
+                            'Join to Trips',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                             ),

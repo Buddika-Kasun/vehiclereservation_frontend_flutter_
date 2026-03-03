@@ -1,5 +1,6 @@
 // lib/core/utils/navigation_helper.dart
 import 'package:vehiclereservation_frontend_flutter_/core/services/navigation_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
 
 class NavigationHelper {
   static final NavigationService _nav = NavigationService();
@@ -31,6 +32,10 @@ class NavigationHelper {
 
   static void toMeterReading() {
     _nav.toMeterReading();
+  }
+
+  static void toAllTrips(UserRole userRole) {
+    _nav.toAllTrips(userRole);
   }
 
   static void toNotifications() {
