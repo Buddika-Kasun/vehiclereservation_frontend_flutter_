@@ -28,9 +28,9 @@ class UserCreation {
   factory UserCreation.fromJson(Map<String, dynamic> json) {
     return UserCreation(
       id: json['id'] ?? 0,
-      displayname: json['displayname'] ?? '',
-      email: json['email'] ?? '',
-      phone: json['phone'] ?? '',
+      displayname: json['displayname'] ?? 'N/A',
+      email: json['email'] ?? 'N/A',
+      phone: json['phone'] ?? 'N/A',
       departmentId: json['department']?['id'] ?? 0,
       departmentName: json['department']?['name'] ?? null,
       role: _parseUserRole(json['role']),

@@ -3,15 +3,20 @@ import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/trip_booking_response.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/trip_request_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/trip_creation/vehicle_selection_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/constant.dart';
 
 class SchedulePassengersScreen extends StatefulWidget {
   final Map<String, dynamic> locationData;
+  final List<dynamic> departmentData;
 
-  const SchedulePassengersScreen({Key? key, required this.locationData})
-    : super(key: key);
+  const SchedulePassengersScreen({
+    Key? key, 
+    required this.locationData,
+    required this.departmentData,
+  }) : super(key: key);
 
   @override
   _SchedulePassengersScreenState createState() =>
@@ -25,6 +30,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
   TimeOfDay? _startTime = TimeOfDay.fromDateTime(
     DateTime.now().add(Duration(minutes: 20)),
   );
+  DateTime? _returnDateTime;
   String _repetition = 'once';
   bool _includeWeekends = false;
   int _repeatAfterDays = 0;
@@ -64,7 +70,9 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
   void initState() {
     super.initState();
     _loadUserData();
-    _loadDepartments();
+    //_loadDepartments();
+    _initializeDepartments();
+    _calculateReturnDateTime();
     _fixedRateController = TextEditingController(text: _fixedRate);
     _reasonController = TextEditingController(text: _reason);
     _repeatDaysController = TextEditingController(
@@ -72,6 +80,54 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
     );
   }
 
+  void _calculateReturnDateTime() {
+    if (_startDate != null &&
+        _startTime != null &&
+        widget.locationData.containsKey('totalDuration')) {
+      // Combine start date and time
+      final DateTime startDateTime = DateTime(
+        _startDate!.year,
+        _startDate!.month,
+        _startDate!.day,
+        _startTime!.hour,
+        _startTime!.minute,
+      );
+
+      // Get total duration (in minutes) from location data
+      final dynamic durationValue = widget.locationData['totalDuration'];
+
+      if (durationValue != null) {
+        // Convert to double and then to int minutes
+        double totalDurationMinutes;
+
+        if (durationValue is int) {
+          totalDurationMinutes = durationValue.toDouble();
+        } else if (durationValue is double) {
+          totalDurationMinutes = durationValue;
+        } else {
+          totalDurationMinutes = double.tryParse(durationValue.toString()) ?? 0;
+        }
+
+        if (totalDurationMinutes > 0) {
+          // Convert to integer minutes for Duration (round up to nearest minute)
+          int durationInMinutes = totalDurationMinutes.ceil();
+
+          setState(() {
+            _returnDateTime = startDateTime.add(
+              Duration(minutes: durationInMinutes),
+            );
+          });
+
+          print('Auto-calculated return date-time: $_returnDateTime');
+          print(
+            'Total duration minutes: $totalDurationMinutes, Rounded to: $durationInMinutes',
+          );
+        }
+      }
+    }
+  }
+
+  /*
   Future<void> _loadDepartments() async {
     try {
       setState(() {
@@ -131,6 +187,35 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
       setState(() {
         _loadingDepartments = false;
       });
+    }
+  }
+  */
+
+  void _initializeDepartments() {
+    if (widget.departmentData.isNotEmpty) {
+      setState(() {
+        _departments = widget.departmentData.map((dept) {
+          return {
+            'id': dept['id'].toString(),
+            'name': dept['name'] ?? 'Unknown Department',
+          };
+        }).toList();
+
+        // Set first department as default if available
+        if (_departments.isNotEmpty) {
+          _selectedDepartment = _departments.first['id'];
+          print(
+            'Department loaded from previous page: ${_departments.first['name']}',
+          );
+        }
+      });
+    } else {
+      print('No departments found in location data');
+      // Add a default department option if none provided
+      _departments = [
+        {'id': 'default', 'name': 'Select Department'},
+      ];
+      _selectedDepartment = 'default';
     }
   }
 
@@ -529,9 +614,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
         border: Border.all(color: Colors.grey.shade700, width: 1),
       ),
       child: Theme(
-        data: Theme.of(context).copyWith(
-          dividerColor: Colors.transparent, // Remove divider color
-        ),
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
           tilePadding: EdgeInsets.symmetric(horizontal: 16),
           shape: RoundedRectangleBorder(
@@ -559,16 +642,14 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
               child: Column(
                 children: [
-                  // Start Date
-                  _buildDateField(
-                    'Start Date',
-                    _startDate,
-                    (date) => setState(() => _startDate = date),
-                    isStartDate: true,
-                  ),
+                  // Start Date (existing)
+                  _buildDateField('Start Date', _startDate, (date) {
+                    setState(() => _startDate = date);
+                    _calculateReturnDateTime(); // Recalculate return when start date changes
+                  }, isStartDate: true),
                   SizedBox(height: 16),
 
-                  // Valid Till Date
+                  // Valid Till Date (existing)
                   if (_repetition != 'once') ...[
                     _buildDateField(
                       'Valid Till Date',
@@ -579,21 +660,36 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                     SizedBox(height: 16),
                   ],
 
-                  // Start Time
+                  // Start Time (existing)
                   _buildTimeField(
                     'Start Time',
                     _startTime,
-                    () => _selectTime(
-                      context,
-                      (time) => setState(() => _startTime = time),
-                    ),
+                    () => _selectTime(context, (time) {
+                      setState(() {
+                        _startTime = time;
+                        _calculateReturnDateTime(); // Recalculate return when start time changes
+                      });
+                    }),
                     onClear: _startTime != null
-                        ? () => setState(() => _startTime = null)
+                        ? () => setState(() {
+                            _startTime = null;
+                            _returnDateTime = null;
+                          })
                         : null,
                   ),
                   SizedBox(height: 16),
 
-                  // Repetition Dropdown
+                  // NEW: Return Date & Time Combined Field
+                  if (_startDate != null && _startTime != null) ...[
+                    _buildReturnDateTimeField(
+                      'Return Date & Time',
+                      _returnDateTime,
+                      (dateTime) => setState(() => _returnDateTime = dateTime),
+                    ),
+                    SizedBox(height: 16),
+                  ],
+
+                  // Repetition Dropdown (existing)
                   if (_canSchedule)
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -684,7 +780,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                     ),
                   ],
 
-                  // Custom Repetition Fields
+                  // Custom Repetition Fields (existing)
                   if (_repetition == 'custom') ...[
                     SizedBox(height: 4),
                     TextField(
@@ -716,6 +812,148 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
         ),
       ),
     );
+  }
+
+  // NEW: Return date-time field builder
+  Widget _buildReturnDateTimeField(
+    String label,
+    DateTime? dateTime,
+    Function(DateTime?) onDateTimeSelected,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(color: Colors.grey, fontSize: 14)),
+        SizedBox(height: 4),
+        InkWell(
+          onTap: () => _selectReturnDateTime(context, onDateTimeSelected),
+          child: Container(
+            width: double.infinity,
+            height: 45,
+            padding: EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade600),
+              borderRadius: BorderRadius.circular(8.0),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    dateTime != null
+                        ? '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}'
+                        : 'Select return date & time',
+                    style: TextStyle(
+                      color: dateTime != null
+                          ? Colors.yellow
+                          : Colors.grey.shade600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (dateTime != null)
+                  IconButton(
+                    icon: Icon(Icons.clear, color: Colors.red, size: 18),
+                    onPressed: () => onDateTimeSelected(null),
+                    padding: EdgeInsets.zero,
+                    constraints: BoxConstraints(),
+                  ),
+                Icon(
+                  Icons.calendar_today,
+                  color: Colors.grey.shade600,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _selectReturnDateTime(
+    BuildContext context,
+    Function(DateTime?) onDateTimeSelected,
+  ) async {
+    if (_startDate == null || _startTime == null) {
+      _showMessage('Please select start date and time first', false);
+      return;
+    }
+
+    final DateTime startDateTime = DateTime(
+      _startDate!.year,
+      _startDate!.month,
+      _startDate!.day,
+      _startTime!.hour,
+      _startTime!.minute,
+    );
+
+    final DateTime now = DateTime.now();
+    final DateTime initialDate =
+        _returnDateTime ?? startDateTime.add(Duration(hours: 1));
+
+    // First pick the date
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: startDateTime, // Can't be before start date-time
+      lastDate: DateTime(2100),
+    );
+
+    if (pickedDate != null) {
+      // Then pick the time
+      final TimeOfDay? pickedTime = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(initialDate),
+      );
+
+      if (pickedTime != null) {
+        final DateTime selectedDateTime = DateTime(
+          pickedDate.year,
+          pickedDate.month,
+          pickedDate.day,
+          pickedTime.hour,
+          pickedTime.minute,
+        );
+
+        // Validate return time is not before start time
+        if (selectedDateTime.isBefore(startDateTime)) {
+          _showMessage(
+            'Return date & time cannot be before start date & time',
+            false,
+          );
+          return;
+        }
+
+        // Optional: Check if return time is at least the minimum trip duration
+        final dynamic durationValue = widget.locationData['totalDuration'];
+        if (durationValue != null) {
+          double minDurationMinutes;
+          if (durationValue is int) {
+            minDurationMinutes = durationValue.toDouble();
+          } else if (durationValue is double) {
+            minDurationMinutes = durationValue;
+          } else {
+            minDurationMinutes = double.tryParse(durationValue.toString()) ?? 0;
+          }
+
+          if (minDurationMinutes > 0) {
+            final DateTime minReturnTime = startDateTime.add(
+              Duration(minutes: minDurationMinutes.ceil()),
+            );
+
+            if (selectedDateTime.isBefore(minReturnTime)) {
+              _showMessage(
+                'Return time must be at least ${minDurationMinutes.toStringAsFixed(0)} minutes after start time',
+                false,
+              );
+              return;
+            }
+          }
+        }
+
+        onDateTimeSelected(selectedDateTime);
+      }
+    }
   }
 
   Widget _buildPassengersSection() {
@@ -1746,7 +1984,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
       return;
     }
 
-    // Validate schedule
+    // Validate schedule (existing fields)
     if (_startDate == null) {
       _showMessage('Please select start date', false);
       return;
@@ -1760,6 +1998,49 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
     if (_repetition != 'once' && _validTillDate == null) {
       _showMessage('Please select valid till time', false);
       return;
+    }
+
+    // Validate return time if provided
+    if (_returnDateTime != null) {
+      final DateTime startDateTime = DateTime(
+        _startDate!.year,
+        _startDate!.month,
+        _startDate!.day,
+        _startTime!.hour,
+        _startTime!.minute,
+      );
+
+      if (_returnDateTime!.isBefore(startDateTime)) {
+        _showMessage('Return time cannot be before start time', false);
+        return;
+      }
+
+      // Optional: Check minimum duration
+      final dynamic durationValue = widget.locationData['totalDuration'];
+      if (durationValue != null) {
+        double minDurationMinutes;
+        if (durationValue is int) {
+          minDurationMinutes = durationValue.toDouble();
+        } else if (durationValue is double) {
+          minDurationMinutes = durationValue;
+        } else {
+          minDurationMinutes = double.tryParse(durationValue.toString()) ?? 0;
+        }
+
+        if (minDurationMinutes > 0) {
+          final DateTime minReturnTime = startDateTime.add(
+            Duration(minutes: minDurationMinutes.ceil()),
+          );
+
+          if (_returnDateTime!.isBefore(minReturnTime)) {
+            _showMessage(
+              'Return time must be at least ${minDurationMinutes.toStringAsFixed(0)} minutes after start time',
+              false,
+            );
+            return;
+          }
+        }
+      }
     }
 
     // Validate passengers based on type
@@ -1781,11 +2062,12 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
 
       final locationData = Map<String, dynamic>.from(widget.locationData);
 
-      // Prepare data for next screen
+      // Prepare data for next screen (keep existing structure + add returnDateTime)
       final scheduleData = {
         'startDate': _startDate,
         'validTillDate': _validTillDate,
         'startTime': _startTime,
+        'returnDateTime': _returnDateTime, // Combined return date-time
         'repetition': _repetition,
         'includeWeekends': _includeWeekends,
         'repeatAfterDays': _repeatAfterDays,
@@ -1805,7 +2087,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
         'fixedRate': _fixedRate,
         'reason': _reason,
         'departmentId': _selectedDepartment != null
-            ? int.tryParse(_selectedDepartment!) // Convert string to number
+            ? int.tryParse(_selectedDepartment!)
             : null,
       };
 
@@ -1830,7 +2112,6 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
           'Trip booked successfully!',
           true,
           onSuccess: () {
-            //Navigator.pop(context);
             Navigator.of(context).popUntil((route) => route.isFirst);
           },
         );
@@ -1844,7 +2125,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
       setState(() => _isBooking = false);
     }
   }
-
+  
   // Improved message function with colored overlay
   void _showMessage(String message, bool isSuccess, {VoidCallback? onSuccess}) {
     // Clear any existing dialogs first
@@ -2057,4 +2338,5 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
       ),
     );
   }
+
 }

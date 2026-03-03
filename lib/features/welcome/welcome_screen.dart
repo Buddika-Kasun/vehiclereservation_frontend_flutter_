@@ -1,19 +1,13 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:package_info_plus/package_info_plus.dart';
+import 'package:in_app_update/in_app_update.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/routes/app_routes.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/firebase_notification_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/pending_navigation_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/core/services/update_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/navigation_helper.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/models/update_model.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/login_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/shared/widgets/download_progress_dialog.dart';
-import 'package:vehiclereservation_frontend_flutter_/shared/widgets/update_dialog.dart';
-import 'package:vehiclereservation_frontend_flutter_/shared/widgets/installation_progress_dialog.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -28,7 +22,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
   late Animation<double> _progressAnimation;
-  final UpdateService _updateService = UpdateService();
   bool _updateChecked = false;
   bool _checkingUpdate = false;
 
@@ -62,30 +55,96 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
     _controller.forward();
 
-    // Start checking for updates after animation begins
-    _checkForUpdates();
+    // Start checking for Play Store updates
+    _checkForPlayStoreUpdates();
+    //_checkForPlayStoreUpdatesMock();
   }
 
-  Future<void> _checkForUpdates() async {
+  Future<void> _checkForPlayStoreUpdatesMock() async {
     if (_checkingUpdate || _updateChecked) return;
 
     _checkingUpdate = true;
 
     try {
-      // Add a small delay to ensure animation is visible
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 800));
 
-      final updateResponse = await _updateService.checkForUpdate();
+      // 🔥 TEST MODE - Change these values to test different flows
+      final mockUpdate = {
+        'updateAvailable': true, // true = update exists, false = no update
+        'updatePriority': 2, // 0 = silent, 1 = flexible, 2+ = immediate
+      };
 
-      if (mounted) {
-        if (updateResponse.updateAvailable) {
-          _handleUpdate(updateResponse);
+      print(
+        '📱 TEST MODE: Update available: ${mockUpdate['updateAvailable']}, Priority: ${mockUpdate['updatePriority']}',
+      );
+
+      if (!mounted) return;
+
+      if (mockUpdate['updateAvailable'] == true) {
+        final priority = mockUpdate['updatePriority'] as int;
+
+        if (priority >= 2) {
+          // Immediate update
+          _startImmediateUpdate();
+        } else if (priority == 1) {
+          // Flexible update
+          _showFlexibleUpdateDialog();
         } else {
-          _proceedToApp();
+          // Silent update (priority 0)
+          _startSilentUpdate();
         }
+      } else {
+        // No update
+        _proceedToApp();
       }
     } catch (e) {
-      print('Error checking for updates: $e');
+      print('Error: $e');
+      if (mounted) _proceedToApp();
+    } finally {
+      _checkingUpdate = false;
+    }
+  }
+
+  Future<void> _checkForPlayStoreUpdates() async {
+    if (_checkingUpdate || _updateChecked) return;
+
+    _checkingUpdate = true;
+
+    try {
+      // Add small delay to show animation
+      await Future.delayed(const Duration(milliseconds: 800));
+
+      // Check for update
+      final updateInfo = await InAppUpdate.checkForUpdate();
+
+      print('📱 Update availability: ${updateInfo.updateAvailability}');
+      print('📱 Update version: ${updateInfo.availableVersionCode}');
+      print('📱 Update priority: ${updateInfo.updatePriority}');
+      print('📱 Is update allowed: ${updateInfo.immediateUpdateAllowed}');
+
+      if (!mounted) return;
+
+      // Handle based on update availability
+      switch (updateInfo.updateAvailability) {
+        case UpdateAvailability.updateAvailable:
+          // Update is available
+          _handleUpdateAvailable(updateInfo);
+          break;
+
+        case UpdateAvailability.developerTriggeredUpdateInProgress:
+          // An update is already in progress
+          _showResumeUpdateDialog();
+          break;
+
+        case UpdateAvailability.updateNotAvailable:
+        default:
+          // No update available
+          _proceedToApp();
+          break;
+      }
+    } catch (e) {
+      print('Error checking Play Store updates: $e');
+      // Check if it's because not on Play Store (debug build)
       if (mounted) {
         _proceedToApp();
       }
@@ -94,146 +153,301 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     }
   }
 
-  void _handleUpdate(UpdateCheckResponse response) {
+  /// Handle different update priorities
+  void _handleUpdateAvailable(AppUpdateInfo updateInfo) {
     if (!mounted) return;
 
-    if (response.updateType == 'silent' && response.data?.downloadUrl != null) {
-      _performSilentUpdate(response.data!);
-    } else if (response.updateType == 'store_redirect') {
-      _redirectToStore(response.data);
-    } else if (response.updateType == 'user_confirmation') {
-      _showUpdateDialog(response.data!);
+    final priority = updateInfo.updatePriority ?? 0;
+    //final priority = 1;
+
+    if (priority >= 2) {
+      // Immediate update (must update now)
+      _startImmediateUpdate();
+    } else if (priority == 1) {
+      // Flexible update (user can postpone)
+      _showFlexibleUpdateDialog();
     } else {
-      _proceedToApp();
+      // Silent update (priority 0) - auto update in background
+      _startSilentUpdate();
     }
   }
 
-  void _performSilentUpdate(AppUpdate update) {
+  /// SILENT UPDATE - Auto download without user interaction
+  void _startSilentUpdate() {
     if (!mounted) return;
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => DownloadProgressDialog(
-        fileName: update.originalFileName ?? 'update_v${update.version}.apk',
-        fileSize: update.fileSize,
-        downloadTask: (onProgress) async {
-          try {
-            await _updateService.downloadAndInstallUpdate(
-              downloadUrl: update.downloadUrl!,
-              fileName:
-                  update.originalFileName ?? 'update_v${update.version}.apk',
-              context: context, // Pass context here
-              onDownloadProgress: onProgress,
-              onDownloadComplete: (message) {
-                // Close download dialog
-                Navigator.of(context).pop();
+    print('📱 Starting silent update...');
 
-                // Show installation dialog
-                _showInstallationDialog(update);
-              },
-              onInstallStart: (message) {
-                // Update installation dialog
-                _updateInstallationDialog(message);
-              },
-              onInstallComplete: (message) {
-                // Show final message and proceed
-                _showInstallationCompleteDialog(update, message);
-              },
-              onError: (error) {
-                Navigator.of(context).pop();
-                _showErrorDialog('Update failed: $error');
-              },
-            );
-          } catch (e) {
-            Navigator.of(context).pop();
-            _showErrorDialog('Update error: $e');
+    // Show subtle notification
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Downloading update in background...'),
+        duration: Duration(seconds: 2),
+        backgroundColor: Colors.blue,
+      ),
+    );
+
+    // Start silent update
+    InAppUpdate.startFlexibleUpdate()
+        .then((_) {
+          print('📱 Silent update started successfully');
+
+          // Complete the update after download
+          _completeUpdate();
+        })
+        .catchError((error) {
+          print('❌ Silent update failed: $error');
+
+          // Fallback to flexible update
+          if (mounted) {
+            _showFlexibleUpdateDialog();
           }
-        },
-      ),
-    );
+        });
   }
 
-  void _showInstallationDialog(AppUpdate update) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => InstallationProgressDialog(
-        update: update,
-        onCancel: () {
-          Navigator.of(context).pop();
-          _proceedToApp();
-        },
-      ),
-    );
-  }
-
-  void _updateInstallationDialog(String message) {
-    // Find and update the installation dialog
-    final context = this.context;
-    if (context != null && mounted) {
-      final dialogContext = context
-          .findAncestorStateOfType<State<InstallationProgressDialog>>();
-      if (dialogContext != null && dialogContext.mounted) {
-        // Update the dialog state if needed
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-    }
-  }
-
-  void _showInstallationCompleteDialog(AppUpdate update, String message) {
-    // Close any open dialogs
-    Navigator.of(context).popUntil((route) => route.isFirst);
+  /// FLEXIBLE UPDATE - User can postpone
+  void _showFlexibleUpdateDialog() {
+    if (!mounted) return;
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('Installation Started'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
+        title: const Row(
           children: [
-            const Icon(Icons.check_circle, size: 60, color: Colors.green),
-            const SizedBox(height: 20),
-            Text(
-              'Update ${update.version}',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 10),
-            const Text(
-              'The system installer will now open. Please follow the on-screen instructions to complete the installation.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 20),
-            const LinearProgressIndicator(),
+            Icon(Icons.system_update, color: Colors.blue, size: 28),
+            SizedBox(width: 10),
+            Text('Update Available'),
           ],
+        ),
+        content: const Text(
+          'A new version is available. Would you like to update now?',
+          style: TextStyle(fontSize: 16),
         ),
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
-              // The app will close when installer opens
-              Future.delayed(const Duration(seconds: 3), () {
-                if (mounted) {
-                  _proceedToApp();
-                }
-              });
+              Navigator.pop(context);
+              _proceedToApp(); // User postpones update
             },
-            child: const Text('OK'),
+            child: const Text('Later'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _startFlexibleUpdate();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Update Now'),
           ),
         ],
       ),
     );
   }
 
+  /// Start flexible update
+  Future<void> _startFlexibleUpdate() async {
+    if (!mounted) return;
+
+    try {
+      print('📱 Starting flexible update...');
+
+      // Show loading dialog
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) =>
+            const Center(child: CircularProgressIndicator(color: Colors.blue)),
+      );
+
+      // Start flexible update
+      await InAppUpdate.startFlexibleUpdate();
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      // Complete the update
+      _completeUpdate();
+    } catch (e) {
+      print('❌ Flexible update error: $e');
+      if (mounted) {
+        Navigator.pop(context); // Close loading dialog
+        _showErrorDialog('Update failed: $e');
+      }
+    }
+  }
+
+  /// IMMEDIATE UPDATE - Force update
+  void _startImmediateUpdate() {
+    if (!mounted) return;
+
+    print('📱 Starting immediate update...');
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => WillPopScope(
+        onWillPop: () async => false, // Prevent back button
+        child: AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+              SizedBox(width: 10),
+              Text('Update Required'),
+            ],
+          ),
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.system_update, size: 60, color: Colors.orange),
+              SizedBox(height: 16),
+              Text(
+                'A critical update is required to continue using the app.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16),
+              ),
+            ],
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _performImmediateUpdate();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 50),
+              ),
+              child: const Text('Update Now'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Perform immediate update
+  Future<void> _performImmediateUpdate() async {
+    if (!mounted) return;
+
+    try {
+      print('📱 Performing immediate update...');
+
+      // Show loading
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(color: Colors.orange),
+        ),
+      );
+
+      // Start immediate update
+      await InAppUpdate.performImmediateUpdate();
+
+      // Note: App will restart automatically for immediate updates
+      // This code may not execute
+    } catch (e) {
+      print('❌ Immediate update error: $e');
+      if (mounted) {
+        Navigator.pop(context); // Close loading dialog
+        _showErrorDialog('Update failed: $e');
+      }
+    }
+  }
+
+  /// Complete flexible/silent update
+  Future<void> _completeUpdate() async {
+    if (!mounted) return;
+
+    try {
+      print('📱 Completing update...');
+
+      // Ask user to restart
+      _showRestartDialog();
+    } catch (e) {
+      print('❌ Complete update error: $e');
+      if (mounted) {
+        _showErrorDialog('Failed to complete update: $e');
+      }
+    }
+  }
+
+  /// Show resume update dialog (if update was interrupted)
+  void _showResumeUpdateDialog() {
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Update in Progress'),
+        content: const Text(
+          'An update was already in progress. Resume it now?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _proceedToApp();
+            },
+            child: const Text('Skip'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              InAppUpdate.completeFlexibleUpdate();
+            },
+            child: const Text('Resume'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Show restart dialog
+  void _showRestartDialog() {
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Update Downloaded'),
+        content: const Text(
+          'The update has been downloaded. Restart the app to apply changes?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _proceedToApp(); // Continue using old version
+            },
+            child: const Text('Later'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              InAppUpdate.completeFlexibleUpdate();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Restart Now'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Show error dialog
   void _showErrorDialog(String error) {
     showDialog(
       context: context,
@@ -243,73 +457,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
+              Navigator.pop(context);
               _proceedToApp();
             },
             child: const Text('Continue'),
           ),
         ],
-      ),
-    );
-  }
-
-  void _redirectToStore(AppUpdate? update) {
-    // For web, we can't redirect to app stores
-    // For mobile apps, you would implement store redirection here
-
-    // Show a message for web
-    if (mounted) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Update Available'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (update != null)
-                Text(
-                  'Version ${update.version} is available on the app store.',
-                  style: const TextStyle(fontSize: 16),
-                ),
-              const SizedBox(height: 16),
-              const Text(
-                'Please visit the app store to download the latest version.',
-                style: TextStyle(fontSize: 14, color: Colors.grey),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _proceedToApp();
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
-    }
-  }
-
-  void _showUpdateDialog(AppUpdate update) {
-    showDialog(
-      context: context,
-      barrierDismissible: !update.isMandatory,
-      builder: (context) => UpdateDialog(
-        update: update,
-        isMandatory: update.isMandatory,
-        onUpdate: () {
-          Navigator.of(context).pop();
-          _performSilentUpdate(update);
-        },
-        onLater: update.isMandatory
-            ? null
-            : () {
-                Navigator.of(context).pop();
-                _proceedToApp();
-              },
       ),
     );
   }
@@ -326,18 +479,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         final user = StorageService.userData;
         final token = await SecureStorageService().accessToken;
         if (user != null && token != null) {
-          /*
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
-          );
-          */
 
-          // Use route navigation instead of MaterialPageRoute
+          // Send FCM token to backend
+          //await FirebaseNotificationService().sendTokenToBackend();
+
           Navigator.of(
             context,
           ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
-          
-          // After navigation, handle pending notification
+
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _handlePendingNotification();
           });
@@ -346,16 +495,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         }
       }
 
-      /*
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
-      */
-      // Use route navigation
       Navigator.of(
         context,
       ).pushNamedAndRemoveUntil(AppRoutes.login, (route) => false);
-      
     });
   }
 
@@ -364,8 +506,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     if (pendingData != null && !PendingNavigationService().isNavigating) {
       print("📱 Handling pending notification from welcome screen");
       PendingNavigationService().isNavigating = true;
-      
-      // Small delay to ensure HomeScreen is fully loaded
+
       Future.delayed(const Duration(milliseconds: 500), () {
         _navigateToNotificationScreen(pendingData);
         PendingNavigationService().clearPendingNotification();
@@ -374,15 +515,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   }
 
   void _navigateToNotificationScreen(Map<String, dynamic> data) {
-
-    // Your existing navigation logic
     final type = data['type']?.toString().toUpperCase() ?? 'GENERAL';
     final id = data['id']?.toString();
     final tripId = int.tryParse(data['tripId']?.toString() ?? id ?? '0') ?? 0;
 
-    // Navigate using your existing switch statement
     switch (type) {
-      // User registration notifications
       case 'USER_REGISTERED':
         NavigationHelper.toUserCreations('pending');
         break;
@@ -392,8 +529,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       case 'USER_REJECTED':
         NavigationHelper.toUserCreations('rejected');
         break;
-
-      // REQUESTER or PASSENGER related notifications
       case 'TRIP_CREATED':
       case 'TRIP_CANCELLED':
       case 'TRIP_CANCELLED_REQUESTER':
@@ -405,8 +540,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       case 'TRIP_COMPLETED_FOR_REQUESTER':
         NavigationHelper.toMyRideTripDetails(tripId);
         break;
-
-      // SUPERVISOR related notifications
       case 'TRIP_CREATED_AS_DRAFT':
       case 'TRIP_CONFIRMED':
       case 'TRIP_CANCELLED_SUPERVISOR':
@@ -415,15 +548,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       case 'TRIP_COMPLETED_FOR_SUPERVISOR':
         NavigationHelper.toReviewTripDetails(tripId);
         break;
-
-      // APPROVER related notifications
       case 'TRIP_CONFIRMED_FOR_APPROVAL':
       case 'TRIP_APPROVED_BY_APPROVER':
       case 'TRIP_REJECTED_BY_APPROVER':
         NavigationHelper.toApprovalTripDetails(tripId);
         break;
-
-      // DRIVER related notifications
       case 'TRIP_APPROVED_FOR_DRIVER':
       case 'TRIP_READING_START_FOR_DRIVER':
       case 'TRIP_STARTED':
@@ -431,36 +560,16 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       case 'TRIP_COMPLETED_FOR_DRIVER':
         NavigationHelper.toAssignRideTripDetails(tripId);
         break;
-
-      // SECURITY related notifications
       case 'TRIP_APPROVED_FOR_SECURITY':
       case 'TRIP_READING_START':
       case 'TRIP_STARTED_FOR_SECURITY':
       case 'TRIP_COMPLETED':
         NavigationHelper.toMeterReading();
         break;
-
-      // Keep backward compatibility with old notification types
-      case 'trip_requested':
-        NavigationHelper.toReviewTripDetails(tripId);
-        break;
-      case 'trip_approved':
-      case 'trip_rejected':
-      case 'new_trip':
-        NavigationHelper.toMyRideTripDetails(tripId);
-        break;
-      case 'approval':
-        NavigationHelper.toNotifications();
-        break;
-      case 'message':
-        NavigationHelper.toNotifications();
-        break;
-
       default:
         NavigationHelper.toNotifications();
     }
   }
-
 
   @override
   void dispose() {
@@ -487,7 +596,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         ),
         child: Stack(
           children: [
-            // Animated background particles
             Positioned.fill(
               child: AnimatedBuilder(
                 animation: _controller,
@@ -499,14 +607,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               ),
             ),
 
-            // Main content
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 SizedBox(height: size.height * 0.1),
 
-                // Logo
                 FadeTransition(
                   opacity: _fadeAnimation,
                   child: ScaleTransition(
@@ -522,12 +628,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.yellow[600]!.withOpacity(0.4),
+                            color: Colors.yellow.withValues(alpha: 0.4),
                             blurRadius: 50,
                             spreadRadius: 2,
                           ),
                           BoxShadow(
-                            color: Colors.yellow[400]!.withOpacity(0.2),
+                            color: Colors.yellow.withValues(alpha: 0.2),
                             blurRadius: 60,
                             spreadRadius: 8,
                           ),
@@ -543,9 +649,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               shape: BoxShape.circle,
                               gradient: RadialGradient(
                                 colors: [
-                                  Colors.yellow[800]!.withOpacity(0.6),
-                                  Colors.yellow[600]!.withOpacity(0.4),
-                                  Colors.orange[400]!.withOpacity(0.2),
+                                  Colors.yellow.shade800.withValues(alpha: 0.6),
+                                  Colors.yellow.shade600.withValues(alpha: 0.4),
+                                  Colors.orange.shade400.withValues(alpha: 0.2),
                                   Colors.transparent,
                                 ],
                                 stops: const [0.0, 0.2, 0.4, 0.8],
@@ -564,13 +670,15 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               color: Colors.black,
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.4),
+                                  color: Colors.black.withValues(alpha: 0.4),
                                   blurRadius: 30,
                                   spreadRadius: 5,
                                 ),
                               ],
                               border: Border.all(
-                                color: Colors.yellow[400]!.withOpacity(0.3),
+                                color: Colors.yellow.shade400.withValues(
+                                  alpha: 0.3,
+                                ),
                                 width: 2,
                               ),
                             ),
@@ -588,7 +696,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
                 SizedBox(height: size.height * 0.04),
 
-                // App name
                 FadeTransition(
                   opacity: _fadeAnimation,
                   child: Padding(
@@ -614,16 +721,16 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             borderRadius: BorderRadius.circular(15),
                             gradient: LinearGradient(
                               colors: [
-                                Colors.yellow[800]!,
-                                Colors.yellow[600]!,
-                                Colors.yellow[400]!,
+                                Colors.yellow.shade800,
+                                Colors.yellow.shade600,
+                                Colors.yellow.shade400,
                               ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.yellow.withOpacity(0.5),
+                                color: Colors.yellow.withValues(alpha: 0.5),
                                 blurRadius: 20,
                                 spreadRadius: 5,
                                 offset: const Offset(0, 5),
@@ -639,7 +746,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               color: Colors.black,
                               shadows: [
                                 Shadow(
-                                  color: Colors.black.withOpacity(0.3),
+                                  color: Colors.black.withValues(alpha: 0.3),
                                   blurRadius: 10,
                                   offset: const Offset(0, 2),
                                 ),
@@ -665,7 +772,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
                 Expanded(child: Container()),
 
-                // Loading progress
                 Container(
                   margin: EdgeInsets.only(
                     bottom: size.height * 0.18,
@@ -682,10 +788,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             child: LinearProgressIndicator(
                               value: _progressAnimation.value,
                               valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.yellow[600]!,
+                                Colors.yellow.shade600,
                               ),
-                              backgroundColor: Colors.grey[900]!.withOpacity(
-                                0.5,
+                              backgroundColor: Colors.grey[900]!.withValues(
+                                alpha: 0.5,
                               ),
                               minHeight: 8,
                             ),
@@ -714,7 +820,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               ],
             ),
 
-            // Footer
             Positioned(
               bottom: 30,
               left: 0,
@@ -763,7 +868,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               end: Alignment.bottomRight,
                             ).createShader(bounds);
                           },
-                          child: Text(
+                          child: const Text(
                             'Axperia',
                             style: TextStyle(
                               fontSize: 14,
@@ -804,10 +909,12 @@ class _ParticlePainter extends CustomPainter {
       final offsetX = 10 * sin(animationValue * 2 * pi + i);
       final offsetY = 10 * cos(animationValue * 2 * pi + i);
 
-      paint.color = Colors.yellow.withOpacity(0.1 + rng.nextDouble() * 0.1);
+      paint.color = Colors.yellow.withValues(
+        alpha: 0.1 + rng.nextDouble() * 0.1,
+      );
       canvas.drawCircle(Offset(x + offsetX, y + offsetY), radius, paint);
 
-      paint.color = Colors.yellow.withOpacity(0.05);
+      paint.color = Colors.yellow.withValues(alpha: 0.05);
       canvas.drawCircle(Offset(x + offsetX, y + offsetY), radius * 3, paint);
     }
   }
