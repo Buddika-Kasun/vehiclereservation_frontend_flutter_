@@ -21,6 +21,7 @@ class AppRoutes {
   static const String userCreations = '/user-creations'; // Add this
   static const String myRides = '/my-rides';
   static const String allRides = '/all-rides';
+  static const String allTrips = '/all-trips';
   static const String assignedRides = '/assigned-rides';
   static const String reviewTrips = '/review-trips';
   static const String meterReading = '/meter-reading';
@@ -45,6 +46,7 @@ class AppRoutes {
       userCreations,
       myRides,
       allRides,
+      allTrips,
       assignedRides,
       reviewTrips,
       meterReading,
@@ -71,6 +73,7 @@ class RouteHelper {
       AppRoutes.dashboard: 'dashboard',
       AppRoutes.myRides: 'my_rides',
       AppRoutes.allRides: 'all_rides',
+      AppRoutes.allTrips: 'all_trips',
       AppRoutes.assignedRides: 'assigned_rides',
       AppRoutes.reviewTrips: 'review_trips',
       AppRoutes.meterReading: 'meter_reading',

@@ -1002,7 +1002,24 @@ class ApiService {
         return TripCardResponse.fromJson(response);
       });
     } catch (e) {
-      print('Error getting driver trips: $e');
+      print('Error getting user trips: $e');
+      rethrow;
+    }
+  }
+
+  static Future<TripCardResponse> getAllTrips(
+    TripCardListRequest request,
+  ) async {
+    try {
+      return await ApiService.authenticatedApiCall(
+        'trips/all-trips',
+        method: 'POST',
+        body: request.toJson(),
+      ).then((response) {
+        return TripCardResponse.fromJson(response);
+      });
+    } catch (e) {
+      print('Error getting all trips: $e');
       rethrow;
     }
   }

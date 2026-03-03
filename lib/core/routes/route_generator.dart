@@ -1,6 +1,7 @@
 // lib/core/routes/route_generator.dart
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/home/home_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/all_trips_(Users)/all_trips_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/approval_(Approvers)/approval_details_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/assigned_(Drivers)/assigned_ride_details_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/review_(Supervisors)/review_trip_details_screen.dart';
