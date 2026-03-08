@@ -115,7 +115,7 @@ class _StatusFilterDropdownCustomizedState
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+      padding: const EdgeInsets.fromLTRB(12, 8, 16, 10),
       color: Colors.black,
       child: Row(
         children: [
