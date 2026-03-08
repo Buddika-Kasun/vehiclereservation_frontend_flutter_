@@ -25,14 +25,15 @@ class ApiConfig {
       // Use your Railway URL here
       _webEnv = {
         'API_URL': 'https://pcw-ride-server.up.railway.app',
-        'WS_URL':
-            'wss://pcw-ride-server.up.railway.app', // Note: wss:// for secure WebSocket
+        //'WS_URL': 'wss://pcw-ride-server.up.railway.app', // Note: wss:// for secure WebSocket
+        'WS_URL': 'https://pcw-ride-server.up.railway.app',
       };
     } catch (e) {
       // Fallback values
       _webEnv = {
         'API_URL': 'https://pcw-ride-server.up.railway.app',
-        'WS_URL': 'wss://pcw-ride-server.up.railway.app',
+        //'WS_URL': 'wss://pcw-ride-server.up.railway.app',
+        'WS_URL': 'https://pcw-ride-server.up.railway.app',
       };
     }
   }
@@ -57,6 +58,7 @@ class ApiConfig {
   }
 
   // WebSocket Base URL
+  /*
   static String get wsBaseUrl {
     if (!_initialized) {
       throw Exception(
@@ -74,6 +76,10 @@ class ApiConfig {
     }
 
     return wsUrl;
+  }
+  */
+  static String get wsBaseUrl {
+    return dotenv.env['WS_URL']!;
   }
 
   // WebSocket namespace/path
