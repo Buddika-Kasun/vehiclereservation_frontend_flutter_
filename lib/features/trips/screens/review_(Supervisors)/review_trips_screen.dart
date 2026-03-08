@@ -5,6 +5,8 @@ import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.d
 import 'package:vehiclereservation_frontend_flutter_/features/trips/base/base_trip_list_state.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/review_(Supervisors)/review_trip_details_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/utils/helper_methods.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/utils/sort_enums.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/sort_button.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/status_filter_customized_dropdown.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/trip_header.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/time_filter_row.dart';
@@ -71,6 +73,9 @@ class _ReviewTripScreenState extends BaseTripListState<ReviewTripScreen> {
       final request = TripCardListRequest(
         timeFilter: timeFilter,
         statusFilter: statusFilter,
+        searchQuery: searchQuery.isNotEmpty ? searchQuery : null,
+        sortField: sortField.name,
+        sortOrder: sortOrder.name,
         page: page,
         limit: limit,
       );
@@ -119,7 +124,10 @@ class _ReviewTripScreenState extends BaseTripListState<ReviewTripScreen> {
   @override
   void setTimeFilter(String filter) {
     setState(() {
+      searchQuery = '';
       timeFilter = filter;
+      sortField = SortField.startTime;
+      sortOrder = SortOrder.desc;
       total = null;
       if (timeFilter == 'today'){
         statusFilter = 'draft';
@@ -130,6 +138,10 @@ class _ReviewTripScreenState extends BaseTripListState<ReviewTripScreen> {
       page = 1;
     });
     fetchTrips(reset: true);
+  }
+
+  void _handleSearch(String query) {
+    setSearchQueryDebounced(query);
   }
 
   void _navigateToTripDetails(TripCardModel trip) async {
@@ -165,8 +177,11 @@ class _ReviewTripScreenState extends BaseTripListState<ReviewTripScreen> {
             ),
             if (timeFilter != 'today') ...[
               StatusFilterDropdown(
+                key: ValueKey('regular_$timeFilter'),
                 currentFilter: statusFilter,
                 onFilterSelected: setStatusFilter,
+                onSearch: _handleSearch,
+                enableSearch: true,
                 statusFilters: [
                   {'label': 'All Status', 'value': null},
                   {'label': 'Draft', 'value': 'draft'},
@@ -181,19 +196,44 @@ class _ReviewTripScreenState extends BaseTripListState<ReviewTripScreen> {
                 ],
               ),
             ] else ...[
-              StatusFilterDropdownCustomizedSupervisor(
+              StatusFilterDropdownCustomized(
+                key: ValueKey('custom_$timeFilter'),
                 currentFilter: statusFilter, 
                 onFilterSelected: setStatusFilter,
+                onSearch: _handleSearch,
+                enableSearch: true,
                 statusFilters: [
                   {'label': 'Draft', 'value': 'draft'},
                   {'label': 'All', 'value': null},
                 ],
               )
             ],
-            CountBadge(
-              totalCount: total, 
-              label: '${getTripStatusLabel(statusFilter)} Trips'
+            
+            // Replace the CountBadge section with this:
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 2, 16, 14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // CountBadge (using your existing widget)
+                  CountBadge(
+                    totalCount: total,
+                    label: '${getTripStatusLabel(statusFilter)} Trips',
+                  ),
+
+                  const Spacer(),
+
+                  // Sort Button
+                  SortButton(
+                    currentField: sortField,
+                    currentOrder: sortOrder,
+                    onSortChanged: (field, order) => setSort(field, order),
+                    onToggleOrder: toggleSortOrder,
+                  ),
+                ],
+              ),
             ),
+            
             Expanded(
               child: TripListContent(
                 scrollController: scrollController,

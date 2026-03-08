@@ -349,7 +349,7 @@ class _TopBarState extends State<TopBar> {
     // Calculate position based on app bar height
     // AppBar height is 80 + status bar height
     final double statusBarHeight = MediaQuery.of(context).padding.top;
-    final double appBarHeight = 80.0;
+    final double appBarHeight = 60.0;
     final double totalAppBarHeight = statusBarHeight;
 
     _notificationOverlay = OverlayEntry(
@@ -476,10 +476,14 @@ class _TopBarState extends State<TopBar> {
   Widget build(BuildContext context) {
     return Column(
       children: [
+        Container(
+          height: 10,
+          color: Colors.black, // Match AppBar color
+        ),
         AppBar(
           backgroundColor: Colors.black,
           elevation: 0,
-          toolbarHeight: 80,
+          toolbarHeight: 55,
           leading: IconButton(
             icon: const Icon(Icons.menu, color: Colors.white),
             onPressed: widget.onMenuTap,

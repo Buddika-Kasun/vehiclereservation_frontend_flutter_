@@ -5,6 +5,7 @@ import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.d
 import 'package:vehiclereservation_frontend_flutter_/features/trips/base/base_trip_list_state.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/ride_(Users)/ride_details_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/utils/helper_methods.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/sort_button.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/trip_header.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/time_filter_row.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/status_filter_dropdown.dart';
@@ -63,6 +64,9 @@ class _RidesScreenState extends BaseTripListState<RidesScreen> {
       final request = TripCardListRequest(
         timeFilter: timeFilter,
         statusFilter: statusFilter,
+        searchQuery: searchQuery.isNotEmpty ? searchQuery : null,
+        sortField: sortField.name,
+        sortOrder: sortOrder.name,
         page: page,
         limit: limit,
       );
@@ -108,6 +112,10 @@ class _RidesScreenState extends BaseTripListState<RidesScreen> {
     }
   }
 
+  void _handleSearch(String query) {
+    setSearchQueryDebounced(query);
+  }
+
   void _navigateToTripDetails(TripCardModel trip) async {
     final result = await Navigator.push(
       context,
@@ -140,8 +148,11 @@ class _RidesScreenState extends BaseTripListState<RidesScreen> {
               onFilterSelected: setTimeFilter,
             ),
             StatusFilterDropdown(
+              key: ValueKey('regular_$timeFilter'),
               currentFilter: statusFilter,
               onFilterSelected: setStatusFilter,
+              onSearch: _handleSearch,
+              enableSearch: true,
               statusFilters: [
                 {'label': 'All Status', 'value': null},
                 {'label': 'Draft', 'value': 'draft'},
@@ -155,10 +166,32 @@ class _RidesScreenState extends BaseTripListState<RidesScreen> {
                 {'label': 'Completed', 'value': 'completed'},
               ],
             ),
-            CountBadge(
-              totalCount: total,
-              label: '${getTripStatusLabel(statusFilter)} Trips',
+            
+            // Replace the CountBadge section with this:
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 2, 16, 14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // CountBadge (using your existing widget)
+                  CountBadge(
+                    totalCount: total, 
+                    label: '${getTripStatusLabel(statusFilter)} Trips'
+                  ),
+
+                  const Spacer(),
+
+                  // Sort Button
+                  SortButton(
+                    currentField: sortField,
+                    currentOrder: sortOrder,
+                    onSortChanged: (field, order) => setSort(field, order),
+                    onToggleOrder: toggleSortOrder,
+                  ),
+                ],
+              ),
             ),
+            
             Expanded(
               child: TripListContent(
                 scrollController: scrollController,

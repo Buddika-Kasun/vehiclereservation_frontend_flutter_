@@ -14,7 +14,7 @@ class CountBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+      padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
       child: Row(
         children: [
           Text(
