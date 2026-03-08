@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/utils/navigation_helper.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/optional_permission_manager.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/dashboard_stats.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
@@ -280,8 +281,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             userRole: _userRole,
             isLoading: _isLoading,
             onCreateTrip: _handleCreateTrip,
-            onNearbyVehicles: () {
-              print('Nearby Vehicles clicked');
+            onJoinTrips: () {
+              NavigationHelper.toAllTrips(_userRole);
             },
             // When driver goes online/offline
             onGoOnline: () async {
