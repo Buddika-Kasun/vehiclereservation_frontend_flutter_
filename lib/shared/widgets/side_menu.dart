@@ -42,19 +42,27 @@ class SideMenu extends StatelessWidget {
 
     switch (user.role) {
       case UserRole.employee:
-        items.add(MenuItem(Icons.directions_car, 'My Rides'));
+        items.addAll([
+          MenuItem(Icons.directions_car, 'My Rides'),
+          MenuItem(Icons.directions_transit, 'All Trips'),
+        ]);
         break;
 
       case UserRole.hr:
       case UserRole.manager:
       case UserRole.admin:
-        items.add(MenuItem(Icons.directions_car, 'My Rides'));
+        items.addAll([
+          MenuItem(Icons.directions_car, 'My Rides'),
+          MenuItem(Icons.directions_transit, 'All Trips'),
+        ]);
         break;
 
       case UserRole.sysadmin:
         items.addAll([
-          MenuItem(Icons.directions_car, 'All Rides'),
+          MenuItem(Icons.directions_car, 'My Rides'),
+          MenuItem(Icons.directions_transit, 'All Trips'),
           MenuItem(Icons.verified, 'Review Trips'),
+          //MenuItem(Icons.car_rental_sharp, 'My Vehicles'),
           MenuItem(Icons.car_rental_sharp, 'All Vehicles'),
           MenuItem(Icons.verified, 'Meter Reading'),
           MenuItem(Icons.directions_car, 'Assigned Rides'),
@@ -73,6 +81,7 @@ class SideMenu extends StatelessWidget {
       case UserRole.supervisor:
         items.addAll([
           MenuItem(Icons.directions_car, 'My Rides'),
+          MenuItem(Icons.directions_transit, 'All Trips'),
           MenuItem(Icons.car_rental_sharp, 'My Vehicles'),
           MenuItem(Icons.car_rental_sharp, 'Vehicles'),
           MenuItem(Icons.directions_car, 'Assigned Rides'),

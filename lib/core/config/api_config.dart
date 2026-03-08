@@ -78,7 +78,7 @@ class ApiConfig {
 
   // WebSocket namespace/path
   static String get wsNamespace => '/notifications';
-  static String get wsPath => '/socket.io';
+  static String get wsPath => '/socket.io/';
 
   // Complete WebSocket URL
   static String get wsUrl {
@@ -131,3 +131,4 @@ class ApiConfig {
     print('=====================');
   }
 }
+

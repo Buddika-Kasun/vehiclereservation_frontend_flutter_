@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/global_websocket.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/websocket_manager.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/home/home_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/notifications/screens/notification_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/profile/profile_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
@@ -97,7 +97,14 @@ class _TopBarState extends State<TopBar> {
           _loadUnreadCount();
 
           if (event == 'notification' || event == 'notification_update') {
-            _showSimpleNotificationPopup();
+
+            int? newCount;
+            if (message['data'] != null &&
+                message['data']['unreadCount'] != null) {
+              newCount = message['data']['unreadCount'];
+            }
+
+            _showSimpleNotificationPopup(newCount);
           }
         }
       });
@@ -122,7 +129,8 @@ class _TopBarState extends State<TopBar> {
       };
 
       _notificationHandler.onNewNotification = (notificationData) {
-        _showSimpleNotificationPopup();
+        int? newCount = notificationData['unreadCount'];
+        _showSimpleNotificationPopup(newCount);
         _loadUnreadCount();
       };
 
@@ -316,7 +324,7 @@ class _TopBarState extends State<TopBar> {
         });
   }
 
-  void _showSimpleNotificationPopup() {
+  void _showSimpleNotificationPopup([int? newCount]) {
     if (!mounted || _showNotification) return;
 
     // Cancel any existing timer
@@ -326,7 +334,7 @@ class _TopBarState extends State<TopBar> {
     _removeNotificationPopup();
 
     // Create new overlay
-    _createSimplePopup();
+    _createSimplePopup(newCount ?? _unreadCount + 1);
 
     // Auto-hide after 5 seconds
     _notificationTimer = Timer(const Duration(seconds: 5), () {
@@ -334,62 +342,109 @@ class _TopBarState extends State<TopBar> {
     });
   }
 
-  void _createSimplePopup() {
+  void _createSimplePopup([int displayCount = 0]) {
     final overlayState = Overlay.of(context);
     if (overlayState == null) return;
 
+    // Calculate position based on app bar height
+    // AppBar height is 80 + status bar height
+    final double statusBarHeight = MediaQuery.of(context).padding.top;
+    final double appBarHeight = 60.0;
+    final double totalAppBarHeight = statusBarHeight;
+
     _notificationOverlay = OverlayEntry(
-      builder: (context) =>
-          Positioned(top: 10, left: 16, right: 16, child: _buildSimplePopup()),
+      builder: (context) => Positioned(
+        top: statusBarHeight + 8, // Position below the app bar with small gap
+        left: 16,
+        right: 16,
+        child: _buildSimplePopup(displayCount),
+      ),
     );
 
     overlayState.insert(_notificationOverlay!);
     _showNotification = true;
   }
 
-  Widget _buildSimplePopup() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: Colors.blue,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 8,
-            spreadRadius: 1,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.notifications, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              const Text(
-                'New Notification',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+  Widget _buildSimplePopup(int displayCount) {
+    return GestureDetector(
+      onTap: () {
+        // Remove popup first
+        _removeNotificationPopup();
+        // Navigate to notification screen
+        _navigateToNotificationScreen();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        margin: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          color: Colors.blue,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 8,
+              spreadRadius: 1,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Notification content
+            Expanded(
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.notifications,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'New Notification',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            decoration: TextDecoration.none, // Add this
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${displayCount} unread notification${_unreadCount == 1 ? '' : 's'}',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                            decoration: TextDecoration.none, // Add this
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Close button
+            GestureDetector(
+              onTap: _removeNotificationPopup,
+              child: Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.2),
                 ),
+                child: const Icon(Icons.close, color: Colors.white, size: 16),
               ),
-              const SizedBox(width: 4),
-              Text(
-                '($_unreadCount unread)',
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
-              ),
-            ],
-          ),
-          GestureDetector(
-            onTap: _removeNotificationPopup,
-            child: const Icon(Icons.close, color: Colors.white, size: 18),
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -421,10 +476,14 @@ class _TopBarState extends State<TopBar> {
   Widget build(BuildContext context) {
     return Column(
       children: [
+        Container(
+          height: 10,
+          color: Colors.black, // Match AppBar color
+        ),
         AppBar(
           backgroundColor: Colors.black,
           elevation: 0,
-          toolbarHeight: 80,
+          toolbarHeight: 55,
           leading: IconButton(
             icon: const Icon(Icons.menu, color: Colors.white),
             onPressed: widget.onMenuTap,
@@ -478,23 +537,23 @@ class _TopBarState extends State<TopBar> {
                 // Unread count badge
                 if (_unreadCount > 0 && !_isInitializing && !_isReconnecting)
                   Positioned(
-                    right: 8,
-                    top: 8,
+                    right: 6,
+                    top: 6,
                     child: Container(
                       padding: const EdgeInsets.all(2),
                       decoration: BoxDecoration(
-                        color: Colors.red,
+                        color: Colors.redAccent,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       constraints: const BoxConstraints(
-                        minWidth: 16,
-                        minHeight: 16,
+                        minWidth: 18,
+                        minHeight: 18,
                       ),
                       child: Text(
                         _unreadCount > 9 ? '9+' : _unreadCount.toString(),
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                         ),
                         textAlign: TextAlign.center,
@@ -514,12 +573,12 @@ class _TopBarState extends State<TopBar> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: _isReconnecting
-                            ? Colors.orange
+                            ? Colors.orangeAccent
                             : _isInitializing
-                            ? Colors.orange
+                            ? Colors.orangeAccent
                             : _isConnected
-                            ? Colors.green
-                            : Colors.red,
+                            ? Colors.greenAccent
+                            : Colors.redAccent,
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withOpacity(0.3),
@@ -574,4 +633,5 @@ class _TopBarState extends State<TopBar> {
     }
     return 'U';
   }
+
 }

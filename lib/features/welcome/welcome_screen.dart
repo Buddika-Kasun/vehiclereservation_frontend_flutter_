@@ -1,16 +1,13 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:vehiclereservation_frontend_flutter_/core/services/update_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/models/update_model.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/login_screen.dart';
+import 'package:in_app_update/in_app_update.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/routes/app_routes.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/firebase_notification_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/pending_navigation_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/utils/navigation_helper.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/shared/widgets/download_progress_dialog.dart';
-import 'package:vehiclereservation_frontend_flutter_/shared/widgets/update_dialog.dart';
-import 'package:vehiclereservation_frontend_flutter_/shared/widgets/installation_progress_dialog.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -240,7 +237,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
+              Navigator.pop(context);
               _proceedToApp();
             },
             child: const Text('Continue'),
@@ -323,16 +320,96 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         final user = StorageService.userData;
         final token = await SecureStorageService().accessToken;
         if (user != null && token != null) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
-          );
+
+          // Send FCM token to backend
+          //await FirebaseNotificationService().sendTokenToBackend();
+
+          Navigator.of(
+            context,
+          ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _handlePendingNotification();
+          });
+
           return;
         }
       }
+
       Navigator.of(
         context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
+      ).pushNamedAndRemoveUntil(AppRoutes.login, (route) => false);
     });
+  }
+
+  void _handlePendingNotification() {
+    final pendingData = PendingNavigationService().getPendingNotification();
+    if (pendingData != null && !PendingNavigationService().isNavigating) {
+      print("📱 Handling pending notification from welcome screen");
+      PendingNavigationService().isNavigating = true;
+
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _navigateToNotificationScreen(pendingData);
+        PendingNavigationService().clearPendingNotification();
+      });
+    }
+  }
+
+  void _navigateToNotificationScreen(Map<String, dynamic> data) {
+    final type = data['type']?.toString().toUpperCase() ?? 'GENERAL';
+    final id = data['id']?.toString();
+    final tripId = int.tryParse(data['tripId']?.toString() ?? id ?? '0') ?? 0;
+
+    switch (type) {
+      case 'USER_REGISTERED':
+        NavigationHelper.toUserCreations('pending');
+        break;
+      case 'USER_APPROVED':
+        NavigationHelper.toUserCreations('approved');
+        break;
+      case 'USER_REJECTED':
+        NavigationHelper.toUserCreations('rejected');
+        break;
+      case 'TRIP_CREATED':
+      case 'TRIP_CANCELLED':
+      case 'TRIP_CANCELLED_REQUESTER':
+      case 'TRIP_APPROVED':
+      case 'TRIP_REJECTED':
+      case 'TRIP_READING_START_FOR_PASSENGER':
+      case 'TRIP_STARTED_FOR_PASSENGER':
+      case 'TRIP_FINISHED_FOR_REQUESTER':
+      case 'TRIP_COMPLETED_FOR_REQUESTER':
+        NavigationHelper.toMyRideTripDetails(tripId);
+        break;
+      case 'TRIP_CREATED_AS_DRAFT':
+      case 'TRIP_CONFIRMED':
+      case 'TRIP_CANCELLED_SUPERVISOR':
+      case 'TRIP_STARTED_FOR_SUPERVISOR':
+      case 'TRIP_FINISHED_FOR_SUPERVISOR':
+      case 'TRIP_COMPLETED_FOR_SUPERVISOR':
+        NavigationHelper.toReviewTripDetails(tripId);
+        break;
+      case 'TRIP_CONFIRMED_FOR_APPROVAL':
+      case 'TRIP_APPROVED_BY_APPROVER':
+      case 'TRIP_REJECTED_BY_APPROVER':
+        NavigationHelper.toApprovalTripDetails(tripId);
+        break;
+      case 'TRIP_APPROVED_FOR_DRIVER':
+      case 'TRIP_READING_START_FOR_DRIVER':
+      case 'TRIP_STARTED':
+      case 'TRIP_FINISHED':
+      case 'TRIP_COMPLETED_FOR_DRIVER':
+        NavigationHelper.toAssignRideTripDetails(tripId);
+        break;
+      case 'TRIP_APPROVED_FOR_SECURITY':
+      case 'TRIP_READING_START':
+      case 'TRIP_STARTED_FOR_SECURITY':
+      case 'TRIP_COMPLETED':
+        NavigationHelper.toMeterReading();
+        break;
+      default:
+        NavigationHelper.toNotifications();
+    }
   }
 
   @override
@@ -360,7 +437,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         ),
         child: Stack(
           children: [
-            // Animated background particles
             Positioned.fill(
               child: AnimatedBuilder(
                 animation: _controller,
@@ -372,14 +448,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               ),
             ),
 
-            // Main content
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 SizedBox(height: size.height * 0.1),
 
-                // Logo
                 FadeTransition(
                   opacity: _fadeAnimation,
                   child: ScaleTransition(
@@ -395,12 +469,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.yellow[600]!.withOpacity(0.4),
+                            color: Colors.yellow.withValues(alpha: 0.4),
                             blurRadius: 50,
                             spreadRadius: 2,
                           ),
                           BoxShadow(
-                            color: Colors.yellow[400]!.withOpacity(0.2),
+                            color: Colors.yellow.withValues(alpha: 0.2),
                             blurRadius: 60,
                             spreadRadius: 8,
                           ),
@@ -416,9 +490,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               shape: BoxShape.circle,
                               gradient: RadialGradient(
                                 colors: [
-                                  Colors.yellow[800]!.withOpacity(0.6),
-                                  Colors.yellow[600]!.withOpacity(0.4),
-                                  Colors.orange[400]!.withOpacity(0.2),
+                                  Colors.yellow.shade800.withValues(alpha: 0.6),
+                                  Colors.yellow.shade600.withValues(alpha: 0.4),
+                                  Colors.orange.shade400.withValues(alpha: 0.2),
                                   Colors.transparent,
                                 ],
                                 stops: const [0.0, 0.2, 0.4, 0.8],
@@ -437,13 +511,15 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               color: Colors.black,
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.4),
+                                  color: Colors.black.withValues(alpha: 0.4),
                                   blurRadius: 30,
                                   spreadRadius: 5,
                                 ),
                               ],
                               border: Border.all(
-                                color: Colors.yellow[400]!.withOpacity(0.3),
+                                color: Colors.yellow.shade400.withValues(
+                                  alpha: 0.3,
+                                ),
                                 width: 2,
                               ),
                             ),
@@ -461,7 +537,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
                 SizedBox(height: size.height * 0.04),
 
-                // App name
                 FadeTransition(
                   opacity: _fadeAnimation,
                   child: Padding(
@@ -487,16 +562,16 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             borderRadius: BorderRadius.circular(15),
                             gradient: LinearGradient(
                               colors: [
-                                Colors.yellow[800]!,
-                                Colors.yellow[600]!,
-                                Colors.yellow[400]!,
+                                Colors.yellow.shade800,
+                                Colors.yellow.shade600,
+                                Colors.yellow.shade400,
                               ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.yellow.withOpacity(0.5),
+                                color: Colors.yellow.withValues(alpha: 0.5),
                                 blurRadius: 20,
                                 spreadRadius: 5,
                                 offset: const Offset(0, 5),
@@ -512,7 +587,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               color: Colors.black,
                               shadows: [
                                 Shadow(
-                                  color: Colors.black.withOpacity(0.3),
+                                  color: Colors.black.withValues(alpha: 0.3),
                                   blurRadius: 10,
                                   offset: const Offset(0, 2),
                                 ),
@@ -538,7 +613,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
                 Expanded(child: Container()),
 
-                // Loading progress
                 Container(
                   margin: EdgeInsets.only(
                     bottom: size.height * 0.18,
@@ -555,10 +629,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             child: LinearProgressIndicator(
                               value: _progressAnimation.value,
                               valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.yellow[600]!,
+                                Colors.yellow.shade600,
                               ),
-                              backgroundColor: Colors.grey[900]!.withOpacity(
-                                0.5,
+                              backgroundColor: Colors.grey[900]!.withValues(
+                                alpha: 0.5,
                               ),
                               minHeight: 8,
                             ),
@@ -587,7 +661,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               ],
             ),
 
-            // Footer
             Positioned(
               bottom: 30,
               left: 0,
@@ -636,7 +709,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               end: Alignment.bottomRight,
                             ).createShader(bounds);
                           },
-                          child: Text(
+                          child: const Text(
                             'Axperia',
                             style: TextStyle(
                               fontSize: 14,
@@ -677,10 +750,12 @@ class _ParticlePainter extends CustomPainter {
       final offsetX = 10 * sin(animationValue * 2 * pi + i);
       final offsetY = 10 * cos(animationValue * 2 * pi + i);
 
-      paint.color = Colors.yellow.withOpacity(0.1 + rng.nextDouble() * 0.1);
+      paint.color = Colors.yellow.withValues(
+        alpha: 0.1 + rng.nextDouble() * 0.1,
+      );
       canvas.drawCircle(Offset(x + offsetX, y + offsetY), radius, paint);
 
-      paint.color = Colors.yellow.withOpacity(0.05);
+      paint.color = Colors.yellow.withValues(alpha: 0.05);
       canvas.drawCircle(Offset(x + offsetX, y + offsetY), radius * 3, paint);
     }
   }
