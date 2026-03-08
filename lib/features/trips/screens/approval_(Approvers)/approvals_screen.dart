@@ -5,6 +5,8 @@ import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.d
 import 'package:vehiclereservation_frontend_flutter_/features/trips/base/base_trip_list_state.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/approval_(Approvers)/approval_details_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/utils/helper_methods.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/utils/sort_enums.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/sort_button.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/status_filter_customized_dropdown.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/trip_header.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/time_filter_row.dart';
@@ -48,6 +50,10 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
   @override
   VoidCallback? getRefreshAction() => refreshTrips;
 
+  void _handleSearch(String query) {
+    setSearchQueryDebounced(query);
+  }
+
   @override
   Future<void> fetchTrips({required bool reset, bool silent = false}) async {
     try {
@@ -70,8 +76,11 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
       final request = TripCardListRequest(
         timeFilter: timeFilter,
         statusFilter: statusFilter,
+        searchQuery: searchQuery.isNotEmpty ? searchQuery : null,
         page: page,
         limit: limit,
+        sortField: sortField.name,
+        sortOrder: sortOrder.name,
       );
 
       final response = await ApiService.getPendingApprovalsNew(request);
@@ -118,7 +127,10 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
   @override
   void setTimeFilter(String filter) {
     setState(() {
+      searchQuery = '';
       timeFilter = filter;
+      sortField = SortField.startTime;
+      sortOrder = SortOrder.desc;
       total = null;
       if (timeFilter == 'today') {
         statusFilter = 'pendingForMe';
@@ -166,8 +178,11 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
             ),
             if (timeFilter != 'today') ...[
               StatusFilterDropdown(
+                key: ValueKey('regular_$timeFilter'),
                 currentFilter: statusFilter,
                 onFilterSelected: setStatusFilter,
+                onSearch: _handleSearch,
+                enableSearch: true,
                 statusFilters: [
                   {'label': 'All Status', 'value': null},
                   {'label': 'Pending', 'value': 'pending'},
@@ -181,9 +196,12 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
                 ],
               ),
             ] else ...[
-              StatusFilterDropdownCustomizedSupervisor(
+              StatusFilterDropdownCustomized(
+                key: ValueKey('custom_$timeFilter'),
                 currentFilter: statusFilter,
                 onFilterSelected: setStatusFilter,
+                onSearch: _handleSearch,
+                enableSearch: true,
                 statusFilters: [
                   {'label': 'Pending For Me', 'value': 'pendingForMe'},
                   //{'label': 'Approved', 'value': 'approved'},
@@ -192,10 +210,32 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
                 ],
               ),
             ],
-            CountBadge(
-              totalCount: total,
-              label: '${getTripStatusLabel(statusFilter)} Trips',
+            
+            // Replace the CountBadge section with this:
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 2, 16, 14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // CountBadge (using your existing widget)
+                  CountBadge(
+                    totalCount: total, 
+                    label: '${getTripStatusLabel(statusFilter)} Trips'
+                  ),
+
+                  const Spacer(),
+
+                  // Sort Button
+                  SortButton(
+                    currentField: sortField,
+                    currentOrder: sortOrder,
+                    onSortChanged: (field, order) => setSort(field, order),
+                    onToggleOrder: toggleSortOrder,
+                  ),
+                ],
+              ),
             ),
+            
             Expanded(
               child: TripListContent(
                 scrollController: scrollController,

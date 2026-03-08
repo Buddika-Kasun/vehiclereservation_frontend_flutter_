@@ -260,10 +260,22 @@ class _VehiclesAllScreenState
               onFilterSelected: (value) => setFilter(value ?? 'All'),
               statusFilters: _statusFilters,
             ),
-            CountBadge(
-              totalCount: displayedAllVehicles.length,
-              label: 'Vehicles',
+
+            // Replace the CountBadge section with this:
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 2, 12, 14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // CountBadge (using your existing widget)
+                  CountBadge(
+                    totalCount: displayedAllVehicles.length,
+                    label: 'Vehicles',
+                  ),
+                ],
+              ),
             ),
+            
             Expanded(
               child: ListContent<Vehicle>(
                 scrollController: scrollController,

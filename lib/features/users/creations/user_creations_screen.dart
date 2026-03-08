@@ -326,7 +326,17 @@ class _UserCreationsScreenState extends BaseUserCreationListState<UserCreationsS
               onFilterSelected: (value) => setFilter(value ?? 'Pending'),
               statusFilters: _statusFilters,
             ),
-            CountBadge(totalCount: total, label: '$selectedFilter Users'),
+            // Replace the CountBadge section with this:
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 2, 16, 14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // CountBadge (using your existing widget)
+                  CountBadge(totalCount: total, label: '$selectedFilter Users'),
+                ],
+              ),
+            ),
             Expanded(
               child: ListContent<UserCreation>(
                 scrollController: scrollController,

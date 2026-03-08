@@ -427,6 +427,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
         _showVehicleNotificationDialog(notification);
         break;
 
+      case 'TRIP_PASSENGER_JOINED':
+      case 'TRIP_PASSENGERS_ADDED':
+
       // Default case for other notifications
       default:
         // Show notification details in a dialog

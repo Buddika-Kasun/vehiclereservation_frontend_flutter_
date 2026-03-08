@@ -24,6 +24,7 @@ class TripDetails {
   final String tripType; // 'normal', 'fixed_rate', or 'safety_approval'
   final double? fixedRate; // nullable
   final String? reason;
+  final int? availableSeatCount;
 
   TripDetails({
     required this.id,
@@ -49,6 +50,7 @@ class TripDetails {
     required this.tripType,
     this.fixedRate,
     this.reason,
+    this.availableSeatCount,
   });
 
   factory TripDetails.fromJson(Map<String, dynamic> json) {
@@ -79,6 +81,7 @@ class TripDetails {
           ? double.tryParse(json['fixedRate'].toString())
           : null,
       reason: json['reason'],
+      availableSeatCount: json['availableSeatCount'] ?? 0,
     );
   }
 }
