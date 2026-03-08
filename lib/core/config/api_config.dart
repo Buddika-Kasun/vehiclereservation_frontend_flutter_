@@ -22,18 +22,17 @@ class ApiConfig {
   // Load configuration for web platform
   static void _loadWebConfig() {
     try {
-      // Use your Railway URL here
+      // Use your Railway URL here - USE WSS:// FOR WEBSOCKET
       _webEnv = {
         'API_URL': 'https://pcw-ride-server.up.railway.app',
-        //'WS_URL': 'wss://pcw-ride-server.up.railway.app', // Note: wss:// for secure WebSocket
-        'WS_URL': 'https://pcw-ride-server.up.railway.app',
+        'WS_URL':
+            'wss://pcw-ride-server.up.railway.app', // Fixed: Use wss:// for WebSocket
       };
     } catch (e) {
       // Fallback values
       _webEnv = {
         'API_URL': 'https://pcw-ride-server.up.railway.app',
-        //'WS_URL': 'wss://pcw-ride-server.up.railway.app',
-        'WS_URL': 'https://pcw-ride-server.up.railway.app',
+        'WS_URL': 'wss://pcw-ride-server.up.railway.app', // Fixed
       };
     }
   }
@@ -66,24 +65,8 @@ class ApiConfig {
     }
 
     final wsUrl = _getEnv('WS_URL', 'ws://localhost:3000');
-
-    // Convert HTTP to WebSocket protocol if needed
-    /*
-    if (wsUrl.startsWith('http://')) {
-      return wsUrl.replaceFirst('http://', 'ws://');
-    } else if (wsUrl.startsWith('https://')) {
-      return wsUrl.replaceFirst('https://', 'wss://');
-    }
-    */
-    
-    return wsUrl;
+    return wsUrl; // Now returns wss:// for web
   }
-  
-  /*
-  static String get wsBaseUrl {
-    return dotenv.env['WS_URL']!;
-  }
-  */
 
   // WebSocket namespace/path
   static String get wsNamespace => '/notifications';
@@ -140,4 +123,3 @@ class ApiConfig {
     print('=====================');
   }
 }
-
