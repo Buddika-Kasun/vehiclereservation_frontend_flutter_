@@ -1,5 +1,6 @@
 // lib/main.dart
 import 'dart:async';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -7,6 +8,7 @@ import 'package:vehiclereservation_frontend_flutter_/core/config/api_config.dart
 import 'package:vehiclereservation_frontend_flutter_/core/config/websocket_config.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/connectivity_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/server_health_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/app_updates/admin_login_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/welcome/welcome_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/login_screen.dart';
@@ -42,11 +44,6 @@ void main() async {
   // Initialize configs safely
   try {
     await ApiConfig.init();
-
-    if (kDebugMode) {
-      ApiConfig.printCurrentConfig();
-    }
-
   } catch (e, st) {
     if (kDebugMode) print('❌ API Config init error: $e\n$st');
   }
@@ -104,6 +101,10 @@ Future<void> _requestPermissions() async {
     debugPrint('Web platform detected. Skipping permissions.');
     return;
   }
+
+  // Check Android version
+  //final androidInfo = await DeviceInfoPlugin().androidInfo;
+  //final sdkVersion = androidInfo.version.sdkInt;
   
   final permissions = [
     //Permission.location,
@@ -118,8 +119,8 @@ Future<void> _requestPermissions() async {
     // Storage permissions (for file uploads, profile pictures)
     //Permission.photos, // For iOS
     //Permission.mediaLibrary, // For iOS
-    Permission.storage, // For Android
-    Permission.accessMediaLocation, // For Android 11+
+    //Permission.storage, // For Android
+    //Permission.accessMediaLocation, // For Android 11+
 
     // Network permissions (implicitly granted but good to check)
     //Permission.accessNotificationPolicy,
@@ -273,6 +274,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       ),
       debugShowCheckedModeBanner: false,
       home: const WelcomeScreen(),
+      routes: {
+        '/admin': (context) => const AdminLoginScreen(),
+      },
       builder: (context, child) {
         return ConnectionOverlay(
           child: GestureDetector(

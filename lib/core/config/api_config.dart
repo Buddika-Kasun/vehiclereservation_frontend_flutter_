@@ -1,51 +1,43 @@
+// config/api_config.dart
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-//import 'dart:js' as js; // Add this import
 
 class ApiConfig {
   static bool _initialized = false;
-  static Map<String, String> _webEnv = {}; // Add this line
+  static Map<String, String> _webEnv = {}; // Store web config
 
   static Future<void> init() async {
     if (!_initialized) {
       if (kIsWeb) {
-        // For web (Railway), load from JavaScript config
-        _loadWebConfig(); // Add this
+        // For web (Railway), load from hardcoded config
+        _loadWebConfig();
       } else {
-        // For mobile/desktop, keep existing .env loading
+        // For mobile/desktop, load from .env file
         await dotenv.load(fileName: "assets/.env");
       }
       _initialized = true;
     }
   }
 
-  // Add this method
+  // Load configuration for web platform
   static void _loadWebConfig() {
     try {
-      //final config = js.context['config'];
-      /*
-      if (config != null) {
-        _webEnv = {
-          'API_URL': config['apiUrl']?.toString() ?? 'https://api.example.com',
-          'WS_URL': config['wsUrl']?.toString() ?? 'wss://api.example.com',
-        };
-      }
-      */
-
+      // Use your Railway URL here
       _webEnv = {
         'API_URL': 'https://pcw-ride-server.up.railway.app',
-        'WS_URL': 'https://pcw-ride-server.up.railway.app',
+        'WS_URL':
+            'wss://pcw-ride-server.up.railway.app', // Note: wss:// for secure WebSocket
       };
     } catch (e) {
-      // Fallback values for web
+      // Fallback values
       _webEnv = {
-        'API_URL': 'https://api.example.com',
-        'WS_URL': 'wss://api.example.com',
+        'API_URL': 'https://pcw-ride-server.up.railway.app',
+        'WS_URL': 'wss://pcw-ride-server.up.railway.app',
       };
     }
   }
 
-  // Helper method to get values
+  // Helper method to get values from the right source
   static String _getEnv(String key, String defaultValue) {
     if (kIsWeb && _webEnv.containsKey(key)) {
       return _webEnv[key]!;
@@ -53,61 +45,89 @@ class ApiConfig {
     return dotenv.env[key] ?? defaultValue;
   }
 
-  // API Base URL - Update just the getter
+  // API Base URL
   static String get baseUrl {
     if (!_initialized) {
-      throw Exception('ApiConfig not initialized');
+      throw Exception(
+        'ApiConfig not initialized. Call ApiConfig.init() first.',
+      );
     }
-    final url = _getEnv(
-      'API_URL',
-      'http://localhost:3000',
-    ); // Changed this line
+    final url = _getEnv('API_URL', 'http://localhost:3000');
     return url.endsWith('/api/v1') ? url : '$url/api/v1';
   }
 
-  // WebSocket URL - Update just the getter
+  // WebSocket Base URL
   static String get wsBaseUrl {
-    // Remove the fallback logic, just get from env
-    return _getEnv('WS_URL', 'ws://localhost:3000'); // Changed this line
+    if (!_initialized) {
+      throw Exception(
+        'ApiConfig not initialized. Call ApiConfig.init() first.',
+      );
+    }
+
+    final wsUrl = _getEnv('WS_URL', 'ws://localhost:3000');
+
+    // Convert HTTP to WebSocket protocol if needed
+    if (wsUrl.startsWith('http://')) {
+      return wsUrl.replaceFirst('http://', 'ws://');
+    } else if (wsUrl.startsWith('https://')) {
+      return wsUrl.replaceFirst('https://', 'wss://');
+    }
+
+    return wsUrl;
   }
 
-  // WebSocket namespace/path - NO CHANGE
+  // WebSocket namespace/path
   static String get wsNamespace => '/notifications';
   static String get wsPath => '/socket.io';
 
-  // Complete WebSocket URL - NO CHANGE
+  // Complete WebSocket URL
   static String get wsUrl {
+    if (!_initialized) {
+      throw Exception(
+        'ApiConfig not initialized. Call ApiConfig.init() first.',
+      );
+    }
+
     final base = wsBaseUrl.endsWith('/')
         ? wsBaseUrl.substring(0, wsBaseUrl.length - 1)
         : wsBaseUrl;
     return '$base$wsNamespace';
   }
 
-  // Check if we're in production - Update this getter
+  // Check if we're in production
   static bool get isProduction {
     if (!_initialized) {
       return false;
     }
-    final apiUrl = _getEnv('API_URL', ''); // Changed this line
+    final apiUrl = _getEnv('API_URL', '');
     return apiUrl.startsWith('https://');
   }
 
-  // Get API URL without /api/v1 suffix - Update this getter
+  // Get API URL without /api/v1 suffix
   static String get apiBaseUrlWithoutSuffix {
-    final url = _getEnv(
-      'API_URL',
-      'http://localhost:3000',
-    ); // Changed this line
-    return url.endsWith('/api/v1') ? url.substring(0, url.length - 7) : url;
+    if (!_initialized) {
+      throw Exception(
+        'ApiConfig not initialized. Call ApiConfig.init() first.',
+      );
+    }
+
+    final url = _getEnv('API_URL', 'http://localhost:3000');
+    return url.endsWith('/api/v1')
+        ? url.substring(0, url.length - 7) // Remove '/api/v1'
+        : url;
   }
 
-  // Optional: Add this method for debugging
+  // Optional: Debug method
   static void printCurrentConfig() {
     print('=== Current Config ===');
+    print('Platform: ${kIsWeb ? 'Web' : 'Mobile/Desktop'}');
     print('API_URL: ${_getEnv('API_URL', 'not set')}');
     print('WS_URL: ${_getEnv('WS_URL', 'not set')}');
     print('Base URL: $baseUrl');
+    print('WS Base URL: $wsBaseUrl');
     print('WS URL: $wsUrl');
     print('Is Production: $isProduction');
+    print('API without suffix: $apiBaseUrlWithoutSuffix');
+    print('=====================');
   }
 }

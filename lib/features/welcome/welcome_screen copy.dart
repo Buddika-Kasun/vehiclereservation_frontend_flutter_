@@ -1,16 +1,11 @@
+// lib/features/welcome/welcome_screen.dart
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:vehiclereservation_frontend_flutter_/core/services/update_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/models/update_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/login_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/dashboard/screens/home_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/shared/widgets/download_progress_dialog.dart';
-import 'package:vehiclereservation_frontend_flutter_/shared/widgets/update_dialog.dart';
-import 'package:vehiclereservation_frontend_flutter_/shared/widgets/installation_progress_dialog.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -25,9 +20,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
   late Animation<double> _progressAnimation;
-  final UpdateService _updateService = UpdateService();
-  bool _updateChecked = false;
-  bool _checkingUpdate = false;
 
   @override
   void initState() {
@@ -59,265 +51,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
     _controller.forward();
 
-    // Start checking for updates after animation begins
-    _checkForUpdates();
-  }
-
-  Future<void> _checkForUpdates() async {
-    if (_checkingUpdate || _updateChecked) return;
-
-    _checkingUpdate = true;
-
-    try {
-      // Add a small delay to ensure animation is visible
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      final updateResponse = await _updateService.checkForUpdate();
-
-      if (mounted) {
-        if (updateResponse.updateAvailable) {
-          _handleUpdate(updateResponse);
-        } else {
-          _proceedToApp();
-        }
-      }
-    } catch (e) {
-      print('Error checking for updates: $e');
-      if (mounted) {
-        _proceedToApp();
-      }
-    } finally {
-      _checkingUpdate = false;
-    }
-  }
-
-  void _handleUpdate(UpdateCheckResponse response) {
-    if (!mounted) return;
-
-    if (response.updateType == 'silent' && response.data?.downloadUrl != null) {
-      _performSilentUpdate(response.data!);
-    } else if (response.updateType == 'store_redirect') {
-      _redirectToStore(response.data);
-    } else if (response.updateType == 'user_confirmation') {
-      _showUpdateDialog(response.data!);
-    } else {
-      _proceedToApp();
-    }
-  }
-
-  void _performSilentUpdate(AppUpdate update) {
-    if (!mounted) return;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => DownloadProgressDialog(
-        fileName: update.originalFileName ?? 'update_v${update.version}.apk',
-        fileSize: update.fileSize,
-        downloadTask: (onProgress) async {
-          try {
-            await _updateService.downloadAndInstallUpdate(
-              downloadUrl: update.downloadUrl!,
-              fileName:
-                  update.originalFileName ?? 'update_v${update.version}.apk',
-              context: context, // Pass context here
-              onDownloadProgress: onProgress,
-              onDownloadComplete: (message) {
-                // Close download dialog
-                Navigator.of(context).pop();
-
-                // Show installation dialog
-                _showInstallationDialog(update);
-              },
-              onInstallStart: (message) {
-                // Update installation dialog
-                _updateInstallationDialog(message);
-              },
-              onInstallComplete: (message) {
-                // Show final message and proceed
-                _showInstallationCompleteDialog(update, message);
-              },
-              onError: (error) {
-                Navigator.of(context).pop();
-                _showErrorDialog('Update failed: $error');
-              },
-            );
-          } catch (e) {
-            Navigator.of(context).pop();
-            _showErrorDialog('Update error: $e');
-          }
-        },
-      ),
-    );
-  }
-
-  void _showInstallationDialog(AppUpdate update) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => InstallationProgressDialog(
-        update: update,
-        onCancel: () {
-          Navigator.of(context).pop();
-          _proceedToApp();
-        },
-      ),
-    );
-  }
-
-  void _updateInstallationDialog(String message) {
-    // Find and update the installation dialog
-    final context = this.context;
-    if (context != null && mounted) {
-      final dialogContext = context
-          .findAncestorStateOfType<State<InstallationProgressDialog>>();
-      if (dialogContext != null && dialogContext.mounted) {
-        // Update the dialog state if needed
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-    }
-  }
-
-  void _showInstallationCompleteDialog(AppUpdate update, String message) {
-    // Close any open dialogs
-    Navigator.of(context).popUntil((route) => route.isFirst);
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Installation Started'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.check_circle, size: 60, color: Colors.green),
-            const SizedBox(height: 20),
-            Text(
-              'Update ${update.version}',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 10),
-            const Text(
-              'The system installer will now open. Please follow the on-screen instructions to complete the installation.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 20),
-            const LinearProgressIndicator(),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              // The app will close when installer opens
-              Future.delayed(const Duration(seconds: 3), () {
-                if (mounted) {
-                  _proceedToApp();
-                }
-              });
-            },
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showErrorDialog(String error) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Update Error'),
-        content: Text(error),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _proceedToApp();
-            },
-            child: const Text('Continue'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _redirectToStore(AppUpdate? update) {
-    // For web, we can't redirect to app stores
-    // For mobile apps, you would implement store redirection here
-
-    // Show a message for web
-    if (mounted) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Update Available'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (update != null)
-                Text(
-                  'Version ${update.version} is available on the app store.',
-                  style: const TextStyle(fontSize: 16),
-                ),
-              const SizedBox(height: 16),
-              const Text(
-                'Please visit the app store to download the latest version.',
-                style: TextStyle(fontSize: 14, color: Colors.grey),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _proceedToApp();
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
-    }
-  }
-
-  void _showUpdateDialog(AppUpdate update) {
-    showDialog(
-      context: context,
-      barrierDismissible: !update.isMandatory,
-      builder: (context) => UpdateDialog(
-        update: update,
-        isMandatory: update.isMandatory,
-        onUpdate: () {
-          Navigator.of(context).pop();
-          _performSilentUpdate(update);
-        },
-        onLater: update.isMandatory
-            ? null
-            : () {
-                Navigator.of(context).pop();
-                _proceedToApp();
-              },
-      ),
-    );
-  }
-
-  void _proceedToApp() {
-    if (_updateChecked) return;
-    _updateChecked = true;
-
-    Timer(const Duration(milliseconds: 300), () async {
-      if (!mounted) return;
-
+    Timer(const Duration(seconds: 3), () async {
       bool hasSession = await StorageService.hasValidSession;
       if (hasSession) {
         final user = StorageService.userData;
@@ -372,25 +106,28 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               ),
             ),
 
-            // Main content
+            // Main content - Single Column to avoid overlap
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                // Top spacer
                 SizedBox(height: size.height * 0.1),
 
-                // Logo
+                // Large visible logo - INCREASED SIZE
                 FadeTransition(
                   opacity: _fadeAnimation,
                   child: ScaleTransition(
                     scale: _scaleAnimation,
                     child: Container(
                       width: isSmallScreen
-                          ? size.width * 0.6
-                          : size.width * 0.4,
+                          ? size.width *
+                                0.6 // Increased from 0.5
+                          : size.width * 0.4, // Increased from 0.3
                       height: isSmallScreen
-                          ? size.width * 0.7
-                          : size.width * 0.4,
+                          ? size.width *
+                                0.7 // Increased from 0.5
+                          : size.width * 0.4, // Increased from 0.3
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         boxShadow: [
@@ -409,6 +146,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
+                          // Outer glow
                           Container(
                             width: double.infinity,
                             height: double.infinity,
@@ -425,13 +163,17 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               ),
                             ),
                           ),
+
+                          // Logo container - INCREASED SIZE
                           Container(
                             width: isSmallScreen
-                                ? size.width * 0.5
-                                : size.width * 0.3,
+                                ? size.width *
+                                      0.5 // Increased from 0.4
+                                : size.width * 0.3, // Increased from 0.25
                             height: isSmallScreen
-                                ? size.width * 0.5
-                                : size.width * 0.3,
+                                ? size.width *
+                                      0.5 // Increased from 0.4
+                                : size.width * 0.3, // Increased from 0.25
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: Colors.black,
@@ -447,7 +189,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 width: 2,
                               ),
                             ),
-                            padding: EdgeInsets.all(isSmallScreen ? 30 : 40),
+                            padding: EdgeInsets.all(
+                              isSmallScreen ? 30 : 40,
+                            ), // Increased padding
                             child: Image.asset(
                               "assets/images/logo.png",
                               fit: BoxFit.contain,
@@ -461,7 +205,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
                 SizedBox(height: size.height * 0.04),
 
-                // App name
+                // App name - CLEAR AND VISIBLE
                 FadeTransition(
                   opacity: _fadeAnimation,
                   child: Padding(
@@ -478,6 +222,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           ),
                         ),
                         const SizedBox(height: 15),
+
+                        // PCW RIDE with strong yellow gradient
                         Container(
                           padding: const EdgeInsets.symmetric(
                             vertical: 10,
@@ -520,7 +266,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             ),
                           ),
                         ),
+
                         const SizedBox(height: 15),
+
                         Text(
                           "Vehicle Reservation System",
                           style: TextStyle(
@@ -536,12 +284,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                   ),
                 ),
 
+                // Spacer to push progress bar down
                 Expanded(child: Container()),
 
-                // Loading progress
+                // Loading progress - FIXED POSITION
                 Container(
                   margin: EdgeInsets.only(
-                    bottom: size.height * 0.18,
+                    bottom: size.height * 0.18, // Space for footer
                     left: size.width * 0.15,
                     right: size.width * 0.15,
                   ),
@@ -570,9 +319,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         animation: _progressAnimation,
                         builder: (context, child) {
                           return Text(
-                            _checkingUpdate
-                                ? "Checking for updates..."
-                                : "Initializing ${(_progressAnimation.value * 100).toInt()}%",
+                            "Initializing ${(_progressAnimation.value * 100).toInt()}%",
                             style: TextStyle(
                               color: Colors.grey[400],
                               fontSize: 14,
@@ -587,7 +334,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               ],
             ),
 
-            // Footer
+            // Footer - FIXED AT BOTTOM
             Positioned(
               bottom: 30,
               left: 0,
@@ -613,6 +360,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+                        /*
+                        Icon(
+                          Icons.code_rounded,
+                          color: Colors.grey[600],
+                          size: 16,
+                        ),
+                        */
+                        const SizedBox(width: 8),
                         Text(
                           'Developed by ',
                           style: TextStyle(
@@ -674,12 +429,15 @@ class _ParticlePainter extends CustomPainter {
       final y = rng.nextDouble() * size.height;
       final radius = rng.nextDouble() * 3 + 1;
 
+      // Animate particle movement
       final offsetX = 10 * sin(animationValue * 2 * pi + i);
       final offsetY = 10 * cos(animationValue * 2 * pi + i);
 
+      // Draw particle with yellow color
       paint.color = Colors.yellow.withOpacity(0.1 + rng.nextDouble() * 0.1);
       canvas.drawCircle(Offset(x + offsetX, y + offsetY), radius, paint);
 
+      // Draw glow
       paint.color = Colors.yellow.withOpacity(0.05);
       canvas.drawCircle(Offset(x + offsetX, y + offsetY), radius * 3, paint);
     }
