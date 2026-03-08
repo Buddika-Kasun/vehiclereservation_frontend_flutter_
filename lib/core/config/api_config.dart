@@ -58,7 +58,6 @@ class ApiConfig {
   }
 
   // WebSocket Base URL
-  /*
   static String get wsBaseUrl {
     if (!_initialized) {
       throw Exception(
@@ -69,18 +68,22 @@ class ApiConfig {
     final wsUrl = _getEnv('WS_URL', 'ws://localhost:3000');
 
     // Convert HTTP to WebSocket protocol if needed
+    /*
     if (wsUrl.startsWith('http://')) {
       return wsUrl.replaceFirst('http://', 'ws://');
     } else if (wsUrl.startsWith('https://')) {
       return wsUrl.replaceFirst('https://', 'wss://');
     }
-
+    */
+    
     return wsUrl;
   }
-  */
+  
+  /*
   static String get wsBaseUrl {
     return dotenv.env['WS_URL']!;
   }
+  */
 
   // WebSocket namespace/path
   static String get wsNamespace => '/notifications';
