@@ -1,13 +1,17 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:in_app_update/in_app_update.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/routes/app_routes.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/firebase_notification_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/pending_navigation_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/update_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/navigation_helper.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/models/update_model.dart';
+import 'package:vehiclereservation_frontend_flutter_/shared/widgets/download_progress_dialog.dart';
+import 'package:vehiclereservation_frontend_flutter_/shared/widgets/installation_progress_dialog.dart';
+import 'package:vehiclereservation_frontend_flutter_/shared/widgets/update_dialog.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
