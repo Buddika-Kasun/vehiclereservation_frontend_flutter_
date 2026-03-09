@@ -215,7 +215,7 @@ class _AllTripsScreenState extends BaseTripListState<AllTripsScreen> {
                 enableSearch: true,
                 statusFilters: [
                   {'label': 'Scheduled', 'value': 'scheduled'},
-                  {'label': 'All', 'value': null},
+                  {'label': 'Normal', 'value': 'normal'},
                 ],
               ),
             ],
