@@ -97,12 +97,15 @@ class TripCardModel {
   final String? startLocation;
   final String? endLocation;
   final List<int>? conflictingTripIds;
+  final List<int>? connectedTripIds;
   final int? passengerCount;
   final String? purpose;
   final String? driverAssignment; // primary, secondary, none
   final bool? isPrimaryDriver;
   final String? odometerStatus; // complete, start_only, none
   final Map<String, dynamic>? odometerLog;
+  final DateTime? createdAt;
+  final DateTime? confirmAt;
 
   final OdometerReading? odometerReading;
 
@@ -127,12 +130,15 @@ class TripCardModel {
     this.startLocation,
     this.endLocation,
     this.conflictingTripIds,
+    this.connectedTripIds,
     this.passengerCount,
     this.purpose,
     this.driverAssignment,
     this.isPrimaryDriver,
     this.odometerStatus,
     this.odometerLog,
+    this.createdAt,
+    this.confirmAt,
     this.isScheduled,
     this.isInstance,
     this.masterTripId,
@@ -162,6 +168,9 @@ class TripCardModel {
       conflictingTripIds: json['conflictingTripIds'] != null
           ? List<int>.from(json['conflictingTripIds'])
           : null,
+      connectedTripIds: json['connectedTripIds'] != null
+          ? List<int>.from(json['connectedTripIds'])
+          : null,
       passengerCount: json['passengerCount'] ?? 1,
       purpose: json['purpose'],
       driverAssignment: json['driverAssignment'] ?? 'none',
@@ -170,6 +179,8 @@ class TripCardModel {
       odometerLog: json['odometerLog'] != null
           ? Map<String, dynamic>.from(json['odometerLog'])
           : null,
+      createdAt: _parseDate(json['createdAt']),
+      confirmAt: _parseDate(json['confirmAt']),
       isScheduled: json['isScheduled'] ?? false,
       isInstance: json['isInstance'] ?? false,
       masterTripId: json['masterTripId'],
@@ -186,6 +197,17 @@ class TripCardModel {
           ? DriverDetails.fromJson(json['driver'])
           : null,
     );
+  }
+
+  
+  static DateTime? _parseDate(String? dateString) {
+    if (dateString == null || dateString.isEmpty) return null;
+    try {
+      return DateTime.parse(dateString).toLocal();
+    } catch (e) {
+      debugPrint('Error parsing date: $dateString - $e');
+      return null;
+    }
   }
 }
 
@@ -315,6 +337,78 @@ extension TripCardModelExtension on TripCardModel {
       return '$hour:$minuteStr $period';
     } catch (e) {
       return time;
+    }
+  }
+
+  String formatCreatedAt() {
+    if (createdAt == null) return 'Not available';
+
+    final now = DateTime.now();
+    final created = createdAt!;
+    final today = DateTime(now.year, now.month, now.day);
+    final createdDay = DateTime(created.year, created.month, created.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    if (createdDay == today) {
+      return 'Created: Today ${_formatTimeOnly(created)}';
+    } else if (createdDay == yesterday) {
+      return 'Created: Yesterday ${_formatTimeOnly(created)}';
+    } else {
+      return 'Created: ${created.day}/${created.month}/${created.year} ${_formatTimeOnly(created)}';
+    }
+  }
+
+  String formatConfirmAt() {
+    if (confirmAt == null) return 'Not confirmed';
+
+    final now = DateTime.now();
+    final confirmed = confirmAt!;
+    final today = DateTime(now.year, now.month, now.day);
+    final confirmedDay = DateTime(
+      confirmed.year,
+      confirmed.month,
+      confirmed.day,
+    );
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    if (confirmedDay == today) {
+      return 'Confirmed: Today ${_formatTimeOnly(confirmed)}';
+    } else if (confirmedDay == yesterday) {
+      return 'Confirmed: Yesterday ${_formatTimeOnly(confirmed)}';
+    } else {
+      return 'Confirmed: ${confirmed.day}/${confirmed.month}/${confirmed.year} ${_formatTimeOnly(confirmed)}';
+    }
+  }
+
+  String _formatTimeOnly(DateTime dateTime) {
+    int hour = dateTime.hour;
+    int minute = dateTime.minute;
+
+    final period = hour >= 12 ? 'PM' : 'AM';
+    hour = hour % 12;
+    hour = hour == 0 ? 12 : hour;
+    final minuteStr = minute.toString().padLeft(2, '0');
+
+    return '$hour:$minuteStr $period';
+  }
+
+  IconData getTimelineIcon() {
+    if (createdAt != null && confirmAt == null) {
+      return Icons.access_time; // Created but not confirmed
+    } else if (createdAt != null && confirmAt != null) {
+      return Icons.check_circle; // Created and confirmed
+    } else {
+      return Icons.help_outline; // Unknown
+    }
+  }
+
+  Color getTimelineColor() {
+    if (createdAt != null && confirmAt == null) {
+      return Colors.orange; // Created but not confirmed
+    } else if (createdAt != null && confirmAt != null) {
+      return Colors.green; // Created and confirmed
+    } else {
+      return Colors.grey; // Unknown
     }
   }
 }

@@ -11,6 +11,7 @@ class TripSecurityCard<T extends TripCardModel> extends StatelessWidget {
   final bool showVehicleInfo;
   final bool showLocationInfo;
   final VoidCallback? onTap;
+  final VoidCallback? onSuccess;
 
   const TripSecurityCard({
     Key? key,
@@ -19,6 +20,7 @@ class TripSecurityCard<T extends TripCardModel> extends StatelessWidget {
     this.showVehicleInfo = true,
     this.showLocationInfo = false,
     this.onTap,
+    this.onSuccess,
   }) : super(key: key);
 
   @override
@@ -35,6 +37,13 @@ class TripSecurityCard<T extends TripCardModel> extends StatelessWidget {
             children: [
               _buildHeader(),
               const SizedBox(height: 12),
+              /*
+              if (trip.connectedTripIds != null &&
+                  trip.connectedTripIds!.isNotEmpty) ...[
+                _buildConnectedTripsSection(),
+                const SizedBox(height: 8),
+              ],
+              */
               _buildDriverInfo(context),
               const SizedBox(height: 8),
               _buildVehicleInfo(),
@@ -68,6 +77,91 @@ class TripSecurityCard<T extends TripCardModel> extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _buildConnectedTripsSection() {
+    final connectedIds = trip.connectedTripIds!;
+    final connectedCount = connectedIds.length;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.blue.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.blue.withOpacity(0.3), width: 1),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        child: Row(
+          children: [
+            // Icon
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.link, color: Colors.blue, size: 14),
+            ),
+            const SizedBox(width: 8),
+
+            // Connected trips text
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Connected Trips',
+                    style: TextStyle(
+                      color: Colors.blue[200],
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _formatConnectedIds(connectedIds),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Count badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.blue,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '$connectedCount',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatConnectedIds(List<int> ids) {
+    if (ids.length <= 3) {
+      // Show all IDs if 3 or less
+      return ids.map((id) => '#$id').join(', ');
+    } else {
+      // Show first 3 and count for more
+      final firstThree = ids.take(3).map((id) => '#$id').join(', ');
+      return '$firstThree +${ids.length - 3} more';
+    }
   }
 
   Widget _buildFooterSection(BuildContext context) {
@@ -154,6 +248,9 @@ class TripSecurityCard<T extends TripCardModel> extends StatelessWidget {
                     );
 
                     if (response['success'] == true) {
+                      
+                      if (onSuccess != null) onSuccess!();
+
                       MessageOverlay.showSuccess(
                         context: context,
                         message: 'Odometer reading recorded successfully!',

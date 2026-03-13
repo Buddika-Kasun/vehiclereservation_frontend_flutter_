@@ -130,7 +130,7 @@ class _RidesApprovalScreenState extends BaseTripListState<RidesApprovalScreen> {
       searchQuery = '';
       timeFilter = filter;
       sortField = SortField.startTime;
-      sortOrder = SortOrder.desc;
+      sortOrder = filter == 'today' ? SortOrder.asc : SortOrder.desc;
       total = null;
       if (timeFilter == 'today') {
         statusFilter = 'needRead';
@@ -165,8 +165,8 @@ class _RidesApprovalScreenState extends BaseTripListState<RidesApprovalScreen> {
                 key: ValueKey('custom_$timeFilter'),
                 currentFilter: statusFilter,
                 onFilterSelected: setStatusFilter,
-                //onSearch: _handleSearch,
-                //enableSearch: true,
+                onSearch: _handleSearch,
+                enableSearch: true,
                 statusFilters: [
                   {'label': 'Need Reading', 'value': 'needRead'},
                   {'label': 'Already Read', 'value': 'alreadyRead'},
@@ -186,7 +186,7 @@ class _RidesApprovalScreenState extends BaseTripListState<RidesApprovalScreen> {
                   // CountBadge (using your existing widget)
                   CountBadge(
                     totalCount: total, 
-                    label: '${getTripStatusLabel(statusFilter)} Trips'
+                    label: getDynamicBadgeLabel()
                   ),
 
                   const Spacer(),
@@ -217,6 +217,7 @@ class _RidesApprovalScreenState extends BaseTripListState<RidesApprovalScreen> {
                   //onTap: () => (),
                   showVehicleInfo: true,
                   showLocationInfo: false,
+                  onSuccess: () => refreshTrips(),
                 ),
               ),
             ),

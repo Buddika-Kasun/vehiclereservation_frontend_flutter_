@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/new_models/trip_card_model.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/utils/helper_methods.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/utils/sort_enums.dart';
 
 abstract class BaseTripListState<T extends StatefulWidget> extends State<T> {
@@ -44,7 +45,7 @@ abstract class BaseTripListState<T extends StatefulWidget> extends State<T> {
   VoidCallback? onCustomizedDropdownReset;
 
   SortField sortField = SortField.startTime; // Default sort by start time
-  SortOrder sortOrder = SortOrder.desc; // Default descending (newest first)
+  SortOrder sortOrder = SortOrder.asc; // Default ascending (oldest first)
 
   // Abstract methods that must be implemented
   Future<void> fetchTrips({required bool reset, bool silent = false});
@@ -168,7 +169,7 @@ abstract class BaseTripListState<T extends StatefulWidget> extends State<T> {
     setState(() {
       searchQuery = ''; // Clear search when changing filter
       sortField = SortField.startTime;
-      sortOrder = SortOrder.desc;
+      sortOrder = filter == 'today' ? SortOrder.asc : SortOrder.desc;
       timeFilter = filter;
       total = null;
       page = 1;
@@ -325,12 +326,7 @@ abstract class BaseTripListState<T extends StatefulWidget> extends State<T> {
     if (searchQuery.isNotEmpty) {
       return 'Search Results';
     }
-    return '${_getStatusLabel(statusFilter)} Trips';
-  }
-
-  String _getStatusLabel(String? status) {
-    if (status == null) return 'All';
-    return status[0].toUpperCase() + status.substring(1);
+    return '${getTripStatusLabel(statusFilter)} Trips';
   }
 
   // Helper to build search indicator (can be used by child classes)

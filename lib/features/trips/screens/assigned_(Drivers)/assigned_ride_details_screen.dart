@@ -1862,7 +1862,12 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Vehicle assignment pending',
+                          //'Vehicle assignment pending',
+                          _tripDetails?.schedule.isInstance == true
+                              ? _tripDetails?.status.toLowerCase() == 'pending'
+                                    ? 'Master trip under reviewing'
+                                    : 'Master trip approved'
+                              : 'Vehicle assignment pending',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 14,
@@ -1871,7 +1876,12 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
                         ),
                         SizedBox(height: 4),
                         Text(
-                          'Approvers will be assigned shortly',
+                          //'Approvers will be assigned shortly',
+                          _tripDetails?.schedule.isInstance == true
+                              ? _tripDetails?.status.toLowerCase() == 'pending'
+                                    ? 'Master trip under reviewing and approvers will be assigned shortly'
+                                    : 'Master trip approved and no need for instance approvals'
+                              : 'Approvers will be assigned shortly',
                           style: TextStyle(
                             color: Colors.grey[400],
                             fontSize: 12,

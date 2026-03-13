@@ -127,7 +127,7 @@ class _ReviewTripScreenState extends BaseTripListState<ReviewTripScreen> {
       searchQuery = '';
       timeFilter = filter;
       sortField = SortField.startTime;
-      sortOrder = SortOrder.desc;
+      sortOrder = filter == 'today' ? SortOrder.asc : SortOrder.desc;
       total = null;
       if (timeFilter == 'today'){
         statusFilter = 'draft';
@@ -218,7 +218,7 @@ class _ReviewTripScreenState extends BaseTripListState<ReviewTripScreen> {
                   // CountBadge (using your existing widget)
                   CountBadge(
                     totalCount: total,
-                    label: '${getTripStatusLabel(statusFilter)} Trips',
+                    label: getDynamicBadgeLabel(),
                   ),
 
                   const Spacer(),
@@ -251,6 +251,7 @@ class _ReviewTripScreenState extends BaseTripListState<ReviewTripScreen> {
                   showLocationInfo: true,
                   showScheduleInfo: true,
                   showTripType: true,
+                  showCreatedAt: true,
                 ),
               ),
             ),
