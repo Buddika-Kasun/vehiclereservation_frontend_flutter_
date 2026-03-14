@@ -5,24 +5,36 @@ import 'package:flutter/material.dart';
 class TripCardListRequest {
   final String timeFilter; // today, week, month, all
   final String? statusFilter; // pending, approved, completed, ongoing, all
+  final String? searchQuery;
+  final String? sortField; 
+  final String? sortOrder;
   final int page;
   final int limit;
 
   TripCardListRequest({
     required this.timeFilter,
     this.statusFilter,
+    this.searchQuery,
+    this.sortField,
+    this.sortOrder,
     this.page = 1,
     this.limit = 10,
   });
 
   Map<String, dynamic> toJson() {
-    return {
-      'timeFilter': timeFilter,
-      'statusFilter': statusFilter,
-      'page': page,
-      'limit': limit,
-    };
+    final map = <String, dynamic>{'page': page, 'limit': limit};
+
+    if (timeFilter != null) map['timeFilter'] = timeFilter;
+    if (statusFilter != null) map['statusFilter'] = statusFilter;
+    if (searchQuery != null && searchQuery!.isNotEmpty) {
+      map['search'] = searchQuery; // or 'searchQuery' depending on your API
+    }
+    if (sortField != null) map['sortField'] = sortField; // 'id' or 'startTime'
+    if (sortOrder != null) map['sortOrder'] = sortOrder; // 'asc' or 'desc'
+
+    return map;
   }
+
 }
 
 class TripCardResponse {

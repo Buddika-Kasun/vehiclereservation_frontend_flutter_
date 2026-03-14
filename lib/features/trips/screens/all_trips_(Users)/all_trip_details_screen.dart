@@ -18,6 +18,7 @@ import 'package:flutter/foundation.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/websocket_manager.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/trip_handler.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/user_search_dialog.dart';
 
 class AllTripDetailsScreen extends StatefulWidget {
   final UserRole userRole;
@@ -2980,6 +2981,7 @@ class _AllTripDetailsScreenState extends State<AllTripDetailsScreen> {
     }
   }
 
+  /*
   Widget _buildActionButtons() {
     final isPermissionUser =
         widget.userRole == UserRole.sysadmin ||
@@ -2989,7 +2991,7 @@ class _AllTripDetailsScreenState extends State<AllTripDetailsScreen> {
         StorageService.userData?.id == _tripDetails?.requester.id;
     final isPassenger =
         _tripDetails?.details.passengers.list.any(
-          (p) => p.id == StorageService.userData?.id.toString(),
+          (p) => p.id.toString() == StorageService.userData?.id.toString(),
         ) ??
         false;
 
@@ -2997,8 +2999,8 @@ class _AllTripDetailsScreenState extends State<AllTripDetailsScreen> {
     final bool isPastTrip = _isTripInPast();       
 
     // Get actual available seats from trip details
-    //final availableSeats = _tripDetails?.availableSeatCount ?? 0;
-    final availableSeats = 0;
+    final availableSeats = _tripDetails?.availableSeatCount ?? 0;
+    //final availableSeats = 0;
     final hasAvailableSeats = availableSeats > 0;
 
     // Trip status check
@@ -3065,7 +3067,7 @@ class _AllTripDetailsScreenState extends State<AllTripDetailsScreen> {
     String joinError = '';
 
     if (isPermissionUser) {
-      isJoinEnabled = hasAvailableSeats;
+      isJoinEnabled = isTripActive && hasAvailableSeats;
       joinButtonText = isJoinEnabled ? 'Add Passenger' : "Can't Add";
       joinButtonColor = isJoinEnabled ? Colors.green : Colors.grey[700]!;
 
@@ -3092,6 +3094,9 @@ class _AllTripDetailsScreenState extends State<AllTripDetailsScreen> {
         isJoinEnabled = false;
         joinButtonColor = Colors.grey[700]!;
         joinError = 'You are already part of this trip';
+        joinOnPressed = joinError.isNotEmpty
+            ? () => _showErrorDialog('Cannot Join Trip', joinError)
+            : null;
       } else {
         // Regular users can only join if trip is active AND seats are available
         isJoinEnabled = isTripActive && hasAvailableSeats;
@@ -3214,9 +3219,276 @@ class _AllTripDetailsScreenState extends State<AllTripDetailsScreen> {
                     child: Container(
                       padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: hasAvailableSeats ? Colors.green : Colors.red,
+                        color: hasAvailableSeats ? Colors.blueGrey : Colors.red,
                         borderRadius: BorderRadius.circular(8),
                         //border: Border.all(color: Colors.white, width: 1),
+                      ),
+                      child: Text(
+                        '$availableSeats',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  */
+  Widget _buildActionButtons() {
+    final isPermissionUser =
+        widget.userRole == UserRole.sysadmin ||
+        widget.userRole == UserRole.supervisor;
+
+    final isRequester =
+        StorageService.userData?.id == _tripDetails?.requester.id;
+    final isPassenger =
+        _tripDetails?.details.passengers.list.any(
+          (p) => p.id.toString() == StorageService.userData?.id.toString(),
+        ) ??
+        false;
+
+    // Check if trip is in the past
+    final bool isPastTrip = _isTripInPast();
+
+    // Get actual available seats from trip details
+    final availableSeats = _tripDetails?.availableSeatCount ?? 0;
+    final hasAvailableSeats = availableSeats > 0;
+
+    // Trip status check
+    final isTripActive =
+        _tripDetails?.status.toLowerCase() == 'pending' ||
+        _tripDetails?.status.toLowerCase() == 'approved';
+
+    // Check if user is already in trip (as requester or passenger)
+    final isUserInTrip = isPassenger;
+
+    // Cancel button logic (existing code)
+    final approval = _tripDetails?.details.approval;
+    final hodStatus = approval?.approvers.hod?.status ?? '';
+    final secondaryStatus = approval?.approvers.secondary?.status ?? '';
+    final safetyStatus = approval?.approvers.safety?.status ?? '';
+
+    final hasAnyApproval =
+        hodStatus.toLowerCase() == 'approved' ||
+        secondaryStatus.toLowerCase() == 'approved' ||
+        safetyStatus.toLowerCase() == 'approved';
+
+    final allPending =
+        !hasAnyApproval &&
+        (hodStatus.toLowerCase() == 'pending' || hodStatus == '') &&
+        (secondaryStatus.toLowerCase() == 'pending' || secondaryStatus == '') &&
+        (safetyStatus.toLowerCase() == 'pending' || safetyStatus == '');
+
+    final canCancelTrip =
+        isPermissionUser &&
+        (_tripDetails?.status == 'pending' ||
+            _tripDetails?.status == 'draft') &&
+        allPending;
+
+    // Cancel button properties
+    bool isCancelEnabled = canCancelTrip;
+    Color cancelButtonColor = isCancelEnabled ? Colors.red : Colors.grey[700]!;
+    String cancelButtonText = isCancelEnabled ? 'Cancel Trip' : "Can't Cancel";
+    VoidCallback? cancelOnPressed;
+    String cancelError = '';
+
+    if (isCancelEnabled) {
+      cancelOnPressed = _showCancelConfirmationDialog;
+    } else {
+      if (!isPermissionUser) {
+        cancelError = 'Only supervisors or sysadmin can cancel trips';
+      } else if (_tripDetails?.status != 'pending' &&
+          _tripDetails?.status != 'draft') {
+        cancelError = 'Only pending or draft trips can be cancelled';
+      } else if (hasAnyApproval) {
+        cancelError = 'Cannot cancel: Trip has been partially approved';
+      } else {
+        cancelError = 'Trip cannot be cancelled at this time';
+      }
+      cancelOnPressed = cancelError.isNotEmpty
+          ? () => _showErrorDialog('Cannot Cancel Trip', cancelError)
+          : null;
+    }
+
+    // NEW: Add Passenger button for permission users
+    bool isAddPassengerEnabled = false;
+    String addPassengerButtonText = '';
+    Color addPassengerButtonColor = Colors.grey[700]!;
+    VoidCallback? addPassengerOnPressed;
+    String addPassengerError = '';
+
+    if (isPermissionUser) {
+      // Permission users can add passengers if:
+      // 1. Trip is active (pending, approved, draft)
+      // 2. There are available seats
+      // 3. Trip is not in the past
+      isAddPassengerEnabled = isTripActive && hasAvailableSeats && !isPastTrip;
+      addPassengerButtonText = isAddPassengerEnabled ? 'Add Passenger' : "Can't Add";
+      addPassengerButtonColor = isAddPassengerEnabled ? Colors.green : Colors.grey[700]!;
+
+      if (isAddPassengerEnabled) {
+        addPassengerOnPressed = () => _showAddPassengerDialog();
+      } else {
+        if (!isTripActive) {
+          addPassengerError = 'Cannot add: Trip is not active';
+        } else if (isPastTrip) {
+          addPassengerError = 'Cannot add: Trip is in the past';
+        } else if (!hasAvailableSeats) {
+          addPassengerError = 'Cannot add: No available seats (${availableSeats} seats left)';
+        }
+        addPassengerOnPressed = addPassengerError.isNotEmpty
+            ? () => _showErrorDialog('Cannot Add Passenger', addPassengerError)
+            : null;
+      }
+    }
+
+    // Regular user Join button logic (existing)
+    bool isJoinEnabled = false;
+    String joinButtonText = '';
+    Color joinButtonColor = Colors.grey[700]!;
+    VoidCallback? joinOnPressed;
+    String joinError = '';
+
+    if (!isPermissionUser) {
+      // For regular users: "Join Trip" button
+      if (isUserInTrip) {
+        joinButtonText = 'Already Joined';
+        isJoinEnabled = false;
+        joinButtonColor = Colors.grey[700]!;
+        joinError = 'You are already part of this trip';
+        joinOnPressed = joinError.isNotEmpty
+            ? () => _showErrorDialog('Cannot Join Trip', joinError)
+            : null;
+      } else {
+        // Regular users can only join if trip is active AND seats are available
+        isJoinEnabled = isTripActive && hasAvailableSeats && !isPastTrip;
+        joinButtonText = isJoinEnabled ? 'Join Trip' : "Can't Join";
+        joinButtonColor = isJoinEnabled ? Color(0xFFF9C80E) : Colors.grey[700]!;
+
+        if (isJoinEnabled) {
+          joinOnPressed = _showJoinTripConfirmation;
+        } else {
+          if (!isTripActive) {
+            joinError = 'Cannot join: Trip is not active';
+          } else if (isPastTrip) {
+            joinError = 'Cannot join: Trip is in the past';
+          } else if (!hasAvailableSeats) {
+            joinError = 'Cannot join: No available seats (${availableSeats} seats left)';
+          }
+          joinOnPressed = joinError.isNotEmpty
+              ? () => _showErrorDialog('Cannot Join Trip', joinError)
+              : null;
+        }
+      }
+    }
+
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.black,
+        border: Border(top: BorderSide(color: Colors.grey[800]!)),
+      ),
+      child: Row(
+        children: [
+          // Cancel Button (for permission users)
+          if (isPermissionUser) ...[
+            Expanded(
+              child: ElevatedButton(
+                onPressed: cancelOnPressed,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: cancelButtonColor,
+                  foregroundColor: Colors.white,
+                  minimumSize: Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  elevation: isCancelEnabled ? 2 : 0,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.cancel, size: 20),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        cancelButtonText,
+                        style: TextStyle(fontSize: 14),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(width: 12),
+          ],
+
+          // Add Passenger Button (for permission users) OR Join Button (for regular users)
+          Expanded(
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                ElevatedButton(
+                  onPressed: isPermissionUser ? addPassengerOnPressed : joinOnPressed,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isPermissionUser ? addPassengerButtonColor : joinButtonColor,
+                    foregroundColor: Colors.white,
+                    minimumSize: Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    elevation: (isPermissionUser ? isAddPassengerEnabled : isJoinEnabled) ? 2 : 0,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        isPermissionUser
+                            ? Icons.person_add_alt_1
+                            : Icons.add_box,
+                        size: 20,
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          isPermissionUser ? addPassengerButtonText : joinButtonText,
+                          style: TextStyle(fontSize: 14),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Show seat count indicator for active trips
+                if (isTripActive && (!isPermissionUser || (isPermissionUser && isAddPassengerEnabled)))
+                  Positioned(
+                    top: -1,
+                    right: -1,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: hasAvailableSeats ? Colors.blueAccent : Colors.red,
+                        borderRadius: BorderRadius.circular(6),
+                        //border: Border.all(color: Colors.white, width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 4,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: Text(
                         '$availableSeats',
@@ -3279,9 +3551,7 @@ Future<void> _showJoinTripConfirmation() async {
           ),
           SizedBox(height: 8),
           Text(
-            //'Available Seats: $_availableSeatCount',
-            //'Available Seats: ${_tripDetails.availableSeatCount}',
-            'Available Seats: ',
+            'Available Seats: ${_tripDetails?.availableSeatCount}',
             style: TextStyle(color: Colors.green),
           ),
           if (_tripDetails?.tripType == 'fixed_rate' && _tripDetails?.fixedRate != null)
@@ -3316,55 +3586,127 @@ Future<void> _showJoinTripConfirmation() async {
   }
 }
 
-Future<void> _showAddPassengerDialog() async {
-  // This would typically open a dialog to select/add a passenger
-  // For now, show a simple confirmation
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text('Add passenger functionality will be implemented'),
-      backgroundColor: Colors.orange,
-    ),
-  );
-}
+  Future<void> _showAddPassengerDialog() async {
+    if (_tripDetails == null) return;
 
-Future<void> _joinTrip() async {
-  try {
-    setState(() {
-      _isLoading = true;
-    });
+    final availableSeats = _tripDetails!.availableSeatCount ?? 0;
 
-    // Call API to join trip
-    //final response = await ApiService.joinTrip(widget.tripId);
+    // Get list of users already in the trip to exclude them
+    final existingPassengerIds = _tripDetails!.details.passengers.list
+        .map((p) => {'id': p.id.toString(), 'displayName': p.name})
+        .toList();
 
-    //if (response['success'] == true) {
-    if (true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Successfully joined the trip'),
-          backgroundColor: Colors.green,
-        ),
+    if (availableSeats <= 0) {
+      _showErrorDialog(
+        'No Seats Available',
+        'This trip has no available seats left.',
       );
-      
-      // Reload trip details to update available seats and passenger list
-      await _loadTripDetails();
-      
-    } else {
-      //throw Exception(response['message'] ?? 'Failed to join trip');
+      return;
     }
-  } catch (e) {
-    print('Error joining trip: $e');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Error joining trip: ${e.toString()}'),
-        backgroundColor: Colors.red,
+
+    showDialog(
+      context: context,
+      builder: (context) => UserSearchDialog(
+        title: 'Add Passengers to Trip #${_tripDetails!.id}',
+        onUsersSelected: (selectedUsers) =>
+            _addMultiplePassengersToTrip(selectedUsers),
+        maxSelections: availableSeats,
+        currentSelections: _tripDetails!.details.passengers.list.length,
+        excludedUserIds: existingPassengerIds,
       ),
     );
-  } finally {
-    setState(() {
-      _isLoading = false;
-    });
   }
-}
+
+  Future<void> _addMultiplePassengersToTrip(
+    List<Map<String, dynamic>> users,
+  ) async {
+    if (users.isEmpty) return;
+
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      // Extract user IDs
+      final userIds = users.map((user) => user['id']).toList();
+
+      // Call API to add multiple passengers to trip
+      final response = await ApiService.addMultiplePassengersToTrip(
+        widget.tripId,
+        userIds,
+      );
+
+      if (response['success'] == true) {
+        final addedCount = response['data']?['addedCount'] ?? users.length;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Successfully added $addedCount passenger${addedCount != 1 ? 's' : ''} to the trip',
+            ),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+
+        // Reload trip details to update passenger list and available seats
+        await _loadTripDetails();
+
+      } else {
+        throw Exception(response['message'] ?? 'Failed to add passengers');
+      }
+    } catch (e) {
+      print('Error adding passengers: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error adding passengers: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _joinTrip() async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      // Call API to join trip
+      final response = await ApiService.joinTrip(widget.tripId);
+
+      if (response['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Successfully joined the trip'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+        // Reload trip details to update available seats and passenger list
+        await _loadTripDetails();
+        
+      } else {
+        throw Exception(response['message'] ?? 'Failed to join trip');
+      }
+    } catch (e) {
+      print('Error joining trip: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error joining trip: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   // Add this method for the confirmation dialog
   Future<void> _showCancelConfirmationDialog() async {

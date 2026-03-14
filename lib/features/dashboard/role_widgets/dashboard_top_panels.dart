@@ -75,7 +75,7 @@ class DriverTopPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(top: 0, bottom: 26, left: 20, right: 20),
+      padding: const EdgeInsets.only(top: 10, bottom: 26, left: 20, right: 20),
       decoration: BoxDecoration(
         color: Colors.black,
         borderRadius: BorderRadius.only(
@@ -184,7 +184,7 @@ class SecurityTopPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(top: 0, bottom: 26, left: 20, right: 20),
+      padding: const EdgeInsets.only(top: 10, bottom: 26, left: 20, right: 20),
       decoration: BoxDecoration(
         color: Colors.black,
         borderRadius: BorderRadius.only(
@@ -266,7 +266,7 @@ class HrTopPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(top: 0, bottom: 26, left: 20, right: 20),
+      padding: const EdgeInsets.only(top: 10, bottom: 26, left: 20, right: 20),
       decoration: BoxDecoration(
         color: Colors.black,
         borderRadius: BorderRadius.only(
@@ -368,7 +368,7 @@ class AdminTopPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(top: 0, bottom: 26, left: 20, right: 20),
+      padding: const EdgeInsets.only(top: 10, bottom: 26, left: 20, right: 20),
       decoration: BoxDecoration(
         color: Colors.black,
         borderRadius: BorderRadius.only(
@@ -443,7 +443,9 @@ class AdminTopPanel extends StatelessWidget {
                         children: [
                           Text(
                             //'Nearby Vehicles',
-                            'Join to Trips',
+                            user?.role == UserRole.sysadmin
+                                ? 'Add to Trips'
+                                : 'Join to Trips',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                             ),
@@ -479,7 +481,7 @@ class EmployeeTopPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(top: 0, bottom: 26, left: 20, right: 20),
+      padding: const EdgeInsets.only(top: 10, bottom: 26, left: 20, right: 20),
       decoration: BoxDecoration(
         color: Colors.black,
         borderRadius: BorderRadius.only(
@@ -551,8 +553,9 @@ class EmployeeTopPanel extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            //'Nearby Vehicles',
-                            'Join to Trips',
+                            user?.role == UserRole.supervisor
+                                ? 'Add to Trips'
+                                : 'Join to Trips',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                             ),

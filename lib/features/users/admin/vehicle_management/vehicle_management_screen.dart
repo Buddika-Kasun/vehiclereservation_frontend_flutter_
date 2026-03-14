@@ -476,8 +476,21 @@ class _VehicleManagementScreenState extends State<VehicleManagementScreen> {
           ),
         ),
 
-        CountBadge(totalCount: _vehicles.length, label: 'Vehicles'),
-
+        //CountBadge(totalCount: _vehicles.length, label: 'Vehicles'),
+        // Replace the CountBadge section with this:
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 2, 16, 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // CountBadge (using your existing widget)
+              CountBadge(
+                totalCount: _vehicles.length, 
+                label: 'Vehicles'
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 4),
 
         Expanded(

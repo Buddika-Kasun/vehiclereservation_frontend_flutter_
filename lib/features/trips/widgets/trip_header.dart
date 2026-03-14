@@ -21,6 +21,7 @@ class TripHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
+      //color: Colors.green,
       padding: const EdgeInsets.fromLTRB(24, 0, 16, 5),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

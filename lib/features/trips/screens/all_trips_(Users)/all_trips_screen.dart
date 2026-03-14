@@ -6,6 +6,9 @@ import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.d
 import 'package:vehiclereservation_frontend_flutter_/features/trips/base/base_trip_list_state.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/all_trips_(Users)/all_trip_details_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/utils/helper_methods.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/utils/sort_enums.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/sort_button.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/status_filter_customized_dropdown.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/trip_header.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/time_filter_row.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/status_filter_dropdown.dart';
@@ -17,10 +20,7 @@ import 'package:vehiclereservation_frontend_flutter_/shared/widgets/count_badge.
 class AllTripsScreen extends StatefulWidget {
   final UserRole userRole;
 
-  const AllTripsScreen({
-    Key? key,
-    required this.userRole,
-  }) : super(key: key);
+  const AllTripsScreen({Key? key, required this.userRole}) : super(key: key);
 
   @override
   _AllTripsScreenState createState() => _AllTripsScreenState();
@@ -46,6 +46,41 @@ class _AllTripsScreenState extends BaseTripListState<AllTripsScreen> {
   VoidCallback? getRefreshAction() => refreshTrips;
 
   @override
+  void initState() {
+    statusFilter = 'scheduled'; 
+    super.initState();
+  }
+
+  @override
+  void setTimeFilter(String filter) {
+    setState(() {
+      searchQuery = ''; // Clear search when changing filter
+      timeFilter = filter;
+      sortField = SortField.startTime;
+      sortOrder = SortOrder.desc;
+      total = null;
+      if (timeFilter == 'today') {
+        statusFilter = 'scheduled';
+      } else {
+        statusFilter = null;
+      }
+      page = 1;
+    });
+    fetchTrips(reset: true); // ONLY ONE API CALL
+  }
+
+  @override
+  void setStatusFilter(String? status) {
+    setState(() {
+      statusFilter = status;
+      page = 1;
+      searchQuery = ''; // Clear search when changing filter
+      total = null;
+    });
+    fetchTrips(reset: true);
+  }
+
+  @override
   Future<void> fetchTrips({required bool reset, bool silent = false}) async {
     try {
       if (reset) {
@@ -55,7 +90,6 @@ class _AllTripsScreenState extends BaseTripListState<AllTripsScreen> {
           }
           page = 1;
           hasMore = true;
-          // Don't clear trips array during silent refresh
           if (!silent) {
             trips = [];
           }
@@ -67,8 +101,11 @@ class _AllTripsScreenState extends BaseTripListState<AllTripsScreen> {
       final request = TripCardListRequest(
         timeFilter: timeFilter,
         statusFilter: statusFilter,
+        searchQuery: searchQuery.isNotEmpty ? searchQuery : null,
         page: page,
         limit: limit,
+        sortField: sortField.name, // 'id' or 'startTime'
+        sortOrder: sortOrder.name, // 'asc' or 'desc'
       );
 
       final response = await ApiService.getAllTrips(request);
@@ -78,7 +115,6 @@ class _AllTripsScreenState extends BaseTripListState<AllTripsScreen> {
 
       if (reset) {
         if (silent) {
-          // Use the helper method for silent updates
           updateTripsSilently(newTrips, response.data.hasMore, newTotal);
           if (mounted) {
             setState(() {
@@ -112,14 +148,16 @@ class _AllTripsScreenState extends BaseTripListState<AllTripsScreen> {
     }
   }
 
+  void _handleSearch(String query) {
+    setSearchQueryDebounced(query);
+  }
+
   void _navigateToTripDetails(TripCardModel trip) async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AllTripDetailsScreen(
-          userRole: widget.userRole,
-          tripId: trip.id
-        ),
+        builder: (context) =>
+            AllTripDetailsScreen(userRole: widget.userRole, tripId: trip.id),
       ),
     );
 
@@ -146,26 +184,68 @@ class _AllTripsScreenState extends BaseTripListState<AllTripsScreen> {
               currentFilter: timeFilter,
               onFilterSelected: setTimeFilter,
             ),
-            StatusFilterDropdown(
-              currentFilter: statusFilter,
-              onFilterSelected: setStatusFilter,
-              statusFilters: [
-                {'label': 'All Status', 'value': null},
-                {'label': 'Draft', 'value': 'draft'},
-                {'label': 'Pending', 'value': 'pending'},
-                {'label': 'Canceled', 'value': 'canceled'},
-                {'label': 'Approved', 'value': 'approved'},
-                {'label': 'Rejected', 'value': 'rejected'},
-                {'label': 'Meter Read', 'value': 'read'},
-                {'label': 'Ongoing', 'value': 'ongoing'},
-                {'label': 'Finished', 'value': 'finished'},
-                {'label': 'Completed', 'value': 'completed'},
-              ],
+            if (timeFilter != 'today') ...[
+              StatusFilterDropdown(
+                // KEY CHANGES WITH timeFilter - FORCES NEW WIDGET, NO API CALL
+                key: ValueKey('regular_$timeFilter'),
+                currentFilter: statusFilter,
+                onFilterSelected: setStatusFilter,
+                onSearch: _handleSearch,
+                enableSearch: true,
+                statusFilters: [
+                  {'label': 'All Status', 'value': null},
+                  {'label': 'Draft', 'value': 'draft'},
+                  {'label': 'Pending', 'value': 'pending'},
+                  {'label': 'Canceled', 'value': 'canceled'},
+                  {'label': 'Approved', 'value': 'approved'},
+                  {'label': 'Rejected', 'value': 'rejected'},
+                  {'label': 'Meter Read', 'value': 'read'},
+                  {'label': 'Ongoing', 'value': 'ongoing'},
+                  {'label': 'Finished', 'value': 'finished'},
+                  {'label': 'Completed', 'value': 'completed'},
+                ],
+              ),
+            ] else ...[
+              StatusFilterDropdownCustomized(
+                // KEY CHANGES WITH timeFilter - FORCES NEW WIDGET, NO API CALL
+                key: ValueKey('custom_$timeFilter'),
+                currentFilter: statusFilter,
+                onFilterSelected: setStatusFilter,
+                onSearch: _handleSearch,
+                enableSearch: true,
+                statusFilters: [
+                  {'label': 'Scheduled', 'value': 'scheduled'},
+                  {'label': 'Normal', 'value': 'normal'},
+                ],
+              ),
+            ],
+
+            //if (searchQuery.isNotEmpty) buildSearchIndicator(),
+
+            //CountBadge(totalCount: total, label: getDynamicBadgeLabel()),
+
+            // Replace the CountBadge section with this:
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 2, 16, 14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // CountBadge (using your existing widget)
+                  CountBadge(totalCount: total, label: getDynamicBadgeLabel()),
+
+                  const Spacer(),
+
+                  // Sort Button
+                  SortButton(
+                    currentField: sortField,
+                    currentOrder: sortOrder,
+                    onSortChanged: (field, order) => setSort(field, order),
+                    onToggleOrder: toggleSortOrder,
+                  ),
+                ],
+              ),
             ),
-            CountBadge(
-              totalCount: total,
-              label: '${getTripStatusLabel(statusFilter)} Trips',
-            ),
+            
             Expanded(
               child: TripListContent(
                 scrollController: scrollController,
@@ -175,7 +255,7 @@ class _AllTripsScreenState extends BaseTripListState<AllTripsScreen> {
                 errorMessage: errorMessage,
                 hasMore: hasMore,
                 onRetry: refreshTrips,
-                emptyStateMessage: getEmptyStateMessage(),
+                emptyStateMessage: getDynamicEmptyStateMessage(),
                 buildTripCard: (trip) => TripCard<TripCardModel>(
                   trip: trip,
                   onTap: () => _navigateToTripDetails(trip),
@@ -191,5 +271,4 @@ class _AllTripsScreenState extends BaseTripListState<AllTripsScreen> {
       ),
     );
   }
-
 }

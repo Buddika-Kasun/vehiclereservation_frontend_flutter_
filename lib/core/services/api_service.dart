@@ -949,6 +949,26 @@ class ApiService {
       method: 'POST',
     );
   }
+
+  static Future<Map<String, dynamic>> joinTrip(int tripId) async {
+    return await authenticatedApiCall(
+      'trips/join/$tripId', 
+      method: 'POST'
+    );
+  }
+
+  static Future<Map<String, dynamic>> addMultiplePassengersToTrip(
+    int tripId,
+    List<dynamic> passengerIds
+  ) async {
+    return await authenticatedApiCall(
+      'trips/add-multiple-passengers/$tripId', 
+      method: 'POST',
+      body: {
+        'passengerIds': passengerIds
+      }
+    );
+  }
   
   static Future<Map<String, dynamic>> confirmReviewTrip(int tripId) async {
     return await authenticatedApiCall(
