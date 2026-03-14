@@ -7,6 +7,7 @@ import 'package:vehiclereservation_frontend_flutter_/features/trips/utils/helper
 import 'package:vehiclereservation_frontend_flutter_/features/trips/utils/sort_enums.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/sort_button.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/status_filter_customized_dropdown.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/status_filter_dropdown.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/trip_header.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/time_filter_row.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/trip_list_content.dart';
@@ -174,7 +175,19 @@ class _RidesApprovalScreenState extends BaseTripListState<RidesApprovalScreen> {
               ),
             ]
             else ...[
-              SizedBox(height: 6)
+              StatusFilterDropdown(
+                key: ValueKey('regular_$timeFilter'),
+                currentFilter: statusFilter,
+                onFilterSelected: setStatusFilter,
+                onSearch: _handleSearch,
+                enableSearch: true,
+                statusFilters: [
+                  {'label': 'All Status', 'value': null},
+                  {'label': 'Need Reading', 'value': 'needRead'},
+                  {'label': 'Already Read', 'value': 'alreadyRead'},
+                ],
+              ),
+              //SizedBox(height: 6)
             ],
             
             // Replace the CountBadge section with this:
