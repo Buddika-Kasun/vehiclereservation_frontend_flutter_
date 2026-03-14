@@ -335,7 +335,7 @@ class TripSecurityCard<T extends TripCardModel> extends StatelessWidget {
   Widget _buildReadingStatus() {
     final startReading = trip.odometerReading?.startReading;
     final endReading = trip.odometerReading?.endReading;
-    final startRecordedBy = trip.odometerReading?.startReading;
+    final startRecordedBy = trip.odometerReading?.startRecordedBy;
     final endRecordedBy = trip.odometerReading?.endRecordedBy;
 
     return Column(

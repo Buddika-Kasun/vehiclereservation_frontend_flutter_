@@ -21,6 +21,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/review_(Supervisors)/review_trip_vehicle_selection_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/trip_creation/vehicle_selection_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/shared/widgets/message_overlay.dart';
 
 class ReviewTripDetailsScreen extends StatefulWidget {
   final int tripId;
@@ -2981,6 +2982,7 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
 
       if (response['success'] == true) {
         // Show success message
+        /*
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -2992,24 +2994,53 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
             backgroundColor: Colors.green,
           ),
         );
+        */
+        MessageOverlay.showSuccess(
+          context: context,
+          message: 'Trip confirmed successfully',
+          position: OverlayPosition.top,
+          showBackgroundOverlay: true,
+          duration: const Duration(seconds: 2),
+          onComplete: () {
+            // You can perform additional actions here after the message is dismissed
+          },
+        );
 
         // Refresh trip details
         _loadTripDetails();
       } else {
+        /*
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(response['message'] ?? 'Failed to confirm trip'),
             backgroundColor: Colors.red,
           ),
         );
+        */
+        MessageOverlay.showError(
+          context: context,
+          message: response['message'] ?? 'Failed to confirm trip',
+          position: OverlayPosition.top,
+          showBackgroundOverlay: true,
+          showOkButton: true,
+        );
       }
     } catch (e) {
+      /*
       print('Error confirming trip: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
+      );
+      */
+      MessageOverlay.showError(
+        context: context,
+        message: 'Failed to confirm trip',
+        position: OverlayPosition.top,
+        showBackgroundOverlay: true,
+        showOkButton: true,
       );
     } finally {
       setState(() {
@@ -3056,6 +3087,7 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
       final response = await ApiService.cancelTrip(widget.tripId);
 
       if (response['success'] == true) {
+        /*
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -3067,15 +3099,35 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
             backgroundColor: Colors.green,
           ),
         );
+        */
+        MessageOverlay.showSuccess(
+          context: context,
+          message: 'Trip cancelled successfully',
+          position: OverlayPosition.top,
+          showBackgroundOverlay: true,
+          duration: const Duration(seconds: 2),
+          onComplete: () {
+            // You can perform additional actions here after the message is dismissed
+          },
+        );
 
         // Refresh trip details
         _loadTripDetails();
       } else {
+        /*
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(response['message'] ?? 'Failed to cancel trip'),
             backgroundColor: Colors.red,
           ),
+        );
+        */
+        MessageOverlay.showError(
+          context: context,
+          message: response['message'] ?? 'Failed to cancel trip',
+          position: OverlayPosition.top,
+          showBackgroundOverlay: true,
+          showOkButton: true,
         );
       }
     } catch (e) {

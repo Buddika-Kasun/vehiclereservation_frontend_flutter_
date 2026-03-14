@@ -17,6 +17,7 @@ import 'package:flutter/foundation.dart';
 // Import new WebSocket structure
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/websocket_manager.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/trip_handler.dart';
+import 'package:vehiclereservation_frontend_flutter_/shared/widgets/message_overlay.dart';
 
 class TripDetailsScreen extends StatefulWidget {
   final int tripId;
@@ -3005,12 +3006,22 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       final response = await ApiService.cancelTrip(widget.tripId);
 
       if (response['success'] == true) {
+        /*
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Trip cancelled successfully'),
             backgroundColor: Colors.green,
           ),
+        );
+        */
+        MessageOverlay.showSuccess(
+          context: context,
+          message: 'Trip cancelled successfully!',
+          position: OverlayPosition.top,
+          showBackgroundOverlay: true,
+          duration: const Duration(seconds: 2),
+          onComplete: () {},
         );
 
         // Reload trip details to update status
@@ -3020,12 +3031,21 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         throw Exception(response['message'] ?? 'Failed to cancel trip');
       }
     } catch (e) {
+      /*
       print('Error cancelling trip: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error cancelling trip: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
+      );
+      */
+      MessageOverlay.showError(
+        context: context,
+        message: 'Failed to cancel trip: ${e.toString()}',
+        position: OverlayPosition.top,
+        showBackgroundOverlay: true,
+        showOkButton: true,
       );
     } finally {
       setState(() {
