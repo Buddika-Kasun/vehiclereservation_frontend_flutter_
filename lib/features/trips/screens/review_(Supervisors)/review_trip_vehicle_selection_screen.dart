@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/available_vehicles_response.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:intl/intl.dart';
+import 'package:vehiclereservation_frontend_flutter_/shared/widgets/message_overlay.dart';
 
 class ReviewVehicleSelectionScreen extends StatefulWidget {
   final String tripId;
@@ -117,6 +118,7 @@ class _ReviewVehicleSelectionScreenState
 
       if (success) {
         //_showMessage('Vehicle booked successfully!');
+        /*
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -127,13 +129,33 @@ class _ReviewVehicleSelectionScreenState
           ),
         );
         Navigator.of(context).pop(true); // Return success with reload flag
+        */
+        MessageOverlay.showSuccess(
+          context: context,
+          message: 'Vehicle booked successfully!',
+          position: OverlayPosition.top,
+          showBackgroundOverlay: true,
+          duration: const Duration(seconds: 2),
+          onComplete: () {
+            Navigator.of(context).pop(true); // Return success with reload flag
+          },
+        );
       } else {
         //_showMessage('Failed to book vehicle');
+        /*
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to book vehicle'),
             backgroundColor: Colors.red,
           ),
+        );
+        */
+        MessageOverlay.showError(
+          context: context,
+          message: 'Failed to book vehicle',
+          position: OverlayPosition.top,
+          showBackgroundOverlay: true,
+          showOkButton: true,
         );
       }
     } catch (e) {

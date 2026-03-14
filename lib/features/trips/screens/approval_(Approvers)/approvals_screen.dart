@@ -130,7 +130,7 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
       searchQuery = '';
       timeFilter = filter;
       sortField = SortField.startTime;
-      sortOrder = SortOrder.desc;
+      sortOrder = filter == 'today' ? SortOrder.asc : SortOrder.desc;
       total = null;
       if (timeFilter == 'today') {
         statusFilter = 'pendingForMe';
@@ -220,7 +220,7 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
                   // CountBadge (using your existing widget)
                   CountBadge(
                     totalCount: total, 
-                    label: '${getTripStatusLabel(statusFilter)} Trips'
+                    label: getDynamicBadgeLabel()
                   ),
 
                   const Spacer(),
@@ -253,6 +253,7 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
                   showLocationInfo: true,
                   showScheduleInfo: true,
                   showTripType: true,
+                  showConfirmAt: true,
                 ),
               ),
             ),
