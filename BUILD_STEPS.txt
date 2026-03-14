@@ -1,0 +1,29 @@
+# 1. Stop any gradle daemons (from android folder)
+cd android 
+./gradlew --clean 
+cd ..
+
+# If you want to clear C drive cache too:
+# Clear system caches
+Remove-Item -Path "$env:USERPROFILE\.pub-cache" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -Path "C:\flutter\.pub-cache" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -Path "$env:USERPROFILE\.gradle\caches" -Recurse -Force -ErrorAction SilentlyContinue
+
+# 2. Clean Flutter
+flutter clean
+
+# 3. Delete build artifacts
+Remove-Item -Path "build", ".dart_tool", ".packages", ".gradle", ".idea" -Recurse -Force -ErrorAction SilentlyContinue
+
+# 4. Clear pub cache
+flutter pub cache clean --force
+
+# 5. Get fresh packages
+flutter pub get
+
+# 6. Build release APK
+flutter build apk --release
+
+# for delete .gradle/cache
+taskkill /F /IM java.exe
+rmdir /s /q "C:\Users\buddi\.gradle\caches"

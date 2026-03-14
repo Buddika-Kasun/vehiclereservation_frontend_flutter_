@@ -4,8 +4,13 @@ import java.io.FileInputStream
 plugins {
     id("com.android.application")
     id("kotlin-android")
+
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+
+    // Add the dependency for the Google services Gradle plugin
+    id("com.google.gms.google-services")
+
 }
 
 val keystoreProperties = Properties()
@@ -23,7 +28,7 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
 
-	isCoreLibraryDesugaringEnabled = true
+	    isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -39,6 +44,9 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Add multiDex support if needed
+        multiDexEnabled = true
     }
 
     signingConfigs {
@@ -71,7 +79,20 @@ dependencies {
     // Core library desugaring for Java 8+ APIs
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.3")
 
-    // Example: Firebase dependencies (add yours as needed)
-    // implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
-    // implementation("com.google.firebase:firebase-analytics-ktx")
+    
+    // Firebase BoM (Bill of Materials)
+    implementation(platform("com.google.firebase:firebase-bom:32.7.0")) // <-- Use 32.7.0 for compatibility
+    
+    // Firebase Analytics (required)
+    implementation("com.google.firebase:firebase-analytics")
+    
+    // Firebase Cloud Messaging (REQUIRED for push notifications)
+    implementation("com.google.firebase:firebase-messaging")
+    
+    // Firebase Core (REQUIRED)
+    //implementation("com.google.firebase:firebase-core")
+    
+    // MultiDex support (REQUIRED for Firebase on Android < 21)
+    implementation("androidx.multidex:multidex:2.0.1")
+
 }

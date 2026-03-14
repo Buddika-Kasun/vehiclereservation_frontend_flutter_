@@ -3,6 +3,8 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart'; // Add this import
+import 'package:vehiclereservation_frontend_flutter_/core/services/firebase_notification_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/utils/device_helper.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/available_vehicles_response.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/checklist_models.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/driver_trip_response.dart';
@@ -15,6 +17,8 @@ import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storag
 import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/config/api_config.dart';
 import 'dart:math' as math;
+
+import 'package:vehiclereservation_frontend_flutter_/data/new_models/trip_card_model.dart';
 
 int min(int a, int b) => math.min(a, b);
 
@@ -37,6 +41,7 @@ class ApiService {
     final res = json.decode(response.body);
 
     if (res['success'] == true) {
+
       // Save tokens securely
       await SecureStorageService().saveTokens(
         accessToken: res['data']['accessToken'],
@@ -44,13 +49,13 @@ class ApiService {
       );
 
       // Convert the user map to User object and save
-    final userMap = res['data']['user'] as Map<String, dynamic>;
-    final user = User.fromJson(userMap);
-    
-    await StorageService.saveUserData(
-      userData: user,
-      originalJson: userMap
-    );
+      final userMap = res['data']['user'] as Map<String, dynamic>;
+      final user = User.fromJson(userMap);
+      
+      await StorageService.saveUserData(
+        userData: user,
+        originalJson: userMap
+      );
 
       return res;
     } else {
@@ -944,6 +949,26 @@ class ApiService {
       method: 'POST',
     );
   }
+
+  static Future<Map<String, dynamic>> joinTrip(int tripId) async {
+    return await authenticatedApiCall(
+      'trips/join/$tripId', 
+      method: 'POST'
+    );
+  }
+
+  static Future<Map<String, dynamic>> addMultiplePassengersToTrip(
+    int tripId,
+    List<dynamic> passengerIds
+  ) async {
+    return await authenticatedApiCall(
+      'trips/add-multiple-passengers/$tripId', 
+      method: 'POST',
+      body: {
+        'passengerIds': passengerIds
+      }
+    );
+  }
   
   static Future<Map<String, dynamic>> confirmReviewTrip(int tripId) async {
     return await authenticatedApiCall(
@@ -985,6 +1010,40 @@ class ApiService {
     }
   }
 
+  static Future<TripCardResponse> getUserTripsNew(
+    TripCardListRequest request
+  ) async {
+    try {
+      return await ApiService.authenticatedApiCall(
+        'trips/user-trips',
+        method: 'POST',
+        body: request.toJson(),
+      ).then((response) {
+        return TripCardResponse.fromJson(response);
+      });
+    } catch (e) {
+      print('Error getting user trips: $e');
+      rethrow;
+    }
+  }
+
+  static Future<TripCardResponse> getAllTrips(
+    TripCardListRequest request,
+  ) async {
+    try {
+      return await ApiService.authenticatedApiCall(
+        'trips/all-trips',
+        method: 'POST',
+        body: request.toJson(),
+      ).then((response) {
+        return TripCardResponse.fromJson(response);
+      });
+    } catch (e) {
+      print('Error getting all trips: $e');
+      rethrow;
+    }
+  }
+
   static Future<TripListResponse> getSupervisorTrips(TripListRequest request) async {
     try {
       //print('Getting user trips with filters: ${request.toJson()}');
@@ -1008,6 +1067,23 @@ class ApiService {
       }
     } catch (e) {
       //print('Error in getUserTrips: $e');
+      rethrow;
+    }
+  }
+
+  static Future<TripCardResponse> getSupervisorTripsNew(
+    TripCardListRequest request,
+  ) async {
+    try {
+      return await ApiService.authenticatedApiCall(
+        'trips/supervisor-trips',
+        method: 'POST',
+        body: request.toJson(),
+      ).then((response) {
+        return TripCardResponse.fromJson(response);
+      });
+    } catch (e) {
+      print('Error getting driver trips: $e');
       rethrow;
     }
   }
@@ -1036,6 +1112,24 @@ class ApiService {
       rethrow;
     }
   }
+
+  static Future<TripCardResponse> getPendingApprovalsNew(
+    TripCardListRequest request
+  ) async {
+    try {
+      return await ApiService.authenticatedApiCall(
+        'trips/pending-approvals-new',
+        method: 'POST',
+        body: request.toJson(),
+      ).then((response) {
+        return TripCardResponse.fromJson(response);
+      });
+    } catch (e) {
+      print('Error getting driver trips: $e');
+      rethrow;
+    }
+  }
+
 
   // Dashboard API methods
   static Future<DashboardStats> getDashboardStats() async {
@@ -1093,7 +1187,6 @@ class ApiService {
     );
   }
 
-//
 // Add these methods to your ApiService class
   static Future<Map<String, dynamic>> approveScheduledTrip(
     int masterTripId,
@@ -1134,6 +1227,23 @@ class ApiService {
     );
   }
 
+  static Future<TripCardResponse> getTripsForMeterReadingNew(
+    TripCardListRequest request,
+  ) async {
+    try {
+      return await ApiService.authenticatedApiCall(
+        'trips/for-meter-reading-new',
+        method: 'POST',
+        body: request.toJson(),
+      ).then((response) {
+        return TripCardResponse.fromJson(response);
+      });
+    } catch (e) {
+      print('Error getting driver trips: $e');
+      rethrow;
+    }
+  }
+
   static Future<Map<String, dynamic>> getReadTrips(
     Map<String, dynamic> request,
   ) async {
@@ -1160,21 +1270,38 @@ class ApiService {
   }
 
   static Future<DriverTripResponse> getDriverAssignedTrips(
-      DriverTripListRequest request,
-    ) async {
-      try {
-        return await ApiService.authenticatedApiCall(
-          'trips/driver-assigned',
-          method: 'POST',
-          body: request.toJson(),
-        ).then((response) {
-          return DriverTripResponse.fromJson(response);
-        });
-      } catch (e) {
-        print('Error getting driver trips: $e');
-        rethrow;
-      }
+    DriverTripListRequest request,
+  ) async {
+    try {
+      return await ApiService.authenticatedApiCall(
+        'trips/driver-assigned',
+        method: 'POST',
+        body: request.toJson(),
+      ).then((response) {
+        return DriverTripResponse.fromJson(response);
+      });
+    } catch (e) {
+      print('Error getting driver trips: $e');
+      rethrow;
     }
+  }
+
+  static Future<TripCardResponse> getDriverAssignedTripsNew(
+    TripCardListRequest request,
+  ) async {
+    try {
+      return await ApiService.authenticatedApiCall(
+        'trips/driver-assigned',
+        method: 'POST',
+        body: request.toJson(),
+      ).then((response) {
+        return TripCardResponse.fromJson(response);
+      });
+    } catch (e) {
+      print('Error getting driver trips: $e');
+      rethrow;
+    }
+  }
 
   static Future<Map<String, dynamic>> startTrip(int tripId) async {
     return await authenticatedApiCall('trips/start/$tripId', method: 'POST');
@@ -1293,7 +1420,22 @@ class ApiService {
   ) async {
     try {
       return await authenticatedApiCall(
-        'notifications/$notificationId/read',
+        'notifications/read/$notificationId',
+        method: 'PUT',
+        body: {},
+      );
+    } catch (e) {
+      print('Error marking notification as read: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> markNotificationAsUnread(
+    String notificationId,
+  ) async {
+    try {
+      return await authenticatedApiCall(
+        'notifications/unread/$notificationId',
         method: 'PUT',
         body: {},
       );
@@ -1321,11 +1463,23 @@ class ApiService {
   ) async {
     try {
       return await authenticatedApiCall(
-        'notifications/$notificationId',
+        'notifications/delete/$notificationId',
         method: 'DELETE',
       );
     } catch (e) {
       print('Error deleting notification: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> deleteAllNotification() async {
+    try {
+      return await authenticatedApiCall(
+        'notifications/delete-all',
+        method: 'DELETE',
+      );
+    } catch (e) {
+      print('Error deleting all notifications: $e');
       rethrow;
     }
   }
@@ -1718,28 +1872,107 @@ class ApiService {
   }
   
   static Future<bool> checkIfChecklistExists({
-  required String vehicleId,
-  required DateTime date,
-}) async {
-  try {
-    final formattedDate = DateFormat('yyyy-MM-dd').format(date);
-    
-    print('🔍 Checking if checklist exists for vehicle $vehicleId on $formattedDate');
-    
-    final response = await authenticatedApiCall(
-      'checklist/vehicle/$vehicleId/date/$formattedDate/exists',
-      method: 'GET',
-    );
-    
-    print('📥 Exists check response: $response');
-    print('  exists value: ${response['exists']}');
-    
-    return response['exists'] ?? false;
-  } catch (e) {
-    print('❌ Error checking checklist existence: $e');
-    return false;
+    required String vehicleId,
+    required DateTime date,
+  }) async {
+    try {
+      final formattedDate = DateFormat('yyyy-MM-dd').format(date);
+      
+      print('🔍 Checking if checklist exists for vehicle $vehicleId on $formattedDate');
+      
+      final response = await authenticatedApiCall(
+        'checklist/vehicle/$vehicleId/date/$formattedDate/exists',
+        method: 'GET',
+      );
+      
+      print('📥 Exists check response: $response');
+      print('  exists value: ${response['exists']}');
+      
+      return response['exists'] ?? false;
+    } catch (e) {
+      print('❌ Error checking checklist existence: $e');
+      return false;
+    }
   }
-}
+
+  /*
+  static Future<void> updateFcmToken({
+    required fcmToken
+  }) async {
+    try {
+      print('🔄 Updating FCM token: $fcmToken');
+      await authenticatedApiCall(
+        'notifications/update-fcm-token',
+        method: 'PUT',
+        body: {
+          'fcmToken': fcmToken,
+        },
+      );
+      print('✅ FCM token updated successfully');
+    } catch (e) {
+      print('❌ Error updating FCM token: $e');
+    }
+  }
+  */
+
+  static Future<void> updateFcmToken({
+    required fcmToken,
+  }) async {
+    try {
+      print('🔄 Updating FCM token: $fcmToken');
+
+      // Get device information from helper
+      final deviceId = await DeviceHelper.getDeviceId();
+      final deviceName = await DeviceHelper.getDeviceName();
+      final deviceType = DeviceHelper.getDeviceType();
+      
+      await authenticatedApiCall(
+        'notifications/update-fcm-token-new',
+        method: 'PUT',
+        body: {
+          'fcmToken': fcmToken,
+          'deviceId': deviceId,
+          'deviceName': deviceName,
+          'deviceType': deviceType,
+        },
+      );
+      print('✅ FCM token updated successfully');
+    } catch (e) {
+      print('❌ Error updating FCM token: $e');
+    }
+  }
+
+  /*
+  static Future<void> deleteFcmToken() async {
+    try {
+      print('🔄 Deleting FCM token');
+      await authenticatedApiCall(
+        'notifications/delete-fcm-token',
+        method: 'DELETE',
+      );
+      print('✅ FCM token deleted successfully');
+    } catch (e) {
+      print('❌ Error deleting FCM token: $e');
+    } 
+  }
+  */
+
+  static Future<void> deleteFcmToken() async {
+    try {
+      print('🔄 Deleting FCM token');
+
+      final deviceId = await DeviceHelper.getDeviceId();
+
+      await authenticatedApiCall(
+        'notifications/delete-fcm-token-new',
+        method: 'PUT',
+        body: {'deviceId': deviceId},
+      );
+      print('✅ FCM token deleted successfully $deviceId');
+    } catch (e) {
+      print('❌ Error deleting FCM token: $e');
+    }
+  }
 
 }
 
