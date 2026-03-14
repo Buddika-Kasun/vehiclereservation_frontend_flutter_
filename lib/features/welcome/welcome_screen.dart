@@ -1,13 +1,17 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:in_app_update/in_app_update.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/routes/app_routes.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/firebase_notification_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/pending_navigation_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/update_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/navigation_helper.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/models/update_model.dart';
+import 'package:vehiclereservation_frontend_flutter_/shared/widgets/download_progress_dialog.dart';
+import 'package:vehiclereservation_frontend_flutter_/shared/widgets/installation_progress_dialog.dart';
+import 'package:vehiclereservation_frontend_flutter_/shared/widgets/update_dialog.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -22,6 +26,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
   late Animation<double> _progressAnimation;
+  final UpdateService _updateService = UpdateService();
   bool _updateChecked = false;
   bool _checkingUpdate = false;
 
@@ -55,96 +60,30 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
     _controller.forward();
 
-    // Start checking for Play Store updates
-    _checkForPlayStoreUpdates();
-    //_checkForPlayStoreUpdatesMock();
+    // Start checking for updates after animation begins
+    _checkForUpdates();
   }
 
-  Future<void> _checkForPlayStoreUpdatesMock() async {
+  Future<void> _checkForUpdates() async {
     if (_checkingUpdate || _updateChecked) return;
 
     _checkingUpdate = true;
 
     try {
-      await Future.delayed(const Duration(milliseconds: 800));
+      // Add a small delay to ensure animation is visible
+      await Future.delayed(const Duration(milliseconds: 500));
 
-      // 🔥 TEST MODE - Change these values to test different flows
-      final mockUpdate = {
-        'updateAvailable': true, // true = update exists, false = no update
-        'updatePriority': 2, // 0 = silent, 1 = flexible, 2+ = immediate
-      };
+      final updateResponse = await _updateService.checkForUpdate();
 
-      print(
-        '📱 TEST MODE: Update available: ${mockUpdate['updateAvailable']}, Priority: ${mockUpdate['updatePriority']}',
-      );
-
-      if (!mounted) return;
-
-      if (mockUpdate['updateAvailable'] == true) {
-        final priority = mockUpdate['updatePriority'] as int;
-
-        if (priority >= 2) {
-          // Immediate update
-          _startImmediateUpdate();
-        } else if (priority == 1) {
-          // Flexible update
-          _showFlexibleUpdateDialog();
+      if (mounted) {
+        if (updateResponse.updateAvailable) {
+          _handleUpdate(updateResponse);
         } else {
-          // Silent update (priority 0)
-          _startSilentUpdate();
-        }
-      } else {
-        // No update
-        _proceedToApp();
-      }
-    } catch (e) {
-      print('Error: $e');
-      if (mounted) _proceedToApp();
-    } finally {
-      _checkingUpdate = false;
-    }
-  }
-
-  Future<void> _checkForPlayStoreUpdates() async {
-    if (_checkingUpdate || _updateChecked) return;
-
-    _checkingUpdate = true;
-
-    try {
-      // Add small delay to show animation
-      await Future.delayed(const Duration(milliseconds: 800));
-
-      // Check for update
-      final updateInfo = await InAppUpdate.checkForUpdate();
-
-      print('📱 Update availability: ${updateInfo.updateAvailability}');
-      print('📱 Update version: ${updateInfo.availableVersionCode}');
-      print('📱 Update priority: ${updateInfo.updatePriority}');
-      print('📱 Is update allowed: ${updateInfo.immediateUpdateAllowed}');
-
-      if (!mounted) return;
-
-      // Handle based on update availability
-      switch (updateInfo.updateAvailability) {
-        case UpdateAvailability.updateAvailable:
-          // Update is available
-          _handleUpdateAvailable(updateInfo);
-          break;
-
-        case UpdateAvailability.developerTriggeredUpdateInProgress:
-          // An update is already in progress
-          _showResumeUpdateDialog();
-          break;
-
-        case UpdateAvailability.updateNotAvailable:
-        default:
-          // No update available
           _proceedToApp();
-          break;
+        }
       }
     } catch (e) {
-      print('Error checking Play Store updates: $e');
-      // Check if it's because not on Play Store (debug build)
+      print('Error checking for updates: $e');
       if (mounted) {
         _proceedToApp();
       }
@@ -153,301 +92,146 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     }
   }
 
-  /// Handle different update priorities
-  void _handleUpdateAvailable(AppUpdateInfo updateInfo) {
+  void _handleUpdate(UpdateCheckResponse response) {
     if (!mounted) return;
 
-    final priority = updateInfo.updatePriority ?? 0;
-    //final priority = 1;
-
-    if (priority >= 2) {
-      // Immediate update (must update now)
-      _startImmediateUpdate();
-    } else if (priority == 1) {
-      // Flexible update (user can postpone)
-      _showFlexibleUpdateDialog();
+    if (response.updateType == 'silent' && response.data?.downloadUrl != null) {
+      _performSilentUpdate(response.data!);
+    } else if (response.updateType == 'store_redirect') {
+      _redirectToStore(response.data);
+    } else if (response.updateType == 'user_confirmation') {
+      _showUpdateDialog(response.data!);
     } else {
-      // Silent update (priority 0) - auto update in background
-      _startSilentUpdate();
+      _proceedToApp();
     }
   }
 
-  /// SILENT UPDATE - Auto download without user interaction
-  void _startSilentUpdate() {
-    if (!mounted) return;
-
-    print('📱 Starting silent update...');
-
-    // Show subtle notification
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Downloading update in background...'),
-        duration: Duration(seconds: 2),
-        backgroundColor: Colors.blue,
-      ),
-    );
-
-    // Start silent update
-    InAppUpdate.startFlexibleUpdate()
-        .then((_) {
-          print('📱 Silent update started successfully');
-
-          // Complete the update after download
-          _completeUpdate();
-        })
-        .catchError((error) {
-          print('❌ Silent update failed: $error');
-
-          // Fallback to flexible update
-          if (mounted) {
-            _showFlexibleUpdateDialog();
-          }
-        });
-  }
-
-  /// FLEXIBLE UPDATE - User can postpone
-  void _showFlexibleUpdateDialog() {
+  void _performSilentUpdate(AppUpdate update) {
     if (!mounted) return;
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.system_update, color: Colors.blue, size: 28),
-            SizedBox(width: 10),
-            Text('Update Available'),
-          ],
-        ),
-        content: const Text(
-          'A new version is available. Would you like to update now?',
-          style: TextStyle(fontSize: 16),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _proceedToApp(); // User postpones update
-            },
-            child: const Text('Later'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _startFlexibleUpdate();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Update Now'),
-          ),
-        ],
-      ),
-    );
-  }
+      builder: (context) => DownloadProgressDialog(
+        fileName: update.originalFileName ?? 'update_v${update.version}.apk',
+        fileSize: update.fileSize,
+        downloadTask: (onProgress) async {
+          try {
+            await _updateService.downloadAndInstallUpdate(
+              downloadUrl: update.downloadUrl!,
+              fileName:
+                  update.originalFileName ?? 'update_v${update.version}.apk',
+              context: context, // Pass context here
+              onDownloadProgress: onProgress,
+              onDownloadComplete: (message) {
+                // Close download dialog
+                Navigator.of(context).pop();
 
-  /// Start flexible update
-  Future<void> _startFlexibleUpdate() async {
-    if (!mounted) return;
-
-    try {
-      print('📱 Starting flexible update...');
-
-      // Show loading dialog
-      if (!mounted) return;
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) =>
-            const Center(child: CircularProgressIndicator(color: Colors.blue)),
-      );
-
-      // Start flexible update
-      await InAppUpdate.startFlexibleUpdate();
-
-      if (!mounted) return;
-      Navigator.pop(context); // Close loading dialog
-
-      // Complete the update
-      _completeUpdate();
-    } catch (e) {
-      print('❌ Flexible update error: $e');
-      if (mounted) {
-        Navigator.pop(context); // Close loading dialog
-        _showErrorDialog('Update failed: $e');
-      }
-    }
-  }
-
-  /// IMMEDIATE UPDATE - Force update
-  void _startImmediateUpdate() {
-    if (!mounted) return;
-
-    print('📱 Starting immediate update...');
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => WillPopScope(
-        onWillPop: () async => false, // Prevent back button
-        child: AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
-              SizedBox(width: 10),
-              Text('Update Required'),
-            ],
-          ),
-          content: const Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.system_update, size: 60, color: Colors.orange),
-              SizedBox(height: 16),
-              Text(
-                'A critical update is required to continue using the app.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16),
-              ),
-            ],
-          ),
-          actions: [
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _performImmediateUpdate();
+                // Show installation dialog
+                _showInstallationDialog(update);
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 50),
-              ),
-              child: const Text('Update Now'),
+              onInstallStart: (message) {
+                // Update installation dialog
+                _updateInstallationDialog(message);
+              },
+              onInstallComplete: (message) {
+                // Show final message and proceed
+                _showInstallationCompleteDialog(update, message);
+              },
+              onError: (error) {
+                Navigator.of(context).pop();
+                _showErrorDialog('Update failed: $error');
+              },
+            );
+          } catch (e) {
+            Navigator.of(context).pop();
+            _showErrorDialog('Update error: $e');
+          }
+        },
+      ),
+    );
+  }
+
+  void _showInstallationDialog(AppUpdate update) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => InstallationProgressDialog(
+        update: update,
+        onCancel: () {
+          Navigator.of(context).pop();
+          _proceedToApp();
+        },
+      ),
+    );
+  }
+
+  void _updateInstallationDialog(String message) {
+    // Find and update the installation dialog
+    final context = this.context;
+    if (context != null && mounted) {
+      final dialogContext = context
+          .findAncestorStateOfType<State<InstallationProgressDialog>>();
+      if (dialogContext != null && dialogContext.mounted) {
+        // Update the dialog state if needed
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showInstallationCompleteDialog(AppUpdate update, String message) {
+    // Close any open dialogs
+    Navigator.of(context).popUntil((route) => route.isFirst);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Installation Started'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.check_circle, size: 60, color: Colors.green),
+            const SizedBox(height: 20),
+            Text(
+              'Update ${update.version}',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
+            const SizedBox(height: 10),
+            Text(message, textAlign: TextAlign.center),
+            const SizedBox(height: 10),
+            const Text(
+              'The system installer will now open. Please follow the on-screen instructions to complete the installation.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 20),
+            const LinearProgressIndicator(),
           ],
         ),
-      ),
-    );
-  }
-
-  /// Perform immediate update
-  Future<void> _performImmediateUpdate() async {
-    if (!mounted) return;
-
-    try {
-      print('📱 Performing immediate update...');
-
-      // Show loading
-      if (!mounted) return;
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(color: Colors.orange),
-        ),
-      );
-
-      // Start immediate update
-      await InAppUpdate.performImmediateUpdate();
-
-      // Note: App will restart automatically for immediate updates
-      // This code may not execute
-    } catch (e) {
-      print('❌ Immediate update error: $e');
-      if (mounted) {
-        Navigator.pop(context); // Close loading dialog
-        _showErrorDialog('Update failed: $e');
-      }
-    }
-  }
-
-  /// Complete flexible/silent update
-  Future<void> _completeUpdate() async {
-    if (!mounted) return;
-
-    try {
-      print('📱 Completing update...');
-
-      // Ask user to restart
-      _showRestartDialog();
-    } catch (e) {
-      print('❌ Complete update error: $e');
-      if (mounted) {
-        _showErrorDialog('Failed to complete update: $e');
-      }
-    }
-  }
-
-  /// Show resume update dialog (if update was interrupted)
-  void _showResumeUpdateDialog() {
-    if (!mounted) return;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Update in Progress'),
-        content: const Text(
-          'An update was already in progress. Resume it now?',
-        ),
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
-              _proceedToApp();
+              Navigator.of(context).pop();
+              // The app will close when installer opens
+              Future.delayed(const Duration(seconds: 3), () {
+                if (mounted) {
+                  _proceedToApp();
+                }
+              });
             },
-            child: const Text('Skip'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              InAppUpdate.completeFlexibleUpdate();
-            },
-            child: const Text('Resume'),
+            child: const Text('OK'),
           ),
         ],
       ),
     );
   }
 
-  /// Show restart dialog
-  void _showRestartDialog() {
-    if (!mounted) return;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Update Downloaded'),
-        content: const Text(
-          'The update has been downloaded. Restart the app to apply changes?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _proceedToApp(); // Continue using old version
-            },
-            child: const Text('Later'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              InAppUpdate.completeFlexibleUpdate();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Restart Now'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Show error dialog
   void _showErrorDialog(String error) {
     showDialog(
       context: context,
@@ -463,6 +247,67 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             child: const Text('Continue'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _redirectToStore(AppUpdate? update) {
+    // For web, we can't redirect to app stores
+    // For mobile apps, you would implement store redirection here
+
+    // Show a message for web
+    if (mounted) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Update Available'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (update != null)
+                Text(
+                  'Version ${update.version} is available on the app store.',
+                  style: const TextStyle(fontSize: 16),
+                ),
+              const SizedBox(height: 16),
+              const Text(
+                'Please visit the app store to download the latest version.',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _proceedToApp();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  void _showUpdateDialog(AppUpdate update) {
+    showDialog(
+      context: context,
+      barrierDismissible: !update.isMandatory,
+      builder: (context) => UpdateDialog(
+        update: update,
+        isMandatory: update.isMandatory,
+        onUpdate: () {
+          Navigator.of(context).pop();
+          _performSilentUpdate(update);
+        },
+        onLater: update.isMandatory
+            ? null
+            : () {
+                Navigator.of(context).pop();
+                _proceedToApp();
+              },
       ),
     );
   }
