@@ -16,12 +16,12 @@
     
     <!-- Storage permission for app updates -->
     <!-- Use MANAGE_EXTERNAL_STORAGE for Android 11+ to save APK files -->
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" 
-        tools:ignore="ScopedStorage" />
+    <!-- <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" 
+        tools:ignore="ScopedStorage" /> -->
     
     <!-- Legacy storage for Android < 11 -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
-        android:maxSdkVersion="32" />
+    <!-- <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
+        android:maxSdkVersion="32" /> -->
     
     <!-- Install permissions -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
