@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/checklist_models.dart';
+import 'package:vehiclereservation_frontend_flutter_/shared/widgets/message_overlay.dart';
 
 class ChecklistScreen extends StatefulWidget {
   final String vehicleId;
@@ -302,6 +303,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     }
 
     if (!allChecked) {
+      /*
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -310,6 +312,14 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
           backgroundColor: Colors.orange,
           duration: Duration(seconds: 3),
         ),
+      );
+      */
+      MessageOverlay.showError(
+        context: context,
+        message: 'Please check all items before submitting. Missing: ${uncheckedItems.length} items',
+        position: OverlayPosition.top,
+        showBackgroundOverlay: true,
+        showOkButton: true,
       );
       return;
     }
@@ -355,6 +365,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         // CRITICAL: Force a complete reload of the checklist data
         await _loadChecklistData();
 
+        /*
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -362,6 +373,15 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
             backgroundColor: Colors.green,
             duration: Duration(seconds: 3),
           ),
+        );
+        */
+        MessageOverlay.showSuccess(
+          context: context,
+          message: 'Checklist submitted successfully!',
+          position: OverlayPosition.top,
+          showBackgroundOverlay: true,
+          duration: const Duration(seconds: 2),
+          onComplete: () {},
         );
       } catch (parseError) {
         print('⚠️ Parse error: $parseError');
@@ -371,12 +391,24 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         await _loadChecklistData();
 
         // Show success message anyway (API call succeeded)
+        /*
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('✅ Checklist submitted successfully!'),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 3),
           ),
+        );
+        */
+        MessageOverlay.showSuccess(
+          context: context,
+          message: 'Checklist submitted successfully!',
+          position: OverlayPosition.top,
+          showBackgroundOverlay: true,
+          duration: const Duration(seconds: 2),
+          onComplete: () {
+
+          },
         );
       }
     } catch (e) {
@@ -390,12 +422,22 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         await _loadChecklistData();
       }
 
+      /*
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('❌ $errorMessage'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 4),
         ),
+      );
+      */
+
+      MessageOverlay.showError(
+        context: context,
+        message: errorMessage,
+        position: OverlayPosition.top,
+        showBackgroundOverlay: true,
+        showOkButton: true,
       );
     } finally {
       setState(() {

@@ -57,7 +57,7 @@ class _AllTripsScreenState extends BaseTripListState<AllTripsScreen> {
       searchQuery = ''; // Clear search when changing filter
       timeFilter = filter;
       sortField = SortField.startTime;
-      sortOrder = SortOrder.desc;
+      sortOrder = filter == 'today' ? SortOrder.asc : SortOrder.desc;
       total = null;
       if (timeFilter == 'today') {
         statusFilter = 'scheduled';

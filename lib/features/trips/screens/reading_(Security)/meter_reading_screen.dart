@@ -7,6 +7,7 @@ import 'package:vehiclereservation_frontend_flutter_/features/trips/utils/helper
 import 'package:vehiclereservation_frontend_flutter_/features/trips/utils/sort_enums.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/sort_button.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/status_filter_customized_dropdown.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/status_filter_dropdown.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/trip_header.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/time_filter_row.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/trip_list_content.dart';
@@ -130,7 +131,7 @@ class _RidesApprovalScreenState extends BaseTripListState<RidesApprovalScreen> {
       searchQuery = '';
       timeFilter = filter;
       sortField = SortField.startTime;
-      sortOrder = SortOrder.desc;
+      sortOrder = filter == 'today' ? SortOrder.asc : SortOrder.desc;
       total = null;
       if (timeFilter == 'today') {
         statusFilter = 'needRead';
@@ -165,8 +166,8 @@ class _RidesApprovalScreenState extends BaseTripListState<RidesApprovalScreen> {
                 key: ValueKey('custom_$timeFilter'),
                 currentFilter: statusFilter,
                 onFilterSelected: setStatusFilter,
-                //onSearch: _handleSearch,
-                //enableSearch: true,
+                onSearch: _handleSearch,
+                enableSearch: true,
                 statusFilters: [
                   {'label': 'Need Reading', 'value': 'needRead'},
                   {'label': 'Already Read', 'value': 'alreadyRead'},
@@ -174,7 +175,19 @@ class _RidesApprovalScreenState extends BaseTripListState<RidesApprovalScreen> {
               ),
             ]
             else ...[
-              SizedBox(height: 6)
+              StatusFilterDropdown(
+                key: ValueKey('regular_$timeFilter'),
+                currentFilter: statusFilter,
+                onFilterSelected: setStatusFilter,
+                onSearch: _handleSearch,
+                enableSearch: true,
+                statusFilters: [
+                  {'label': 'All Status', 'value': null},
+                  {'label': 'Need Reading', 'value': 'needRead'},
+                  {'label': 'Already Read', 'value': 'alreadyRead'},
+                ],
+              ),
+              //SizedBox(height: 6)
             ],
             
             // Replace the CountBadge section with this:
@@ -186,7 +199,7 @@ class _RidesApprovalScreenState extends BaseTripListState<RidesApprovalScreen> {
                   // CountBadge (using your existing widget)
                   CountBadge(
                     totalCount: total, 
-                    label: '${getTripStatusLabel(statusFilter)} Trips'
+                    label: getDynamicBadgeLabel()
                   ),
 
                   const Spacer(),
@@ -217,6 +230,7 @@ class _RidesApprovalScreenState extends BaseTripListState<RidesApprovalScreen> {
                   //onTap: () => (),
                   showVehicleInfo: true,
                   showLocationInfo: false,
+                  onSuccess: () => refreshTrips(),
                 ),
               ),
             ),

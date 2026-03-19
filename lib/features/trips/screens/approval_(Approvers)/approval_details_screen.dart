@@ -12,6 +12,7 @@ import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.d
 import 'package:intl/intl.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/new_models/trip_card_model.dart';
+import 'package:vehiclereservation_frontend_flutter_/shared/widgets/message_overlay.dart';
 
 class ApprovalDetailsScreen extends StatefulWidget {
   final int tripId;
@@ -952,6 +953,7 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
       }
 
       if (response['success'] == true) {
+        /*
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -965,12 +967,32 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
 
         // Return success to parent screen
         Navigator.pop(context, true);
+        */
+        MessageOverlay.showSuccess(
+          context: context,
+          message: widget.tripData?.isScheduled == true
+                  ? 'Scheduled trip approved successfully!'
+                  : 'Trip approved successfully!',
+          position: OverlayPosition.top,
+          showBackgroundOverlay: true,
+          duration: const Duration(seconds: 2),
+          onComplete: () {
+            Navigator.pop(context, true);
+          },
+        );
       } else {
         throw Exception(response['message'] ?? 'Approval failed');
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Error approving trip: ${e.toString()}';
+        //_errorMessage = 'Error approving trip: ${e.toString()}';
+        MessageOverlay.showError(
+          context: context,
+          message: 'Error approving trip: ${e.toString()}',
+          position: OverlayPosition.top,
+          showBackgroundOverlay: true,
+          showOkButton: true,
+        );
         _isProcessing = false;
       });
     } finally {
@@ -993,6 +1015,7 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
         _rejectionController.text,
       );
 
+      /*
       await Future.delayed(Duration(seconds: 1));
 
       if (res['success'] == true) {
@@ -1006,12 +1029,36 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
 
       // Return to previous screen with refresh flag
       Navigator.pop(context, true);
+      */
+      if (res['success'] == true) {
+        MessageOverlay.showSuccess(
+          context: context,
+          message: 'Trip rejected successfully!',
+          position: OverlayPosition.top,
+          showBackgroundOverlay: true,
+          duration: const Duration(seconds: 2),
+          onComplete: () {
+            Navigator.pop(context, true);
+          },
+        );
+      } else {
+        throw Exception(res['message'] ?? 'Rejection failed');
+      }
     } catch (e) {
+      /*
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Failed to reject trip: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
+      );
+      */
+      MessageOverlay.showError(
+        context: context,
+        message: 'Failed to reject trip: ${e.toString()}',
+        position: OverlayPosition.top,
+        showBackgroundOverlay: true,
+        showOkButton: true,
       );
     } finally {
       if (mounted) {
