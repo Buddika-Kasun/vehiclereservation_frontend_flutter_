@@ -47,9 +47,9 @@ class WebSocketConfig {
   static Map<String, dynamic> get connectionOptions {
     final options = {
       'transports': [
-        'polling',
         'websocket',
-      ], // Start with polling, then upgrade
+        'polling',
+      ], 
       'path': '/socket.io',
       'timeout': 20000,
       'reconnection': true,

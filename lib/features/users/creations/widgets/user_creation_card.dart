@@ -108,11 +108,17 @@ class _UserCreationCardState extends State<UserCreationCard> {
 
   String _generateShortName(String displayName) {
     if (displayName.isEmpty) return 'U';
-    final words = displayName.split(' ');
+
+    // Trim and split by whitespace (handles multiple spaces)
+    final words = displayName.trim().split(RegExp(r'\s+'));
+
     if (words.length >= 2) {
       return '${words[0][0]}${words[1][0]}'.toUpperCase();
     }
-    return displayName[0].toUpperCase();
+
+    // Handle single word or empty after trim
+    final firstWord = words.isNotEmpty ? words[0] : '';
+    return firstWord.isNotEmpty ? firstWord[0].toUpperCase() : 'U';
   }
 
   @override
