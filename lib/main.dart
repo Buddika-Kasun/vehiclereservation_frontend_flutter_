@@ -1,6 +1,5 @@
 // lib/main.dart
 import 'dart:async';
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -9,13 +8,10 @@ import 'package:vehiclereservation_frontend_flutter_/core/config/websocket_confi
 import 'package:vehiclereservation_frontend_flutter_/core/routes/app_routes.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/routes/route_generator.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/connectivity_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/server_health_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/firebase_tester.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/app_updates/admin_login_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/home/home_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/welcome/welcome_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/login_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/auth_manager.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/firebase_notification_service.dart';

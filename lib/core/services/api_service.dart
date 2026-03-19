@@ -1876,7 +1876,7 @@ class ApiService {
     required DateTime date,
   }) async {
     try {
-      final formattedDate = DateFormat('yyyy-MM-dd').format(date);
+      final formattedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
       
       print('🔍 Checking if checklist exists for vehicle $vehicleId on $formattedDate');
       

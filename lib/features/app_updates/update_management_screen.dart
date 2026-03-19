@@ -201,7 +201,7 @@ class _UpdateManagementScreenState extends State<UpdateManagementScreen> {
       }
     }
   }
-  
+
   bool _validateForm() {
     if (_versionController.text.isEmpty) {
       _showError('Please enter version number');
@@ -290,7 +290,7 @@ class _UpdateManagementScreenState extends State<UpdateManagementScreen> {
       _showError('Download failed: $e');
     }
   }
-  
+
   void _showSuccess(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.green),

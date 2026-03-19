@@ -649,17 +649,6 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                   }, isStartDate: true),
                   SizedBox(height: 16),
 
-                  // Valid Till Date (existing)
-                  if (_repetition != 'once') ...[
-                    _buildDateField(
-                      'Valid Till Date',
-                      _validTillDate,
-                      (date) => setState(() => _validTillDate = date),
-                      isStartDate: false,
-                    ),
-                    SizedBox(height: 16),
-                  ],
-
                   // Start Time (existing)
                   _buildTimeField(
                     'Start Time',
@@ -757,6 +746,17 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                         ),
                       ],
                     ),
+
+                  // Valid Till Date (existing)
+                  if (_repetition != 'once') ...[
+                    SizedBox(height: 16),
+                    _buildDateField(
+                      'Valid Till Date',
+                      _validTillDate,
+                      (date) => setState(() => _validTillDate = date),
+                      isStartDate: false,
+                    ),
+                  ],
 
                   if (_repetition != 'once') ...[
                     SizedBox(height: 8),

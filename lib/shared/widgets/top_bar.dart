@@ -476,10 +476,12 @@ class _TopBarState extends State<TopBar> {
   Widget build(BuildContext context) {
     return Column(
       children: [
+        /*
         Container(
           height: 10,
           color: Colors.black, // Match AppBar color
         ),
+        */
         AppBar(
           backgroundColor: Colors.black,
           elevation: 0,
