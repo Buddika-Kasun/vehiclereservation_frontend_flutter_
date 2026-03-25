@@ -95,4 +95,6 @@ dependencies {
     // MultiDex support (REQUIRED for Firebase on Android < 21)
     implementation("androidx.multidex:multidex:2.0.1")
 
+    //implementation ("androidx.activity:activity-ktx:1.8.0")
+    //implementation ("androidx.activity:activity:1.8.0")
 }

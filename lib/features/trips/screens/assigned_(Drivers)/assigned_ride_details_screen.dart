@@ -18,6 +18,7 @@ import 'package:flutter/foundation.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/websocket_manager.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/trip_handler.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/check_list_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/shared/widgets/message_overlay.dart';
 
 class RideDetailsScreen extends StatefulWidget {
   final int tripId;
@@ -1862,7 +1863,12 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Vehicle assignment pending',
+                          //'Vehicle assignment pending',
+                          _tripDetails?.schedule.isInstance == true
+                              ? _tripDetails?.status.toLowerCase() == 'pending'
+                                    ? 'Master trip under reviewing'
+                                    : 'Master trip approved'
+                              : 'Vehicle assignment pending',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 14,
@@ -1871,7 +1877,12 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
                         ),
                         SizedBox(height: 4),
                         Text(
-                          'Approvers will be assigned shortly',
+                          //'Approvers will be assigned shortly',
+                          _tripDetails?.schedule.isInstance == true
+                              ? _tripDetails?.status.toLowerCase() == 'pending'
+                                    ? 'Master trip under reviewing and approvers will be assigned shortly'
+                                    : 'Master trip approved and no need for instance approvals'
+                              : 'Approvers will be assigned shortly',
                           style: TextStyle(
                             color: Colors.grey[400],
                             fontSize: 12,
@@ -3248,6 +3259,7 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
       final response = await ApiService.startTrip(widget.tripId);
 
       if (response['success'] == true) {
+        /*
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -3256,6 +3268,18 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
             duration: Duration(seconds: 3),
           ),
         );
+        */
+
+        MessageOverlay.showSuccess(
+          context: context,
+          message: 'Trip started successfully!',
+          position: OverlayPosition.top,
+          showBackgroundOverlay: true,
+          duration: const Duration(seconds: 2),
+          onComplete: () {
+            // You can perform additional actions here after the message is dismissed
+          },
+        );
 
         // Reload trip details to update status
         await _loadTripDetails();
@@ -3263,6 +3287,7 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
         throw response['message'] ?? 'Failed to start trip';
       }
     } catch (e) {
+      /*
       print('Error starting trip: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -3270,6 +3295,14 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
           backgroundColor: Colors.red,
           duration: Duration(seconds: 5),
         ),
+      );
+      */
+      MessageOverlay.showError(
+        context: context,
+        message: e.toString(),
+        position: OverlayPosition.top,
+        showBackgroundOverlay: true,
+        showOkButton: true,
       );
     } finally {
       setState(() {
@@ -3287,6 +3320,7 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
       final response = await ApiService.endTrip(widget.tripId, passengerCount);
 
       if (response['success'] == true) {
+        /*
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -3295,6 +3329,18 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
             duration: Duration(seconds: 3),
           ),
         );
+        */
+
+        MessageOverlay.showSuccess(
+          context: context,
+          message: 'Trip ended successfully!',
+          position: OverlayPosition.top,
+          showBackgroundOverlay: true,
+          duration: const Duration(seconds: 2),
+          onComplete: () {
+            // You can perform additional actions here after the message is dismissed
+          },
+        );
 
         // Reload trip details to update status
         await _loadTripDetails();
@@ -3302,6 +3348,7 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
         throw Exception(response['message'] ?? 'Failed to end trip');
       }
     } catch (e) {
+      /*
       print('Error ending trip: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -3309,6 +3356,14 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
         ),
+      );
+      */
+      MessageOverlay.showError(
+        context: context,
+        message: e.toString(),
+        position: OverlayPosition.top,
+        showBackgroundOverlay: true,
+        showOkButton: true,
       );
     } finally {
       setState(() {

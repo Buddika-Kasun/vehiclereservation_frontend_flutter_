@@ -1,199 +1,87 @@
 // config/websocket_config.dart
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/config/api_config.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class WebSocketConfig {
   static bool _initialized = false;
 
   static Future<void> init() async {
     if (!_initialized) {
-      await dotenv.load(fileName: "assets/.env");
+      // Initialize ApiConfig first
+        await ApiConfig.init();
       _initialized = true;
     }
   }
 
-  static String get socketIoBaseUrl {
+  // Socket.IO base URL (without namespace)
+  static String get socketIoUrl {
     try {
-      return ApiConfig.wsUrl;
-    } catch (e) {
-      print('⚠️ WebSocketConfig not fully initialized, using direct env');
-      return dotenv.get('WS_URL', fallback: '');
-    }
-  }
-
-  /*
-  static Map<String, dynamic> get options {
-    return {
-      'transports': ['websocket'],
-      'path': ApiConfig.wsPath,
-      'reconnection': true,
-      'reconnectionAttempts': 10,
-      'reconnectionDelay': 1000,
-      'timeout': 20000,
-      'autoConnect': false,
-    };
-  }
-  */
-  
-  // WebSocket connection configuration
-  static Map<String, dynamic> get connectionOptions {
-    return {
-      'transports': ['websocket', 'polling'], // websocket first, then polling
-      'path': ApiConfig.wsPath,
-      'timeout': 30000,
-      'reconnection': true,
-      'reconnectionAttempts': 10,
-      'reconnectionDelay': 1000,
-      'reconnectionDelayMax': 5000,
-      'autoConnect': true,
-    };
-  }
-
-  // Get WebSocket URL for Socket.IO
-  /*
-  static String get socketIoBaseUrl {
-    if (!_initialized) {
-      throw Exception('WebSocketConfig not initialized');
-    }
-
-    // For Socket.IO, we need the base URL without namespace
-    final baseUrl = ApiConfig.wsBaseUrl;
-
-    // Clean up URL
-    String cleanUrl = baseUrl;
-    if (cleanUrl.endsWith('/')) {
-      cleanUrl = cleanUrl.substring(0, cleanUrl.length - 1);
-    }
-
-    // Ensure proper protocol
-    if (isSecure) {
-      if (!cleanUrl.startsWith('wss://') && !cleanUrl.startsWith('https://')) {
-        cleanUrl = 'wss://${cleanUrl.replaceAll(RegExp(r'^.*://'), '')}';
+      if (kIsWeb) {
+        // For web, always use the full URL with correct protocol
+        return 'https://pcw-ride-server.up.railway.app';
       }
-    } else {
-      if (!cleanUrl.startsWith('ws://') && !cleanUrl.startsWith('http://')) {
-        cleanUrl = 'ws://${cleanUrl.replaceAll(RegExp(r'^.*://'), '')}';
-      }
-    }
 
-    return cleanUrl;
-  }
-  */
-
-// Get WebSocket URL for Socket.IO
-/*
-static String get socketIoUrl {
-  if (!_initialized) {
-    throw Exception('WebSocketConfig not initialized');
-  }
-
-  // For Socket.IO, we need the base URL without namespace
-  final baseUrl = ApiConfig.wsBaseUrl;
-
-  // Clean up URL
-  String cleanUrl = baseUrl;
-  if (cleanUrl.endsWith('/')) {
-    cleanUrl = cleanUrl.substring(0, cleanUrl.length - 1);
-  }
-
-  // Ensure proper protocol
-  if (isSecure) {
-    if (!cleanUrl.startsWith('wss://') && !cleanUrl.startsWith('https://')) {
-      cleanUrl = 'wss://${cleanUrl.replaceAll(RegExp(r'^.*://'), '')}';
-    }
-  } else {
-    if (!cleanUrl.startsWith('ws://') && !cleanUrl.startsWith('http://')) {
-      cleanUrl = 'ws://${cleanUrl.replaceAll(RegExp(r'^.*://'), '')}';
-    }
-  }
-
-  return cleanUrl;
-}
-*/
-
-static String get socketIoUrl {
-    try {
+      // For mobile, use from config
       final baseUrl = ApiConfig.wsBaseUrl;
+
+      // Clean up URL
       String cleanUrl = baseUrl;
       if (cleanUrl.endsWith('/')) {
         cleanUrl = cleanUrl.substring(0, cleanUrl.length - 1);
       }
 
-      if (isSecure) {
-        if (!cleanUrl.startsWith('wss://') && !cleanUrl.startsWith('https://')) {
-          cleanUrl = 'wss://${cleanUrl.replaceAll(RegExp(r'^.*://'), '')}';
-        }
-      } else {
-        if (!cleanUrl.startsWith('ws://') && !cleanUrl.startsWith('http://')) {
-          cleanUrl = 'ws://${cleanUrl.replaceAll(RegExp(r'^.*://'), '')}';
-        }
-      }
-
+      print('📡 WebSocket Base URL: $cleanUrl');
       return cleanUrl;
     } catch (e) {
-      print('⚠️ Using fallback WebSocket URL from env');
-      final wsUrl = dotenv.get('WS_URL', fallback: '');
-      if (wsUrl.isEmpty) throw Exception('WS_URL not configured');
-      return wsUrl;
+      print('⚠️ WebSocketConfig error: $e');
+      // Fallback
+      if (kIsWeb) {
+        return 'https://pcw-ride-server.up.railway.app';
+      }
+      return 'http://localhost:3000';
     }
   }
 
-  // Other getters remain the same but remove _initialized checks
-  static Map<String, dynamic> get options {
-    return {
-      'transports': ['websocket'],
-      'path': ApiConfig.wsPath ?? '/socket.io', // Add fallback
+  // Socket.IO connection options - SIMPLIFIED
+  static Map<String, dynamic> get connectionOptions {
+    final options = {
+      'transports': [
+        'websocket',
+        'polling',
+      ], 
+      'path': '/socket.io',
+      'timeout': 20000,
       'reconnection': true,
       'reconnectionAttempts': 10,
       'reconnectionDelay': 1000,
-      'timeout': 20000,
-      'autoConnect': false,
+      'reconnectionDelayMax': 5000,
+      'autoConnect': false, // Don't auto-connect, we'll control it
+      'forceNew': true,
     };
-  }
 
-// Get WebSocket URL for specific namespace
-static String getNamespaceUrl(String namespace) {
-  if (!_initialized) {
-    throw Exception('WebSocketConfig not initialized');
-  }
+    // For web, add specific options
+    if (kIsWeb) {
+      options['withCredentials'] = false;
+      options['transports'] = ['polling', 'websocket']; // Polling first for web
+    }
 
-  // Use the base WS URL without the old /notifications namespace
-  String baseUrl = ApiConfig.wsBaseUrl;
-
-  // Ensure namespace starts with /
-  if (!namespace.startsWith('/')) {
-    namespace = '/$namespace';
+    return options;
   }
-
-  // Append namespace to base URL
-  if (baseUrl.endsWith('/')) {
-    return '${baseUrl.substring(0, baseUrl.length - 1)}$namespace';
-  } else {
-    return '$baseUrl$namespace';
-  }
-}
 
   // Check if connection should be secure
   static bool get isSecure {
-    final wsUrl = dotenv.env['WS_URL'] ?? '';
+    if (kIsWeb) return true;
+    final wsUrl = ApiConfig.wsBaseUrl;
     return wsUrl.startsWith('wss://') || wsUrl.startsWith('https://');
   }
 
-  // Debug mode for WebSocket
-  static bool get debugMode {
-    if (!_initialized) return true;
-    return dotenv.env['WS_DEBUG']?.toLowerCase() == 'true' || !isProduction;
-  }
+  // Debug mode
+  static bool get debugMode => true;
 
   static bool get isProduction {
-    final wsUrl = dotenv.env['WS_URL'] ?? '';
-    return wsUrl.startsWith('wss://');
+    if (kIsWeb) return true;
+    final wsUrl = ApiConfig.wsBaseUrl;
+    return wsUrl.startsWith('wss://') || wsUrl.startsWith('https://');
   }
-
-  // Ping interval in milliseconds
-  static int get pingInterval => 25000;
-
-  // Ping timeout in milliseconds
-  static int get pingTimeout => 60000;
 }
-

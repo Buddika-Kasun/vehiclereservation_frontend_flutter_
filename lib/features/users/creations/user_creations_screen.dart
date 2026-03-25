@@ -1,4 +1,6 @@
 // lib/features/user_creations/screens/user_creations_screen.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/department_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_creation_model.dart';
@@ -32,6 +34,10 @@ class _UserCreationsScreenState extends BaseUserCreationListState<UserCreationsS
   List<Department> _availableDepartments = [];
 
   String loadingMsg = 'Loading...';
+
+  // Add polling timer for auto-refresh
+  Timer? _refreshTimer;
+  bool _isRefreshingSilently = false;
 
   @override
   void initState() {

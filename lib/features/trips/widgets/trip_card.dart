@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/new_models/trip_card_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/utils/helper_methods.dart';
+
 class TripCard<T extends TripCardModel> extends StatelessWidget {
   final T trip;
   final VoidCallback onTap;
@@ -10,6 +11,8 @@ class TripCard<T extends TripCardModel> extends StatelessWidget {
   final bool showLocationInfo;
   final bool showScheduleInfo;
   final bool showTripType;
+  final bool showCreatedAt;
+  final bool showConfirmAt;
 
   const TripCard({
     Key? key,
@@ -20,6 +23,8 @@ class TripCard<T extends TripCardModel> extends StatelessWidget {
     this.showLocationInfo = true,
     this.showScheduleInfo = false,
     this.showTripType = false,
+    this.showCreatedAt = false,
+    this.showConfirmAt = false,
   }) : super(key: key);
 
   @override
@@ -36,6 +41,12 @@ class TripCard<T extends TripCardModel> extends StatelessWidget {
             children: [
               _buildHeader(),
               const SizedBox(height: 12),
+              if (showCreatedAt) ...[
+                _buildCreatedAt(),
+              ],
+              if (showConfirmAt) ...[
+                _buildConfirmAt(),
+              ],
               _buildRequesterVehicleInfo(),
               const SizedBox(height: 4),
               _buildDateTimeRow(),
@@ -73,7 +84,6 @@ class TripCard<T extends TripCardModel> extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-
         Row(
           children: [
             // Trip user type
@@ -125,7 +135,11 @@ class TripCard<T extends TripCardModel> extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.repeat, size: 12, color: Colors.blueAccent),
+                    const Icon(
+                      Icons.repeat,
+                      size: 12,
+                      color: Colors.blueAccent,
+                    ),
                     const SizedBox(width: 4),
                     const Text(
                       'Scheduled',
@@ -201,7 +215,11 @@ class TripCard<T extends TripCardModel> extends StatelessWidget {
         const SizedBox(width: 6),
         Text(
           trip.requesterName ?? 'Unknown',
-          style: TextStyle(color: Colors.grey[300], fontSize: 14, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            color: Colors.grey[300],
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         const Spacer(),
         if (showVehicleInfo && trip.vehicleModel != null)
@@ -233,7 +251,6 @@ class TripCard<T extends TripCardModel> extends StatelessWidget {
                 ),
             ],
           ),
-        
       ],
     );
   }
@@ -299,6 +316,54 @@ class TripCard<T extends TripCardModel> extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCreatedAt() {
+    return Row(
+      children: [
+        Icon(
+          Icons.create,
+          size: 16,
+          color: trip.createdAt != null ? Colors.blue : Colors.grey,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            trip.formatCreatedAt(),
+            style: TextStyle(
+              fontSize: 13,
+              color: trip.createdAt != null ? Colors.blue : Colors.grey,
+              fontStyle: FontStyle.italic,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConfirmAt() {
+    return Row(
+      children: [
+        Icon(
+          Icons.check_circle,
+          size: 16,
+          color: trip.confirmAt != null ? Colors.green : Colors.grey,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            trip.formatConfirmAt(),
+            style: TextStyle(
+              fontSize: 13,
+              color: trip.confirmAt != null ? Colors.green : Colors.grey,
+              fontStyle: FontStyle.italic,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
     );
   }
 

@@ -173,7 +173,7 @@ class _AssignedRidesScreenState extends BaseTripListState<AssignedRidesScreen> {
                   // CountBadge (using your existing widget)
                   CountBadge(
                     totalCount: total,
-                    label: '${getTripStatusLabel(statusFilter)} Trips',
+                    label: getDynamicBadgeLabel(),
                   ),
 
                   const Spacer(),
