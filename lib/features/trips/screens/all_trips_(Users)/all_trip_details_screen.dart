@@ -1239,8 +1239,8 @@ class _AllTripDetailsScreenState extends State<AllTripDetailsScreen> {
             children: [
               _buildMetricCard(
                 Icons.edit_road,
-                '${_tripDetails!.details.route.metrics.distance} km',
-                '${_tripDetails!.details.route.metrics.estimatedDuration} min',
+                '${_tripDetails!.details.route.metrics.distance * 2} km',
+                '${_tripDetails!.details.route.metrics.estimatedDuration * 2} min',
               ),
               SizedBox(width: 16),
               _buildMetricCard(
@@ -1800,7 +1800,7 @@ class _AllTripDetailsScreenState extends State<AllTripDetailsScreen> {
               double.parse(
                     _tripDetails!.details.route.metrics.estimatedDuration,
                   ) 
-                  //* 2,
+                  * 2,
             ),
             actualValue: _tripDetails?.status.toLowerCase() == 'completed'
                 ? _formatDurationToHoursMinutes(
@@ -1818,7 +1818,7 @@ class _AllTripDetailsScreenState extends State<AllTripDetailsScreen> {
           _buildComparisonRow(
             label: 'Distance (km)',
             estimatedValue:
-                '${(double.parse(_tripDetails!.details.route.metrics.distance)).toStringAsFixed(1)}',
+                '${(double.parse(_tripDetails!.details.route.metrics.distance) * 2).toStringAsFixed(1)}',
             actualValue: _tripDetails?.status.toLowerCase() == 'completed'
                 ? '${_tripDetails!.details.route.metrics.actualDistance}'
                 : '--',

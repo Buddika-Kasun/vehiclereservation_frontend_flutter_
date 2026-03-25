@@ -10,9 +10,10 @@ import 'package:vehiclereservation_frontend_flutter_/data/models/department_mode
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
-import 'dart:html' as html;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:vehiclereservation_frontend_flutter_/shared/widgets/message_overlay.dart';
+
+import 'package:vehiclereservation_frontend_flutter_/features/trips/utils/download_utils.dart';
 
 class AdminDashboardContent extends StatefulWidget {
   final User? user;
@@ -1097,9 +1098,16 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
     String fileName,
     String format,
   ) async {
+
+    // Only execute on web platform
+    if (!kIsWeb) {
+      throw Exception('Web download only available on web platform');
+    }
+
     try {
       print('Starting web download for: $fileName');
 
+      /*
       // Create a blob from the bytes
       final blob = html.Blob([fileBytes], 'application/octet-stream');
 
@@ -1120,7 +1128,9 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
 
       // Clean up the URL after download
       html.Url.revokeObjectUrl(url);
-
+      */
+      downloadFileWeb(fileBytes, fileName, format);
+      
       print('Web download completed successfully');
 
       // Show success message
@@ -1139,24 +1149,7 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
     } catch (e) {
       print('Error in web download: $e');
 
-      // Fallback: Use data URL for download
-      try {
-        final mimeType = format == 'pdf'
-            ? 'application/pdf'
-            : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-
-        final base64Data = base64Encode(fileBytes);
-        final dataUrl = 'data:$mimeType;base64,$base64Data';
-
-        final anchor = html.AnchorElement(href: dataUrl)
-          ..setAttribute('download', fileName)
-          ..click();
-
-        print('Web download completed using data URL fallback');
-      } catch (fallbackError) {
-        print('Fallback download also failed: $fallbackError');
-        throw Exception('Failed to download file on web platform');
-      }
+      _showErrorSnackBar('Failed to download report. Please try again.');
     }
   }
 

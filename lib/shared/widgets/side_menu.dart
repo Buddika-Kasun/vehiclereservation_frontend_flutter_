@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/app_info_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/constant.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
 
@@ -83,7 +84,7 @@ class SideMenu extends StatelessWidget {
           MenuItem(Icons.directions_car, 'My Rides'),
           MenuItem(Icons.directions_transit, 'All Trips'),
           MenuItem(Icons.car_rental_sharp, 'My Vehicles'),
-          MenuItem(Icons.car_rental_sharp, 'Vehicles'),
+          MenuItem(Icons.car_rental_sharp, 'All Vehicles'),
           MenuItem(Icons.directions_car, 'Assigned Rides'),
           MenuItem(Icons.verified, 'Review Trips'),
         ]);
@@ -140,7 +141,7 @@ class SideMenu extends StatelessWidget {
           AppBar(
             backgroundColor: Colors.black,
             elevation: 0,
-            toolbarHeight: 80,
+            toolbarHeight: 70,
             leading: IconButton(
               icon: Icon(
                 isAdminConsole ? Icons.arrow_back : Icons.close,
@@ -163,6 +164,30 @@ class SideMenu extends StatelessWidget {
               ),
             ),
             centerTitle: true,
+            // Add this action for version
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    //color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'v ${AppInfoService.version}',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
 
           if (!isAdminConsole) _buildUserCard(),
@@ -214,7 +239,7 @@ class SideMenu extends StatelessWidget {
   Widget _buildUserCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
       color: AppColors.primary,
       child: Column(
         children: [

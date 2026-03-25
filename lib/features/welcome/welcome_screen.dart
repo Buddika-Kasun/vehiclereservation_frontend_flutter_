@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/routes/app_routes.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/app_info_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/firebase_notification_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/pending_navigation_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/update_service.dart';
@@ -687,6 +688,16 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       ),
                     ),
                     const SizedBox(height: 15),
+                    Text(
+                      'v ${AppInfoService.version}',
+                      style: TextStyle(
+                        color: Colors.grey[500],
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -734,6 +745,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       ),
     );
   }
+
 }
 
 class _ParticlePainter extends CustomPainter {
