@@ -1876,6 +1876,7 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
                   2,
             ),
             actualValue: _tripDetails?.status.toLowerCase() == 'completed'
+            || _tripDetails?.status.toLowerCase() == 'exceed'
                 ? _formatDurationToHoursMinutes(
                     double.parse(
                       _tripDetails!.details.route.metrics.actualDuration
@@ -1893,6 +1894,7 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
             estimatedValue:
                 '${(double.parse(_tripDetails!.details.route.metrics.distance) * 2).toStringAsFixed(1)}',
             actualValue: _tripDetails?.status.toLowerCase() == 'completed'
+              || _tripDetails?.status.toLowerCase() == 'exceed'
                 ? '${_tripDetails!.details.route.metrics.actualDistance}'
                 : '--',
           ),
@@ -1917,6 +1919,7 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
             actualValue: isFixedRateTrip && fixedRateValue != null
                 ? _formatCurrency(fixedRateValue) // Show fixed rate for actual
                 : _tripDetails?.status.toLowerCase() == 'completed'
+                  || _tripDetails?.status.toLowerCase() == 'exceed'
                 ? _formatCurrency(_tripDetails!.cost ?? 0)
                 : '--',
           ),
