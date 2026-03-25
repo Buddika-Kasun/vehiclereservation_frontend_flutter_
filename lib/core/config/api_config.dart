@@ -10,8 +10,8 @@ class ApiConfig {
     if (!_initialized) {
       if (kIsWeb) {
         // For web (Railway), load from hardcoded config
-        _loadWebConfig();                         // Prod
-        //await dotenv.load(fileName: "assets/.env"); // Dev
+        //_loadWebConfig();                         // Prod
+        await dotenv.load(fileName: "assets/.env"); // Dev
       } else {
         // For mobile/desktop, load from .env file
         await dotenv.load(fileName: "assets/.env");
