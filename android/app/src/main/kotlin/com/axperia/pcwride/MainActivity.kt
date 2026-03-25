@@ -1,16 +1,26 @@
 package com.axperia.pcwride
 
-import android.content.Intent
-import android.net.Uri
-import androidx.core.content.FileProvider
+import androidx.activity.enableEdgeToEdge
+import android.os.Bundle
+//import android.content.Intent
+//import android.net.Uri
+//import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
-import io.flutter.plugin.common.MethodChannel
-import java.io.File
+//import io.flutter.plugin.common.MethodChannel
+//import java.io.File
+
 
 class MainActivity: FlutterActivity() {
-    private val CHANNEL = "com.axperia.pcwride/installer"
+    //private val CHANNEL = "com.axperia.pcwride/installer"
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        // Enable edge-to-edge BEFORE super.onCreate
+        //enableEdgeToEdge()
+        super.onCreate(savedInstanceState)
+    }
     
+    /*
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         
@@ -49,4 +59,5 @@ class MainActivity: FlutterActivity() {
             startActivity(intent)
         }
     }
+    */
 }
