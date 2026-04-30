@@ -27,3 +27,7 @@ flutter build apk --release
 # for delete .gradle/cache
 taskkill /F /IM java.exe
 rmdir /s /q "C:\Users\buddi\.gradle\caches"
+cd 
+
+# ram part clean
+powercfg -h off
