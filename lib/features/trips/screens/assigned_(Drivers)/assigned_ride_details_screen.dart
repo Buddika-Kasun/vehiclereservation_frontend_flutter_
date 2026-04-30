@@ -923,6 +923,8 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
     switch (type.toLowerCase()) {
       case 'normal':
         return 'Normal';
+      case 'emergency':
+        return 'Emergency';
       case 'fixed_rate':
         return 'Fixed Rate';
       case 'safety_approval':
@@ -936,6 +938,8 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
     switch (type.toLowerCase()) {
       case 'normal':
         return Colors.blue;
+      case 'emergency':
+        return Colors.red;
       case 'fixed_rate':
         return Colors.green;
       case 'safety_approval':
@@ -949,6 +953,8 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
     switch (type.toLowerCase()) {
       case 'normal':
         return Icons.trip_origin;
+      case 'emergency':
+        return Icons.error;
       case 'fixed_rate':
         return Icons.monetization_on;
       case 'safety_approval':
@@ -1919,7 +1925,9 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
           SizedBox(height: 12),
           if (_tripDetails?.details.approval.approvers.hod != null)
             _buildApproverRow(
-              'HOD Approval',
+              _tripDetails!.tripType == 'emergency'
+                  ? 'Emergency Approval'
+                  : 'HOD Approval',
               _tripDetails!.details.approval.approvers.hod!,
             ),
           if (_tripDetails?.details.approval.approvers.secondary != null)

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/routes/app_routes.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/app_info_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/firebase_notification_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/pending_navigation_service.dart';
@@ -10,6 +11,7 @@ import 'package:vehiclereservation_frontend_flutter_/core/utils/navigation_helpe
 import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/update_model.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/login_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/shared/widgets/download_progress_dialog.dart';
 import 'package:vehiclereservation_frontend_flutter_/shared/widgets/installation_progress_dialog.dart';
 import 'package:vehiclereservation_frontend_flutter_/shared/widgets/update_dialog.dart';
@@ -63,6 +65,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
     // Start checking for updates after animation begins
     _checkForUpdates();
+
   }
 
   Future<void> _checkForUpdates() async {
@@ -313,6 +316,23 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     );
   }
 
+  Future<void> logout() async {
+
+    // Clear FCM token from backend (optional)
+    await FirebaseNotificationService().onUserLogout();
+
+    // Clear storage and navigate to login
+    await StorageService.clearUserData();
+    await SecureStorageService().clearTokens();
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => LoginScreen()),
+      (route) => false,
+    );
+  }
+
+
   void _proceedToApp() {
     if (_updateChecked) return;
     _updateChecked = true;
@@ -326,6 +346,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         final token = await SecureStorageService().accessToken;
         if (user != null && token != null) {
 
+          final res = await ApiService.trackUserActivity(isLogin: false);
+          if (res?['success'] != true) {
+            await logout();
+          }
+
+          await ApiService.initializeUser(user.id);
           // Send FCM token to backend
           //await FirebaseNotificationService().sendTokenToBackend();
 
