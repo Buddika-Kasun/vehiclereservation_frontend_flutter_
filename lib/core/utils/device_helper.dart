@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:package_info_plus/package_info_plus.dart';
 
 class DeviceHelper {
   static final DeviceInfoPlugin _deviceInfo = DeviceInfoPlugin();
@@ -133,6 +134,12 @@ class DeviceHelper {
     if (Platform.isLinux) return 'Linux';
     if (Platform.isFuchsia) return 'Fuchsia';
     return 'Unknown';
+  }
+
+  static Future<String> getAppVersion() async {
+    if (kIsWeb) return 'web';
+    final PackageInfo packageInfo = await PackageInfo.fromPlatform();
+    return packageInfo.version; // Returns version from pubspec.yaml (e.g., "1.0.0")
   }
 
   /// Check if running on mobile
