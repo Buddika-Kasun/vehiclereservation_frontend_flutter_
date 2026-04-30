@@ -393,6 +393,31 @@ class ApiService {
     _isRefreshing = false;
   }
 
+  static Future<Map<String, dynamic>> initializeUser(int id) async {
+    // Reset API service session flag
+    ApiService.resetSession();
+
+    //final id = StorageService.userData?.id;
+
+    final res = await authenticatedApiCall('user/initial-user-by-id/$id');
+
+    if (res['success'] == true) {
+
+      // Convert the user map to User object and save
+      final userMap = res['data']['user'] as Map<String, dynamic>;
+      final user = User.fromJson(userMap);
+
+      await StorageService.saveUserData(userData: user, originalJson: userMap);
+
+      return res;
+    } else {
+      //throw Exception(errorData['message'] ?? 'Login failed: ${response.statusCode}');
+      throw res['message'] ?? 'User initialization failed';
+    }
+  }
+
+
+
   // Company API methods
   static Future<Map<String, dynamic>> getAllCompanies() async {
     final response = await authenticatedApiCall('company/get-all');
@@ -649,6 +674,13 @@ class ApiService {
     );
   }
 
+  static Future<Map<String, dynamic>> searchTripsApprovalUsers(String query) async {
+    return await authenticatedApiCall(
+      'user/search-trip-approval?query=$query',
+      method: 'GET',
+    );
+  }
+
   static Future<Map<String, dynamic>> approveUser(String userId, bool state) async {
     return await authenticatedApiCall(
       'user/set-approval/$userId',
@@ -659,9 +691,27 @@ class ApiService {
     );
   }
 
+  static Future<Map<String, dynamic>> tripApproveUser(
+    String userId,
+    bool state,
+  ) async {
+    return await authenticatedApiCall(
+      'user/set-trip-approval/$userId',
+      method: 'PUT',
+      body: {'state': state},
+    );
+  }
+
   static Future<Map<String, dynamic>> getUsersByUserApproval() async {
     return await authenticatedApiCall(
       'user/get-user-by-approval',
+      method: 'GET',
+    );
+  }
+
+  static Future<Map<String, dynamic>> getUsersByTripApproval() async {
+    return await authenticatedApiCall(
+      'user/get-user-by-trip-approval',
       method: 'GET',
     );
   }
@@ -2083,8 +2133,34 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>?> trackUserActivity({bool? isLogin}) async {
+    try {
+      print('🔄 Current action : ${isLogin == true ? "Login" : "Access"}');
+
+      // Get device information from helper
+      //final deviceId = await DeviceHelper.getDeviceId();
+      final deviceName = await DeviceHelper.getDeviceName();
+      final platform = DeviceHelper.getDeviceType();
+      final appVersion = await DeviceHelper.getAppVersion();
+
+      final res = await authenticatedApiCall(
+        'user/update-user-log',
+        method: 'PUT',
+        body: {
+          'deviceName': deviceName,
+          'platform': platform,
+          'appVersion': appVersion,
+          'dateTime': DateTime.now().toIso8601String(),
+          'isLogin': isLogin ?? false,
+        },
+      );
+      print('✅ User activity tracked successfully');
+      return res;
+    } catch (e) {
+      print('❌ Error tracking user activity: $e');
+      return null;
+    }
+  }
+
 }
-
-
-
 

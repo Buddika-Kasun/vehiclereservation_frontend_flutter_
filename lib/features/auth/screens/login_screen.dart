@@ -35,6 +35,8 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text,
       );
 
+      await ApiService.trackUserActivity(isLogin: true);
+
       // Send FCM token to backend
       await FirebaseNotificationService().onUserLogin();
       
