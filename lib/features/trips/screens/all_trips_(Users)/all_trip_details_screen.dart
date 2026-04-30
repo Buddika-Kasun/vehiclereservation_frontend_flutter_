@@ -1239,8 +1239,14 @@ class _AllTripDetailsScreenState extends State<AllTripDetailsScreen> {
             children: [
               _buildMetricCard(
                 Icons.edit_road,
-                '${_tripDetails!.details.route.metrics.distance} km',
-                '${_tripDetails!.details.route.metrics.estimatedDuration} min',
+                '${((double.tryParse(_tripDetails?.details.route.metrics.distance ?? '0') ?? 0) * 2).toStringAsFixed(1)} km',
+                //'${((double.tryParse(_tripDetails?.details.route.metrics.estimatedDuration ?? '0') ?? 0) * 2).toStringAsFixed(0)} min',
+                _formatDurationToHoursMinutes(
+                  double.parse(
+                        _tripDetails!.details.route.metrics.estimatedDuration,
+                      ) *
+                      2,
+                ),
               ),
               SizedBox(width: 16),
               _buildMetricCard(
@@ -1800,9 +1806,10 @@ class _AllTripDetailsScreenState extends State<AllTripDetailsScreen> {
               double.parse(
                     _tripDetails!.details.route.metrics.estimatedDuration,
                   ) 
-                  //* 2,
+                  * 2,
             ),
             actualValue: _tripDetails?.status.toLowerCase() == 'completed'
+              || _tripDetails?.status.toLowerCase() == 'exceed'
                 ? _formatDurationToHoursMinutes(
                     double.parse(
                       _tripDetails!.details.route.metrics.actualDuration
@@ -1818,8 +1825,9 @@ class _AllTripDetailsScreenState extends State<AllTripDetailsScreen> {
           _buildComparisonRow(
             label: 'Distance (km)',
             estimatedValue:
-                '${(double.parse(_tripDetails!.details.route.metrics.distance)).toStringAsFixed(1)}',
+                '${(double.parse(_tripDetails!.details.route.metrics.distance) * 2).toStringAsFixed(1)}',
             actualValue: _tripDetails?.status.toLowerCase() == 'completed'
+            || _tripDetails?.status.toLowerCase() == 'exceed'
                 ? '${_tripDetails!.details.route.metrics.actualDistance}'
                 : '--',
           ),
@@ -1836,6 +1844,7 @@ class _AllTripDetailsScreenState extends State<AllTripDetailsScreen> {
                   double.parse(_tripDetails?.vehicle.costPerKm ?? '0'),
             ),
             actualValue: _tripDetails?.status.toLowerCase() == 'completed'
+            || _tripDetails?.status.toLowerCase() == 'exceed'
                 ? _formatCurrency(_tripDetails!.cost ?? 0)
                 : '--',
           ),

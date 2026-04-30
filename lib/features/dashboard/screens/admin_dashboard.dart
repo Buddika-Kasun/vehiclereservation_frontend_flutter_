@@ -10,6 +10,10 @@ import 'package:vehiclereservation_frontend_flutter_/data/models/department_mode
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:vehiclereservation_frontend_flutter_/shared/widgets/message_overlay.dart';
+
+import 'package:vehiclereservation_frontend_flutter_/features/trips/utils/download_utils.dart';
 
 class AdminDashboardContent extends StatefulWidget {
   final User? user;
@@ -883,6 +887,7 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
   }
 
   /// Downloads the report in specified format (PDF/Excel)
+
   Future<void> _downloadReport(String format) async {
     print('=== START _downloadReport for format: $format ===');
 
@@ -892,7 +897,7 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
       return;
     }
 
-    print('Selected dates: ${_startDate} to ${_endDate}');
+    print('Selected dates: $_startDate to $_endDate');
 
     if (_endDate!.isBefore(_startDate!)) {
       print('Error: End date before start date');
@@ -963,8 +968,14 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
 
         print('Downloading file: $fileName');
 
-        // Mobile download using path_provider
-        await _downloadFileMobile(fileBytes, fileName, format);
+        // Platform-specific download
+        if (kIsWeb) {
+          // Web download using html package
+          await _downloadFileWeb(fileBytes, fileName, format);
+        } else {
+          // Mobile download using path_provider
+          await _downloadFileMobile(fileBytes, fileName, format);
+        }
 
         // Reset dates after successful download
         setState(() {
@@ -1081,9 +1092,71 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
     }
   }
 
+  // Add this new method for web download
+  Future<void> _downloadFileWeb(
+    Uint8List fileBytes,
+    String fileName,
+    String format,
+  ) async {
+
+    // Only execute on web platform
+    if (!kIsWeb) {
+      throw Exception('Web download only available on web platform');
+    }
+
+    try {
+      print('Starting web download for: $fileName');
+
+      /*
+      // Create a blob from the bytes
+      final blob = html.Blob([fileBytes], 'application/octet-stream');
+
+      // Determine MIME type based on format
+      final mimeType = format == 'pdf'
+          ? 'application/pdf'
+          : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+      final blobWithType = html.Blob([fileBytes], mimeType);
+
+      // Create a URL for the blob
+      final url = html.Url.createObjectUrlFromBlob(blobWithType);
+
+      // Create an anchor element and trigger download
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute('download', fileName)
+        ..click();
+
+      // Clean up the URL after download
+      html.Url.revokeObjectUrl(url);
+      */
+      downloadFileWeb(fileBytes, fileName, format);
+      
+      print('Web download completed successfully');
+
+      // Show success message
+      if (mounted) {
+        MessageOverlay.showSuccess(
+          context: context,
+          message: 'Report downloaded successfully: $fileName',
+          position: OverlayPosition.top,
+          showBackgroundOverlay: true,
+          duration: const Duration(seconds: 2),
+          onComplete: () {
+            // You might want to trigger a refresh here
+          },
+        );
+      }
+    } catch (e) {
+      print('Error in web download: $e');
+
+      _showErrorSnackBar('Failed to download report. Please try again.');
+    }
+  }
+
   /// Shows error snackbar with better styling
   void _showErrorSnackBar(String message) {
     // Clear any existing snackbars first
+    /*
     ScaffoldMessenger.of(context).clearSnackBars();
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1107,11 +1180,21 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
         ),
       ),
     );
+    */
+
+    MessageOverlay.showError(
+      context: context,
+      message: message,
+      position: OverlayPosition.top,
+      showBackgroundOverlay: true,
+      showOkButton: true,
+    );
   }
 
   /// Shows success snackbar with better styling
   void _showSuccessSnackBar(String message) {
     // Clear any existing snackbars first
+    /*
     ScaffoldMessenger.of(context).clearSnackBars();
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1134,6 +1217,18 @@ class _AdminDashboardContentState extends State<AdminDashboardContent> {
           },
         ),
       ),
+    );
+    */
+
+    MessageOverlay.showSuccess(
+      context: context,
+      message: message,
+      position: OverlayPosition.top,
+      showBackgroundOverlay: true,
+      duration: const Duration(seconds: 2),
+      onComplete: () {
+        // You might want to trigger a refresh here
+      },
     );
   }
 

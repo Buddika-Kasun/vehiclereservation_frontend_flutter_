@@ -2102,6 +2102,7 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
                   2,
             ),
             actualValue: _tripDetails?.status.toLowerCase() == 'completed'
+              || _tripDetails?.status.toLowerCase() == 'exceed'
                 ? _formatDurationToHoursMinutes(
                     double.parse(_tripDetails!.details.route.metrics.actualDuration.toString()),
                   )
@@ -2116,6 +2117,7 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
             estimatedValue:
                 '${(double.parse(_tripDetails!.details.route.metrics.distance) * 2).toStringAsFixed(1)}',
             actualValue: _tripDetails?.status.toLowerCase() == 'completed'
+              || _tripDetails?.status.toLowerCase() == 'exceed'
                 ? '${_tripDetails!.details.route.metrics.actualDistance}'
                 : '--',
           ),
@@ -2132,6 +2134,7 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
               double.parse(_tripDetails?.vehicle.costPerKm ?? '0'),
             ),
             actualValue: _tripDetails?.status.toLowerCase() == 'completed'
+              || _tripDetails?.status.toLowerCase() == 'exceed'
                 ? _formatCurrency(_tripDetails!.cost ?? 0)
                 : '--',
           ),
