@@ -2162,5 +2162,127 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> getAllSavedLocations() async {
+    try {
+      return await ApiService.authenticatedApiCall(
+        'saved-locations/get-all',
+        method: 'GET',
+      );
+    } catch (e) {
+      print('Error getting saved locations: $e');
+      rethrow;
+    }
+  }
+
+  // Get single saved location by ID
+  static Future<Map<String, dynamic>> getSavedLocation(String id) async {
+    try {
+      return await ApiService.authenticatedApiCall(
+        'saved-locations/get/$id',
+        method: 'GET',
+      );
+    } catch (e) {
+      print('Error getting saved location: $e');
+      rethrow;
+    }
+  }
+
+  // Create new saved location
+  static Future<Map<String, dynamic>> createSavedLocation({
+    required String name,
+    required String address,
+    required double latitude,
+    required double longitude,
+    String? label,
+    bool isFavorite = false,
+  }) async {
+    try {
+      return await ApiService.authenticatedApiCall(
+        'saved-locations/save',
+        method: 'POST',
+        body: {
+          'name': name,
+          'address': address,
+          'latitude': latitude,
+          'longitude': longitude,
+          'label': label,
+          'isFavorite': isFavorite,
+        },
+      );
+    } catch (e) {
+      print('Error creating saved location: $e');
+      rethrow;
+    }
+  }
+
+  // Update saved location
+  static Future<Map<String, dynamic>> updateSavedLocation(
+    String id, {
+    String? name,
+    String? address,
+    double? latitude,
+    double? longitude,
+    String? label,
+    bool? isFavorite,
+  }) async {
+    try {
+      final Map<String, dynamic> body = {};
+      if (name != null) body['name'] = name;
+      if (address != null) body['address'] = address;
+      if (latitude != null) body['latitude'] = latitude;
+      if (longitude != null) body['longitude'] = longitude;
+      if (label != null) body['label'] = label;
+      if (isFavorite != null) body['isFavorite'] = isFavorite;
+
+      return await ApiService.authenticatedApiCall(
+        'saved-locations/update/$id',
+        method: 'PUT',
+        body: body,
+      );
+    } catch (e) {
+      print('Error updating saved location: $e');
+      rethrow;
+    }
+  }
+
+  // Increment use count (when user selects a saved location)
+  static Future<Map<String, dynamic>> incrementUseCount(String id) async {
+    try {
+      return await ApiService.authenticatedApiCall(
+        'saved-locations/use/$id',
+        method: 'POST',
+      );
+    } catch (e) {
+      print('Error incrementing use count: $e');
+      rethrow;
+    }
+  }
+
+  // Toggle favorite status
+  static Future<Map<String, dynamic>> toggleFavorite(String id) async {
+    try {
+      return await ApiService.authenticatedApiCall(
+        'saved-locations/favorite/$id',
+        method: 'POST',
+      );
+    } catch (e) {
+      print('Error toggling favorite: $e');
+      rethrow;
+    }
+  }
+
+  // Delete saved location
+  static Future<Map<String, dynamic>> deleteSavedLocation(String id) async {
+    try {
+      return await ApiService.authenticatedApiCall(
+        'saved-locations/delete/$id',
+        method: 'DELETE',
+      );
+    } catch (e) {
+      print('Error deleting saved location: $e');
+      rethrow;
+    }
+  }
+
 }
 
