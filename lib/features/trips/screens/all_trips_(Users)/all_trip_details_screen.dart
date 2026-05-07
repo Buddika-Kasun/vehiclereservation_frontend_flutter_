@@ -1716,11 +1716,12 @@ class _AllTripDetailsScreenState extends State<AllTripDetailsScreen> {
   // Update the _buildApprovalSection() method:
   Widget _buildApprovalSection() {
     // Check if approval details are available
-    final hasApproval =
-        _tripDetails?.details.approval.hasApproval == true &&
+    final hasApprovers =
         (_tripDetails!.details.approval.approvers.hod != null ||
-            _tripDetails!.details.approval.approvers.secondary != null ||
-            _tripDetails!.details.approval.approvers.safety != null);
+        _tripDetails!.details.approval.approvers.secondary != null ||
+        _tripDetails!.details.approval.approvers.safety != null);
+
+    final hasApproval = _tripDetails?.details.approval.hasApproval == true;
 
     if (!hasApproval) {
       return Container(
@@ -1790,6 +1791,35 @@ class _AllTripDetailsScreenState extends State<AllTripDetailsScreen> {
           ],
         ),
       );
+    } else if (hasApproval && !hasApprovers) {
+      return Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey[900],
+          border: Border(bottom: BorderSide(color: Colors.grey[800]!)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Approval Status',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 12),
+            _buildApproverRow(
+              'Auto approved',
+              Approver(
+                name: 'Night trip (8PM-12AM) - No HOD approval needed',
+                status: 'approved',
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     return Container(
@@ -1810,13 +1840,22 @@ class _AllTripDetailsScreenState extends State<AllTripDetailsScreen> {
             ),
           ),
           SizedBox(height: 12),
-          if (_tripDetails?.details.approval.approvers.hod != null)
+          if (_tripDetails?.details.approval.approvers.hod != null) ...[
             _buildApproverRow(
               _tripDetails!.tripType == 'emergency'
                   ? 'Emergency Approval'
                   : 'HOD Approval',
               _tripDetails!.details.approval.approvers.hod!,
             ),
+          ] else ...[
+            _buildApproverRow(
+              'Auto approved',
+              Approver(
+                name: 'Night trip (8PM-12AM) - No HOD approval needed',
+                status: 'approved',
+              ),
+            ),
+          ],
           if (_tripDetails?.details.approval.approvers.secondary != null)
             _buildApproverRow(
               'Secondary Approval',
