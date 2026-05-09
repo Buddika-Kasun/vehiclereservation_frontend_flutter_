@@ -68,6 +68,8 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
     switch (type.toLowerCase()) {
       case 'normal':
         return 'Normal';
+      case 'emergency':
+        return 'Emergency';
       case 'fixed_rate':
         return 'Fixed Rate';
       case 'safety_approval':
@@ -81,6 +83,8 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
     switch (type.toLowerCase()) {
       case 'normal':
         return Colors.blue;
+      case 'emergency':
+        return Colors.red;
       case 'fixed_rate':
         return Colors.green;
       case 'safety_approval':
@@ -94,6 +98,8 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
     switch (type.toLowerCase()) {
       case 'normal':
         return Icons.trip_origin;
+      case 'emergency':
+        return Icons.error;
       case 'fixed_rate':
         return Icons.monetization_on;
       case 'safety_approval':
@@ -1344,6 +1350,7 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
                   2,
             ),
             actualValue: _tripDetails?.status.toLowerCase() == 'completed'
+              || _tripDetails?.status.toLowerCase() == 'exceed'
                 ? _formatDurationToHoursMinutes(
                     double.parse(
                       _tripDetails!.details.route.metrics.actualDuration
@@ -1361,6 +1368,7 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
             estimatedValue:
                 '${(double.parse(_tripDetails!.details.route.metrics.distance) * 2).toStringAsFixed(1)}',
             actualValue: _tripDetails?.status.toLowerCase() == 'completed'
+              || _tripDetails?.status.toLowerCase() == 'exceed'
                 ? '${_tripDetails!.details.route.metrics.actualDistance}'
                 : '--',
           ),
@@ -1387,6 +1395,7 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
                           fixedRateValue,
                         ) // Show fixed rate for actual
                       : _tripDetails?.status.toLowerCase() == 'completed'
+                        || _tripDetails?.status.toLowerCase() == 'exceed'
                         ? _formatCurrency(_tripDetails!.cost ?? 0)
                         : '--',
           ),
@@ -2399,7 +2408,9 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
           SizedBox(height: 12),
           if (_tripDetails?.details.approval.approvers.hod != null)
             _buildApproverRow(
-              'HOD Approval',
+              _tripDetails!.tripType == 'emergency'
+                  ? 'Emergency Approval'
+                  : 'HOD Approval',
               _tripDetails!.details.approval.approvers.hod!,
             ),
           if (_tripDetails?.details.approval.approvers.secondary != null)

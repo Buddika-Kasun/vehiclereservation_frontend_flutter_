@@ -7,6 +7,7 @@ import 'package:vehiclereservation_frontend_flutter_/core/config/api_config.dart
 import 'package:vehiclereservation_frontend_flutter_/core/config/websocket_config.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/routes/app_routes.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/routes/route_generator.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/app_info_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/connectivity_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/server_health_service.dart';
@@ -54,6 +55,9 @@ void main() async {
     if (kDebugMode) print('❌ WebSocket Config init error: $e\n$st');
   }
   */
+
+  // Initialize app info
+  await AppInfoService.init();
 
   // Initialize configs safely - ADD THIS ORDER
   try {
@@ -261,10 +265,12 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    
     return MaterialApp(
       title: 'PCW RIDE',
       navigatorKey: AuthManager.navigatorKey,
       theme: ThemeData(
+        fontFamily: 'system-ui',
         primarySwatch: Colors.blue,
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFFF5F5F5),

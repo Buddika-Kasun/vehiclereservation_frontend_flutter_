@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart'; // Add this import
 import 'package:vehiclereservation_frontend_flutter_/core/services/firebase_notification_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/utils/auth_manager.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/device_helper.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/available_vehicles_response.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/checklist_models.dart';
@@ -27,8 +28,18 @@ class ApiService {
   static final String baseUrl = ApiConfig.baseUrl;
   //static String get baseUrl => ApiConfig.baseUrl;
 
+  static bool _isRefreshing = false;
+  
+  // Add a flag to track if session is expired
+  static bool _sessionExpired = false;
+
+
   static Future<Map<String, dynamic>> login(
       String username, String password) async {
+
+    // Reset API service session flag
+    ApiService.resetSession();
+
     final response = await http.post(
       Uri.parse('$baseUrl/auth/login'),
       headers: {'Content-Type': 'application/json'},
@@ -174,164 +185,238 @@ class ApiService {
   }
 
   // Refresh token method
-  static Future<Map<String, dynamic>> refreshToken() async {
+  static Future<Map<String, dynamic>> refreshTokenFun() async {
+    //print("===== Refreshing tokens ====");
+
     final refreshToken = await SecureStorageService().refreshToken;
     if (refreshToken == null) {
       throw Exception('No refresh token available');
     }
 
-    final response = await http.post(
-      Uri.parse('$baseUrl/auth/refresh'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $refreshToken',
-      },
-      body: {
-        'refreshToken': refreshToken,
-      }
-    );
-
-    final responseData = json.decode(response.body);
-    
-    if (responseData['success'] == true) {
-      // Save new tokens
-      await SecureStorageService().saveTokens(
-        accessToken: responseData['data']['accessToken'],
-        refreshToken: responseData['data']['refreshToken'] ?? refreshToken, // Use new refresh token if provided, else keep old one
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/refresh'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'refreshToken': refreshToken}),
       );
 
-      final userMap = responseData['data']['user'] as Map<String, dynamic>;
-      final user = User.fromJson(userMap);
+      //print("Refresh response status: ${response.statusCode}");
+      //print("Refresh response body: ${response.body}");
 
-      await StorageService.saveUserData(
-        userData: user,
-        originalJson: userMap);
-      return responseData;
-    } else {
-      // If refresh fails, clear user data (force logout)
-      await SecureStorageService().clearTokens();
-      await StorageService.clearUserData();
-      throw Exception(responseData['message'] ?? 'Token refresh failed');
+      final responseData = json.decode(response.body);
+
+      // Check if response is successful (status 200 OR 201 and success true)
+      if ((response.statusCode == 200 || response.statusCode == 201) &&
+          responseData['success'] == true) {
+        // Success case - don't throw error
+        final data = responseData['data'];
+
+        if (data == null) {
+          throw Exception('Invalid response: missing data field');
+        }
+
+        final newAccessToken = data['accessToken'];
+        final newRefreshToken = data['refreshToken'];
+
+        if (newAccessToken == null) {
+          throw Exception('Invalid response: missing accessToken');
+        }
+
+        // Save new tokens
+        await SecureStorageService().saveTokens(
+          accessToken: newAccessToken,
+          refreshToken: newRefreshToken ?? refreshToken,
+        );
+
+        // Update user data
+        if (data['user'] != null) {
+          try {
+            final userMap = data['user'] as Map<String, dynamic>;
+            final user = User.fromJson(userMap);
+            await StorageService.saveUserData(
+              userData: user,
+              originalJson: userMap,
+            );
+          } catch (e) {
+            //print('Warning: Failed to save user data during refresh: $e');
+          }
+        }
+
+        //print("✅ Token refresh successful");
+        // Return the response data (don't throw)
+        return responseData;
+      } else {
+        // Error case
+        final errorMessage = responseData['message'] ?? 'Token refresh failed';
+        //print('Refresh failed: $errorMessage');
+
+        // Clear tokens on auth failure
+        // await SecureStorageService().clearTokens();
+        // await StorageService.clearUserData();
+        //AuthManager.handleSessionTimeout();
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      //print('Refresh token error: $e');
+
+      // Don't clear tokens on network errors
+      if (e.toString().contains('SocketException') ||
+          e.toString().contains('Connection refused') ||
+          e.toString().contains('Timeout')) {
+        throw Exception('Network error: Unable to refresh token');
+      }
+
+      // Clear tokens on other errors
+      // await SecureStorageService().clearTokens();
+      // await StorageService.clearUserData();
+      //AuthManager.handleSessionTimeout();
+      throw Exception('Failed to refresh token: $e');
     }
   }
 
   // Enhanced API call with automatic token refresh
   static Future<Map<String, dynamic>> authenticatedApiCall(
-  String endpoint, {
-  String method = 'GET',
-  dynamic body,
-}) async {
-  // Check if token is expired
-  if (await StorageService.isAccessTokenExpired) {
-    // Try to refresh token
-    await refreshToken();
-  }
+    String endpoint, {
+    String method = 'GET',
+    dynamic body,
+    int retryCount = 0,
+  }) async {
 
-  final accessToken = await SecureStorageService().accessToken;
-  if (accessToken == null) {
-    throw Exception('No access token available');
-  }
-
-  // Create the request based on method
-  http.Response response;
-  final uri = Uri.parse('$baseUrl/$endpoint');
-  final headers = {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer $accessToken',
-  };
-
-  switch (method.toUpperCase()) {
-    case 'POST':
-      response = await http.post(
-        uri,
-        headers: headers,
-        body: body != null ? json.encode(body) : null,
-      );
-      break;
-    case 'PUT':
-      response = await http.put(
-        uri,
-        headers: headers,
-        body: body != null ? json.encode(body) : null,
-      );
-      break;
-    case 'DELETE':
-      response = await http.delete(
-        uri,
-        headers: headers,
-      );
-      break;
-    case 'GET':
-    default:
-      response = await http.get(
-        uri,
-        headers: headers,
-      );
-      break;
-  }
-
-  final responseData = json.decode(response.body);
-  
-  if (response.statusCode == 401) {
-    // Token might be invalid, try refresh once
-    await refreshToken();
-    
-    // Get new token and retry the request
-    final newAccessToken = await SecureStorageService().accessToken;
-    if (newAccessToken == null) {
-      throw Exception('No access token available after refresh');
+    if (_sessionExpired) {
+      throw Exception('Session expired. Please login again.');
     }
-    
-    // Update headers with new token
-    headers['Authorization'] = 'Bearer $newAccessToken';
-    
-    // Retry the request with new token (only once)
-    switch (method.toUpperCase()) {
-      case 'POST':
-        response = await http.post(
-          uri,
-          headers: headers,
-          body: body != null ? json.encode(body) : null,
-        );
-        break;
-      case 'PUT':
-        response = await http.put(
-          uri,
-          headers: headers,
-          body: body != null ? json.encode(body) : null,
-        );
-        break;
-      case 'DELETE':
-        response = await http.delete(
-          uri,
-          headers: headers,
-        );
-        break;
-      case 'GET':
-      default:
-        response = await http.get(
-          uri,
-          headers: headers,
-        );
-        break;
+
+    const maxRetries = 1;
+
+    // Get final access token
+    final finalAccessToken = await SecureStorageService().accessToken;
+    if (finalAccessToken == null) {
+      throw Exception('No access token available. Please login again.');
     }
-    
-    // Parse the retry response
-    final retryResponseData = json.decode(response.body);
-    
+
+    // Create the request based on method
+    http.Response response;
+    final uri = Uri.parse('$baseUrl/$endpoint');
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $finalAccessToken',
+    };
+
+    try {
+      switch (method.toUpperCase()) {
+        case 'POST':
+          response = await http.post(
+            uri,
+            headers: headers,
+            body: body != null ? json.encode(body) : null,
+          );
+          break;
+        case 'PUT':
+          response = await http.put(
+            uri,
+            headers: headers,
+            body: body != null ? json.encode(body) : null,
+          );
+          break;
+        case 'DELETE':
+          response = await http.delete(uri, headers: headers);
+          break;
+        case 'GET':
+        default:
+          response = await http.get(uri, headers: headers);
+          break;
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+
+    final responseData = json.decode(response.body);
+
+    // Handle 401 Unauthorized
+    if (response.statusCode == 401 && retryCount < maxRetries) {
+      // Try to refresh token
+      if (_isRefreshing) {
+        await Future.delayed(Duration(milliseconds: 100));
+        return authenticatedApiCall(
+          endpoint,
+          method: method,
+          body: body,
+          retryCount: retryCount,
+        );
+      }
+
+      _isRefreshing = true;
+      bool refreshSuccess = false;
+
+      try {
+        await refreshTokenFun();
+        refreshSuccess = true;
+        print("✅ Token refreshed, retrying request...");
+      } catch (e) {
+        print('Refresh failed: $e');
+        refreshSuccess = false;
+      } finally {
+        _isRefreshing = false;
+      }
+
+      // Retry the request with new token
+      // Only retry if refresh was successful
+      if (refreshSuccess) {
+        // Retry the request with new token
+        return authenticatedApiCall(
+          endpoint,
+          method: method,
+          body: body,
+          retryCount: retryCount + 1,
+        );
+      }
+      else {
+        // Refresh failed - mark session as expired, clear tokens, and show timeout
+        _sessionExpired = true;
+        AuthManager.handleSessionTimeout();
+        throw Exception('Session expired. Please login again.');
+      }
+    }
+
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      return retryResponseData;
+      return responseData;
     } else {
-      throw Exception(retryResponseData['message'] ?? 'API call failed after token refresh');
+      throw Exception(
+        responseData['message'] ??
+            'API call failed with status ${response.statusCode}',
+      );
     }
   }
 
-  if (response.statusCode >= 200 && response.statusCode < 300) {
-    return responseData;
-  } else {
-    throw Exception(responseData['message'] ?? 'API call failed with status ${response.statusCode}');
+  static void resetSession() {
+    _sessionExpired = false;
+    _isRefreshing = false;
   }
-}
+
+  static Future<Map<String, dynamic>> initializeUser(int id) async {
+    // Reset API service session flag
+    ApiService.resetSession();
+
+    //final id = StorageService.userData?.id;
+
+    final res = await authenticatedApiCall('user/initial-user-by-id/$id');
+
+    if (res['success'] == true) {
+
+      // Convert the user map to User object and save
+      final userMap = res['data']['user'] as Map<String, dynamic>;
+      final user = User.fromJson(userMap);
+
+      await StorageService.saveUserData(userData: user, originalJson: userMap);
+
+      return res;
+    } else {
+      //throw Exception(errorData['message'] ?? 'Login failed: ${response.statusCode}');
+      throw res['message'] ?? 'User initialization failed';
+    }
+  }
+
+
 
   // Company API methods
   static Future<Map<String, dynamic>> getAllCompanies() async {
@@ -589,6 +674,13 @@ class ApiService {
     );
   }
 
+  static Future<Map<String, dynamic>> searchTripsApprovalUsers(String query) async {
+    return await authenticatedApiCall(
+      'user/search-trip-approval?query=$query',
+      method: 'GET',
+    );
+  }
+
   static Future<Map<String, dynamic>> approveUser(String userId, bool state) async {
     return await authenticatedApiCall(
       'user/set-approval/$userId',
@@ -599,9 +691,27 @@ class ApiService {
     );
   }
 
+  static Future<Map<String, dynamic>> tripApproveUser(
+    String userId,
+    bool state,
+  ) async {
+    return await authenticatedApiCall(
+      'user/set-trip-approval/$userId',
+      method: 'PUT',
+      body: {'state': state},
+    );
+  }
+
   static Future<Map<String, dynamic>> getUsersByUserApproval() async {
     return await authenticatedApiCall(
       'user/get-user-by-approval',
+      method: 'GET',
+    );
+  }
+
+  static Future<Map<String, dynamic>> getUsersByTripApproval() async {
+    return await authenticatedApiCall(
+      'user/get-user-by-trip-approval',
       method: 'GET',
     );
   }
@@ -1957,16 +2067,22 @@ class ApiService {
   }
   */
 
-  static Future<void> deleteFcmToken() async {
+  static Future<void> deleteFcmToken(int? userId) async {
     try {
       print('🔄 Deleting FCM token');
 
       final deviceId = await DeviceHelper.getDeviceId();
-
+      /*
       await authenticatedApiCall(
         'notifications/delete-fcm-token-new',
         method: 'PUT',
         body: {'deviceId': deviceId},
+      );
+      */
+      await http.put(
+        Uri.parse('$baseUrl/notifications/delete-fcm-token-new'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'deviceId': deviceId, 'userId': userId}),
       );
       print('✅ FCM token deleted successfully $deviceId');
     } catch (e) {
@@ -1974,8 +2090,77 @@ class ApiService {
     }
   }
 
+  // api_service.dart
+  static Future<void> registerWebDevice({
+    required String deviceId,
+    required String deviceName,
+  }) async {
+    try {
+      print('🔄 Registering web device: $deviceName');
+
+      await authenticatedApiCall(
+        'notifications/update-fcm-token-new',
+        method: 'PUT',
+        body: {
+          'deviceId': deviceId,
+          'deviceName': deviceName,
+          'deviceType': 'web',
+        },
+      );
+      //print('✅ Web device registered successfully');
+    } catch (e) {
+      print('❌ Error registering web device: $e');
+    }
+  }
+
+  static Future<void> unregisterWebDevice({required String deviceId, int? userId}) async {
+    try {
+      /*
+      await authenticatedApiCall(
+        'notifications/delete-fcm-token-new',
+        method: 'PUT',
+        body: {'deviceId': deviceId},
+      );
+      */
+      await http.put(
+        Uri.parse('$baseUrl/notifications/delete-fcm-token-new'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'deviceId': deviceId, 'userId': userId}),
+      );
+      print('✅ Web device unregistered successfully');
+    } catch (e) {
+      print('❌ Error unregistering web device: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>?> trackUserActivity({bool? isLogin}) async {
+    try {
+      print('🔄 Current action : ${isLogin == true ? "Login" : "Access"}');
+
+      // Get device information from helper
+      //final deviceId = await DeviceHelper.getDeviceId();
+      final deviceName = await DeviceHelper.getDeviceName();
+      final platform = DeviceHelper.getDeviceType();
+      final appVersion = await DeviceHelper.getAppVersion();
+
+      final res = await authenticatedApiCall(
+        'user/update-user-log',
+        method: 'PUT',
+        body: {
+          'deviceName': deviceName,
+          'platform': platform,
+          'appVersion': appVersion,
+          'dateTime': DateTime.now().toIso8601String(),
+          'isLogin': isLogin ?? false,
+        },
+      );
+      print('✅ User activity tracked successfully');
+      return res;
+    } catch (e) {
+      print('❌ Error tracking user activity: $e');
+      return null;
+    }
+  }
+
 }
-
-
-
 

@@ -7,6 +7,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/pending_navigation_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/web_notification_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/auth_manager.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/navigation_helper.dart';
 
@@ -52,7 +54,14 @@ class FirebaseNotificationService {
     print("🚀 Starting Firebase Notification Service initialization...");
 
     try {
-      await _initializeForMobile();
+      if (kIsWeb) {
+        // For web: register device
+        await WebDeviceRegistration().register();
+        print('✅ Web device registered successfully');
+      } 
+      else {
+        await _initializeForMobile();
+      }
       _isInitialized = true;
       print("✅ Firebase Notification Service Initialization COMPLETE");
     } catch (e) {
@@ -599,10 +608,17 @@ class FirebaseNotificationService {
   }
 
   Future<void> sendTokenToBackend() async {
-    if (!_firebaseAvailable) return;
-    final token = await getToken();
-    if (token != null) {
-      await _sendTokenToBackend(token);
+    if (kIsWeb) {
+      // For web: register device
+      await WebDeviceRegistration().register();
+      print('✅ Web device registered successfully');
+    } else {
+      // For mobile: handle FCM token
+      if (!_firebaseAvailable) return;
+      final token = await getToken();
+      if (token != null) {
+        await _sendTokenToBackend(token);
+      }
     }
   }
 
@@ -612,7 +628,13 @@ class FirebaseNotificationService {
 
   Future<void> onUserLogout() async {
     try {
-      await ApiService.deleteFcmToken();
+      if (kIsWeb){
+        await WebDeviceRegistration().unregister();
+      }
+      else {
+        final user = StorageService.userData;
+        await ApiService.deleteFcmToken(user?.id);
+      }
     } catch (e) {
       print("❌ Error deleting token on logout: $e");
     }
@@ -625,4 +647,5 @@ class FirebaseNotificationService {
     _notificationStream.close();
     _isInitialized = false;
   }
+
 }
