@@ -1154,6 +1154,37 @@ class ApiService {
     }
   }
 
+  static Future<TripCardResponse> getAllExceedTrips(
+    TripCardListRequest request,
+  ) async {
+    try {
+      return await ApiService.authenticatedApiCall(
+        'trips/all-exceed-trips',
+        method: 'POST',
+        body: request.toJson(),
+      ).then((response) {
+        return TripCardResponse.fromJson(response);
+      });
+    } catch (e) {
+      print('Error getting all exceed trips: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> acceptExceedTrip(
+    int tripId,
+  ) async {
+    try {
+      return await ApiService.authenticatedApiCall(
+        'trips/accept-exceed-trip/$tripId',
+        method: 'POST',
+      );
+    } catch (e) {
+      print('Error accepting exceed trips: $e');
+      rethrow;
+    }
+  }
+
   static Future<TripListResponse> getSupervisorTrips(TripListRequest request) async {
     try {
       //print('Getting user trips with filters: ${request.toJson()}');
