@@ -80,6 +80,14 @@ String getTripStatusLabel(String? status) {
       return 'Need Reading';
     case 'alreadyread':
       return 'Already Read';
+    case 'scheduled':
+      return 'Scheduled';
+    case 'normal':
+      return 'Normal';
+    case 'exceed':
+      return 'Exceed';
+    case 'accepted':
+      return 'Accepted';
     default:
       return 'All';
   }
