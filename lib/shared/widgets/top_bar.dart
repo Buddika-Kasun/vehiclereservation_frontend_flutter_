@@ -93,7 +93,8 @@ class _TopBarState extends State<TopBar> {
 
         if (event == 'notification' ||
             event == 'refresh' ||
-            event == 'notification_update') {
+            event == 'notification_update' ||
+            event == 'notification_refresh') {
           _loadUnreadCount();
 
           if (event == 'notification' || event == 'notification_update') {

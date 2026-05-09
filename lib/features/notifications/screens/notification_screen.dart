@@ -77,6 +77,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
           if (count == -1) {
             // Refresh unread count via API
             _loadUnreadCount();
+            _loadNotifications();
           } else {
             // Update with specific count
             setState(() {

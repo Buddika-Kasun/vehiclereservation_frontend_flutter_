@@ -19,7 +19,8 @@ class WebSocketConfig {
     try {
       if (kIsWeb) {
         // For web, always use the full URL with correct protocol
-        return 'https://pcw-ride-server.up.railway.app';
+        return 'https://pcw-ride-server.up.railway.app'; // Prod
+        //return 'http://localhost:3000'; // Dev
       }
 
       // For mobile, use from config
