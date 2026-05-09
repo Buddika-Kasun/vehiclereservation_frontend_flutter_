@@ -39,12 +39,12 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   // WebSocket managers
   final WebSocketManager _webSocketManager = WebSocketManager();
   final TripHandler _tripHandler = TripHandler();
-  
+
   TripDetails? _tripDetails;
   bool _isLoading = true;
   String _errorMessage = '';
   bool _isNotificationShowing = false;
-  
+
   // Map related variables
   List<Marker> _markers = [];
   List<Polyline> _routeSegments = [];
@@ -260,12 +260,12 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       });
 
       final response = await ApiService.getTripById(widget.tripId);
-      
+
       if (response['success'] == true && response['data'] != null) {
         setState(() {
           _tripDetails = TripDetails.fromJson(response['data']);
         });
-        
+
         // Initialize map after loading trip details
         _initializeMap();
       } else {
@@ -286,12 +286,12 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   void _initializeMap() {
     if (_tripDetails?.details.route.hasRoute == true) {
       // Check if we have valid route data
-      final hasValidCoordinates = 
+      final hasValidCoordinates =
           _tripDetails?.details.route.coordinates.start.latitude != null &&
           _tripDetails?.details.route.coordinates.start.longitude != null &&
           _tripDetails?.details.route.coordinates.end.latitude != null &&
           _tripDetails?.details.route.coordinates.end.longitude != null;
-      
+
       if (hasValidCoordinates) {
         _setupMapMarkersAndRoute();
       }
@@ -308,24 +308,28 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       if (_tripDetails?.details.route.coordinates.start != null) {
         final start = _tripDetails!.details.route.coordinates.start;
         if (start.latitude != 0 && start.longitude != 0) {
-          _markers.add(_createMarkerWithAddress(
-            LatLng(start.latitude, start.longitude),
-            Icons.location_on,
-            Colors.green,
-            start.address,
-          ));
+          _markers.add(
+            _createMarkerWithAddress(
+              LatLng(start.latitude, start.longitude),
+              Icons.location_on,
+              Colors.green,
+              start.address,
+            ),
+          );
         }
       }
 
       // Add intermediate stops markers
       for (var stop in _tripDetails?.details.route.stops.intermediate ?? []) {
         if (stop.latitude != 0 && stop.longitude != 0) {
-          _markers.add(_createMarkerWithAddress(
-            LatLng(stop.latitude, stop.longitude),
-            Icons.location_on,
-            Colors.orange,
-            '(${stop.order}) ${stop.address}',
-          ));
+          _markers.add(
+            _createMarkerWithAddress(
+              LatLng(stop.latitude, stop.longitude),
+              Icons.location_on,
+              Colors.orange,
+              '(${stop.order}) ${stop.address}',
+            ),
+          );
         }
       }
 
@@ -333,12 +337,14 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       if (_tripDetails?.details.route.coordinates.end != null) {
         final end = _tripDetails!.details.route.coordinates.end;
         if (end.latitude != 0 && end.longitude != 0) {
-          _markers.add(_createMarkerWithAddress(
-            LatLng(end.latitude, end.longitude),
-            Icons.location_on,
-            Colors.red,
-            end.address,
-          ));
+          _markers.add(
+            _createMarkerWithAddress(
+              LatLng(end.latitude, end.longitude),
+              Icons.location_on,
+              Colors.red,
+              end.address,
+            ),
+          );
         }
       }
 
@@ -358,13 +364,15 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   })
                   .where((point) => point.latitude != 0 && point.longitude != 0)
                   .toList();
-              
+
               if (points.isNotEmpty) {
-                _routeSegments.add(Polyline(
-                  points: points,
-                  color: Color(segment.color),
-                  strokeWidth: segment.strokeWidth.toDouble(),
-                ));
+                _routeSegments.add(
+                  Polyline(
+                    points: points,
+                    color: Color(segment.color),
+                    strokeWidth: segment.strokeWidth.toDouble(),
+                  ),
+                );
               }
             } catch (e) {
               print('Error processing route segment: $e');
@@ -399,9 +407,11 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
     // Add route points
     for (var route in _routeSegments) {
-      allPoints.addAll(route.points.where(
-        (point) => point.latitude != 0 && point.longitude != 0
-      ));
+      allPoints.addAll(
+        route.points.where(
+          (point) => point.latitude != 0 && point.longitude != 0,
+        ),
+      );
     }
 
     if (allPoints.isEmpty) {
@@ -427,7 +437,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     // Calculate span
     double latSpan = maxLat - minLat;
     double lngSpan = maxLng - minLng;
-    
+
     // Ensure minimum span for visibility
     double minSpan = 0.01; // ~1km
     if (latSpan < minSpan) {
@@ -440,10 +450,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       minLng -= padding;
       maxLng += padding;
     }
-    
+
     // Add small padding
     double padding = 0.005;
-    
+
     setState(() {
       _mapBounds = LatLngBounds(
         LatLng(minLat - padding, minLng - padding),
@@ -452,7 +462,12 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     });
   }
 
-  Marker _createMarkerWithAddress(LatLng point, IconData icon, Color color, String address) {
+  Marker _createMarkerWithAddress(
+    LatLng point,
+    IconData icon,
+    Color color,
+    String address,
+  ) {
     return Marker(
       point: point,
       width: 70, // Increased width for tooltip
@@ -467,35 +482,38 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
           });
 
           final screenHeight = MediaQuery.of(context).size.height;
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Container(
-                height: 60, // FIXED HEIGHT
-                child: SingleChildScrollView(
-                  child: Text(
-                    address,
-                    style: TextStyle(color: Colors.white),
+
+          ScaffoldMessenger.of(context)
+              .showSnackBar(
+                SnackBar(
+                  content: Container(
+                    height: 60, // FIXED HEIGHT
+                    child: SingleChildScrollView(
+                      child: Text(
+                        address,
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                  backgroundColor: const Color.fromARGB(242, 66, 66, 66),
+                  duration: Duration(seconds: 3),
+                  behavior: SnackBarBehavior.floating,
+                  margin: EdgeInsets.only(
+                    bottom: screenHeight - 170, // Fixed 150px from top
+                    left: 2,
+                    right: 2,
                   ),
                 ),
-              ),
-              backgroundColor: const Color.fromARGB(242, 66, 66, 66),
-              duration: Duration(seconds: 3),
-              behavior: SnackBarBehavior.floating,
-              margin: EdgeInsets.only(
-                bottom: screenHeight - 170, // Fixed 150px from top
-                left: 2,
-                right: 2,
-              ),
-            ),
-          ).closed.then((reason) {
-            // When snackbar is closed, reset the flag
-            if (mounted) {
-              setState(() {
-                _isNotificationShowing = false;
+              )
+              .closed
+              .then((reason) {
+                // When snackbar is closed, reset the flag
+                if (mounted) {
+                  setState(() {
+                    _isNotificationShowing = false;
+                  });
+                }
               });
-            }
-          });
         },
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -531,11 +549,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
             ),
             SizedBox(height: 4),
             // Marker icon
-            Icon(
-              icon,
-              color: color,
-              size: 24,
-            ),
+            Icon(icon, color: color, size: 24),
           ],
         ),
       ),
@@ -553,62 +567,64 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
   double _calculateOptimalZoom() {
     if (_markers.isEmpty && _routeSegments.isEmpty) return 12.0;
-    
+
     // Collect all points
     List<LatLng> allPoints = [];
-    
+
     // Add markers
     for (var marker in _markers) {
       if (marker.point.latitude != 0 && marker.point.longitude != 0) {
         allPoints.add(marker.point);
       }
     }
-    
+
     // Add route points
     for (var route in _routeSegments) {
-      allPoints.addAll(route.points.where(
-        (point) => point.latitude != 0 && point.longitude != 0
-      ));
+      allPoints.addAll(
+        route.points.where(
+          (point) => point.latitude != 0 && point.longitude != 0,
+        ),
+      );
     }
-    
+
     if (allPoints.isEmpty) return 12.0;
-    
+
     // Calculate bounds
     double minLat = allPoints.first.latitude;
     double maxLat = allPoints.first.latitude;
     double minLng = allPoints.first.longitude;
     double maxLng = allPoints.first.longitude;
-    
+
     for (var point in allPoints) {
       if (point.latitude < minLat) minLat = point.latitude;
       if (point.latitude > maxLat) maxLat = point.latitude;
       if (point.longitude < minLng) minLng = point.longitude;
       if (point.longitude > maxLng) maxLng = point.longitude;
     }
-    
+
     // Calculate span in degrees
     double latSpan = maxLat - minLat;
     double lngSpan = maxLng - minLng;
-    
+
     // Convert to meters (approximate)
     // 1 degree latitude ≈ 111 km, 1 degree longitude ≈ 111 km * cos(latitude)
     double latSpanMeters = latSpan * 111000;
     double lngSpanMeters = lngSpan * 111000 * cos(minLat * 3.14159265 / 180);
-    
+
     // Use the larger span
     double maxSpanMeters = max(latSpanMeters, lngSpanMeters);
-    
+
     // Calculate zoom level based on span
     // This is a simple approximation - adjust values as needed
-    if (maxSpanMeters < 500) return 16.0;    // < 500m
-    if (maxSpanMeters < 1000) return 15.0;   // < 1km
-    if (maxSpanMeters < 2000) return 14.0;   // < 2km
-    if (maxSpanMeters < 5000) return 13.0;   // < 5km
-    if (maxSpanMeters < 10000) return 12.0;  // < 10km
-    if (maxSpanMeters < 20000) return 11.0;  // < 20km
-    if (maxSpanMeters < 50000) return 10.0;  // < 50km
-    if (maxSpanMeters < 100000) return 9.0;  // < 100km
-    return 8.0;  // > 100km
+    if (maxSpanMeters < 500) return 16.0; // < 500m
+    if (maxSpanMeters < 1000) return 15.0; // < 1km
+    if (maxSpanMeters < 2000) return 14.0; // < 2km
+    if (maxSpanMeters < 5000) return 13.0; // < 5km
+    if (maxSpanMeters < 10000) return 12.0; // < 10km
+    if (maxSpanMeters < 20000) return 11.0; // < 20km
+    if (maxSpanMeters < 50000) return 10.0; // < 50km
+    if (maxSpanMeters < 100000) return 9.0; // < 100km
+    return 8.0; // > 100km
   }
 
   Future<void> _makePhoneCall(String phoneNumber) async {
@@ -732,10 +748,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => TripDetailsScreen(
-          tripId: tripId,
-          fromConflictNavigation: true,
-        ),
+        builder: (context) =>
+            TripDetailsScreen(tripId: tripId, fromConflictNavigation: true),
       ),
     );
   }
@@ -785,7 +799,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   Widget _buildHeader() {
     final double statusBarHeight = MediaQuery.of(context).padding.top;
     final double appBarHeight = 60.0; // Base height for app bar content
-  
+
     return Container(
       height: statusBarHeight + appBarHeight,
       padding: EdgeInsets.only(
@@ -815,7 +829,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
-                widget.fromConflictNavigation ? Icons.arrow_back : Icons.arrow_back_ios_rounded,
+                widget.fromConflictNavigation
+                    ? Icons.arrow_back
+                    : Icons.arrow_back_ios_rounded,
                 color: Colors.black,
                 size: 20,
               ),
@@ -880,18 +896,26 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'pending': return Colors.orange;
-      case 'approved': return Colors.green;
-      case 'rejected': return Colors.red;
-      default: return Colors.grey;
+      case 'pending':
+        return Colors.orange;
+      case 'approved':
+        return Colors.green;
+      case 'rejected':
+        return Colors.red;
+      default:
+        return Colors.grey;
     }
   }
 
   Widget _buildMapSection() {
-    final hasValidMarkers = _markers.isNotEmpty && 
-        _markers.any((marker) => marker.point.latitude != 0 && marker.point.longitude != 0);
-    
-    final hasValidRoutes = _routeSegments.isNotEmpty && 
+    final hasValidMarkers =
+        _markers.isNotEmpty &&
+        _markers.any(
+          (marker) => marker.point.latitude != 0 && marker.point.longitude != 0,
+        );
+
+    final hasValidRoutes =
+        _routeSegments.isNotEmpty &&
         _routeSegments.any((route) => route.points.isNotEmpty);
 
     if (!hasValidMarkers && !hasValidRoutes) {
@@ -925,7 +949,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       if (_mapBounds != null) {
         return _mapBounds!.center;
       }
-      
+
       if (_markers.isNotEmpty) {
         final startMarker = _markers.firstWhere(
           (marker) => marker.point.latitude != 0 && marker.point.longitude != 0,
@@ -933,7 +957,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         );
         return startMarker.point;
       }
-      
+
       return LatLng(7.8731, 80.7718); // Default Sri Lanka center
     }
 
@@ -961,11 +985,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                 userAgentPackageName: 'com.example.vehiclereservation',
               ),
               if (_routeSegments.isNotEmpty)
-                PolylineLayer(
-                  polylines: _routeSegments,
-                ),
-              if (_markers.isNotEmpty)
-                MarkerLayer(markers: _markers),
+                PolylineLayer(polylines: _routeSegments),
+              if (_markers.isNotEmpty) MarkerLayer(markers: _markers),
             ],
           ),
           // Legend for markers (keep this)
@@ -985,7 +1006,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                     children: [
                       Icon(Icons.location_on, color: Colors.green, size: 16),
                       SizedBox(width: 4),
-                      Text('Start', style: TextStyle(color: Colors.white, fontSize: 12)),
+                      Text(
+                        'Start',
+                        style: TextStyle(color: Colors.white, fontSize: 12),
+                      ),
                     ],
                   ),
                   SizedBox(height: 4),
@@ -993,7 +1017,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                     children: [
                       Icon(Icons.location_on, color: Colors.orange, size: 16),
                       SizedBox(width: 4),
-                      Text('Stops', style: TextStyle(color: Colors.white, fontSize: 12)),
+                      Text(
+                        'Stops',
+                        style: TextStyle(color: Colors.white, fontSize: 12),
+                      ),
                     ],
                   ),
                   SizedBox(height: 4),
@@ -1001,7 +1028,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                     children: [
                       Icon(Icons.location_on, color: Colors.red, size: 16),
                       SizedBox(width: 4),
-                      Text('End', style: TextStyle(color: Colors.white, fontSize: 12)),
+                      Text(
+                        'End',
+                        style: TextStyle(color: Colors.white, fontSize: 12),
+                      ),
                     ],
                   ),
                 ],
@@ -1054,7 +1084,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red.withOpacity(0.2),
                         foregroundColor: Colors.red,
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                           side: BorderSide(color: Colors.red.withOpacity(0.3)),
@@ -1215,9 +1248,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.grey[900],
-        border: Border(
-          bottom: BorderSide(color: Colors.grey[800]!),
-        ),
+        border: Border(bottom: BorderSide(color: Colors.grey[800]!)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1246,18 +1277,16 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               SizedBox(width: 16),
               _buildMetricCard(
                 Icons.calendar_month,
+                _tripDetails != null ? '${_tripDetails!.startDate} ' : 'N/A',
                 _tripDetails != null
-                    ? '${_tripDetails!.startDate} '
+                    ? DateFormat('hh:mm a').format(
+                        DateFormat('HH:mm').parse(_tripDetails!.startTime),
+                      )
                     : 'N/A',
-                _tripDetails != null
-                  ? DateFormat('hh:mm a').format(
-                      DateFormat('HH:mm').parse(_tripDetails!.startTime),
-                    )
-                  : 'N/A',
               ),
             ],
           ),
-          
+
           SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -1284,103 +1313,122 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
           SizedBox(height: 16),
           _buildMetricsComparisonTable(),
           SizedBox(height: 16),
-          _buildInfoRow('Requested At', DateFormat('yyyy-MM-dd hh:mm a')
-            .format(_tripDetails!.createdAt.toLocal())),
+          _buildInfoRow(
+            'Requested At',
+            DateFormat(
+              'yyyy-MM-dd hh:mm a',
+            ).format(_tripDetails!.createdAt.toLocal()),
+          ),
           _buildInfoRow('Request', ''),
           Container(
-              margin: EdgeInsets.only(bottom: 8),
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[800],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: _getPassengerTypeColor('requester'),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Icon(
-                      _getPassengerTypeIcon('requester'),
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                _tripDetails!.requester.name,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            Container(
-                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: _getPassengerTypeColor('requester').withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                'REQUESTER',
-                                style: TextStyle(
-                                  color: _getPassengerTypeColor('requester'),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 4),
-                        // Show department for requester
-                          Text(
-                            _tripDetails!.requester.department,
-                            style: TextStyle(color: Colors.grey[300], fontSize: 12),
-                          ),
-                        SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  _tripDetails?.requester.phone ?? 'No contact number',
-                                  style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              IconButton(
-                                onPressed: () => _makePhoneCall(_tripDetails!.requester.phone),
-                                icon: Icon(Icons.call, color: Color(0xFFF9C80E), size: 20),
-                                padding: EdgeInsets.zero,
-                                constraints: BoxConstraints(),
-                                tooltip: 'Call passenger',
-                              ),
-                            ],
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+            margin: EdgeInsets.only(bottom: 8),
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey[800],
+              borderRadius: BorderRadius.circular(8),
             ),
-          if (_tripDetails?.purpose != null && _tripDetails!.purpose!.isNotEmpty)
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: _getPassengerTypeColor('requester'),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Icon(
+                    _getPassengerTypeIcon('requester'),
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _tripDetails!.requester.name,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _getPassengerTypeColor(
+                                'requester',
+                              ).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              'REQUESTER',
+                              style: TextStyle(
+                                color: _getPassengerTypeColor('requester'),
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 4),
+                      // Show department for requester
+                      Text(
+                        _tripDetails!.requester.department,
+                        style: TextStyle(color: Colors.grey[300], fontSize: 12),
+                      ),
+                      SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _tripDetails?.requester.phone ??
+                                  'No contact number',
+                              style: TextStyle(
+                                color: Colors.grey[400],
+                                fontSize: 12,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () =>
+                                _makePhoneCall(_tripDetails!.requester.phone),
+                            icon: Icon(
+                              Icons.call,
+                              color: Color(0xFFF9C80E),
+                              size: 20,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: BoxConstraints(),
+                            tooltip: 'Call passenger',
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (_tripDetails?.purpose != null &&
+              _tripDetails!.purpose!.isNotEmpty)
             _buildInfoRow('Purpose', _tripDetails!.purpose!),
-          
+
           SizedBox(height: 4),
           _buildConflictAlert(),
         ],
@@ -1403,11 +1451,15 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
           Expanded(
             child: Text(
               value,
-              style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ],
-      )
+      ),
     );
   }
 
@@ -1651,11 +1703,12 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   // Update the _buildApprovalSection() method:
   Widget _buildApprovalSection() {
     // Check if approval details are available
-    final hasApproval =
-        _tripDetails?.details.approval.hasApproval == true &&
+    final hasApprovers =
         (_tripDetails!.details.approval.approvers.hod != null ||
-            _tripDetails!.details.approval.approvers.secondary != null ||
-            _tripDetails!.details.approval.approvers.safety != null);
+        _tripDetails!.details.approval.approvers.secondary != null ||
+        _tripDetails!.details.approval.approvers.safety != null);
+
+    final hasApproval = _tripDetails?.details.approval.hasApproval == true;
 
     if (!hasApproval) {
       return Container(
@@ -1725,6 +1778,35 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
           ],
         ),
       );
+    } else if (hasApproval && !hasApprovers) {
+      return Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey[900],
+          border: Border(bottom: BorderSide(color: Colors.grey[800]!)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Approval Status',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 12),
+            _buildApproverRow(
+              'Auto approved',
+              Approver(
+                name: 'Night trip (8PM-12AM) - No HOD approval needed',
+                status: 'approved',
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     return Container(
@@ -1745,13 +1827,22 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
             ),
           ),
           SizedBox(height: 12),
-          if (_tripDetails?.details.approval.approvers.hod != null)
+          if (_tripDetails?.details.approval.approvers.hod != null) ...[
             _buildApproverRow(
               _tripDetails!.tripType == 'emergency'
                   ? 'Emergency Approval'
                   : 'HOD Approval',
               _tripDetails!.details.approval.approvers.hod!,
             ),
+          ] else ...[
+            _buildApproverRow(
+              'Auto approved',
+              Approver(
+                name: 'Night trip (8PM-12AM) - No HOD approval needed',
+                status: 'approved',
+              ),
+            ),
+          ],
           if (_tripDetails?.details.approval.approvers.secondary != null)
             _buildApproverRow(
               'Secondary Approval',
@@ -1801,12 +1892,13 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
             label: 'Duration',
             estimatedValue: _formatDurationToHoursMinutes(
               double.parse(
-                    _tripDetails!.details.route.metrics.estimatedDuration,
-                  ) 
-                  //* 2,
+                _tripDetails!.details.route.metrics.estimatedDuration,
+              ),
+              //* 2,
             ),
-            actualValue: _tripDetails?.status.toLowerCase() == 'completed'
-              || _tripDetails?.status.toLowerCase() == 'exceed'
+            actualValue:
+                _tripDetails?.status.toLowerCase() == 'completed' ||
+                    _tripDetails?.status.toLowerCase() == 'exceed'
                 ? _formatDurationToHoursMinutes(
                     double.parse(
                       _tripDetails!.details.route.metrics.actualDuration
@@ -1823,8 +1915,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
             label: 'Distance (km)',
             estimatedValue:
                 '${(double.parse(_tripDetails!.details.route.metrics.distance)).toStringAsFixed(1)}',
-            actualValue: _tripDetails?.status.toLowerCase() == 'completed'
-              || _tripDetails?.status.toLowerCase() == 'exceed'
+            actualValue:
+                _tripDetails?.status.toLowerCase() == 'completed' ||
+                    _tripDetails?.status.toLowerCase() == 'exceed'
                 ? '${_tripDetails!.details.route.metrics.actualDistance}'
                 : '--',
           ),
@@ -1862,7 +1955,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       return '${remainingMinutes}min';
     }
   }
-
 
   String _formatCurrency(num value, {bool includeDecimals = true}) {
     final pattern = includeDecimals ? '#,##0.00' : '#,##0';
@@ -2107,7 +2199,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       ),
     );
   }
-/*
+
+  /*
   Widget _buildVehicleSection() {
     return Container(
       padding: EdgeInsets.all(16),
@@ -2403,9 +2496,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.grey[900],
-        border: Border(
-          bottom: BorderSide(color: Colors.grey[800]!),
-        ),
+        border: Border(bottom: BorderSide(color: Colors.grey[800]!)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2429,14 +2520,16 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
           if (_tripDetails?.details.route.stops.intermediate.isNotEmpty == true)
             Column(
               children: [
-                ..._tripDetails!.details.route.stops.intermediate.map((stop) =>
-                  _buildLocationRow(
-                    Icons.location_on,
-                    Colors.orange,
-                    'Stop ${stop.order}',
-                    stop.address,
-                  ),
-                ).toList(),
+                ..._tripDetails!.details.route.stops.intermediate
+                    .map(
+                      (stop) => _buildLocationRow(
+                        Icons.location_on,
+                        Colors.orange,
+                        'Stop ${stop.order}',
+                        stop.address,
+                      ),
+                    )
+                    .toList(),
                 SizedBox(height: 8),
               ],
             ),
@@ -2451,7 +2544,12 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     );
   }
 
-  Widget _buildLocationRow(IconData icon, Color color, String label, String address) {
+  Widget _buildLocationRow(
+    IconData icon,
+    Color color,
+    String label,
+    String address,
+  ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2472,10 +2570,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               SizedBox(height: 4),
               Text(
                 address,
-                style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: Colors.grey[400], fontSize: 12),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -2527,9 +2622,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.grey[900],
-        border: Border(
-          bottom: BorderSide(color: Colors.grey[800]!),
-        ),
+        border: Border(bottom: BorderSide(color: Colors.grey[800]!)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2543,101 +2636,122 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
             ),
           ),
           SizedBox(height: 12),
-          ..._tripDetails!.details.passengers.list.map((passenger) =>
-            Container(
-              margin: EdgeInsets.only(bottom: 8),
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[800],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: _getPassengerTypeColor(passenger.type),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Icon(
-                      _getPassengerTypeIcon(passenger.type),
-                      color: Colors.white,
-                      size: 20,
-                    ),
+          ..._tripDetails!.details.passengers.list
+              .map(
+                (passenger) => Container(
+                  margin: EdgeInsets.only(bottom: 8),
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[800],
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: _getPassengerTypeColor(passenger.type),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Icon(
+                          _getPassengerTypeIcon(passenger.type),
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: Text(
-                                passenger.name,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    passenger.name,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _getPassengerTypeColor(
+                                      passenger.type,
+                                    ).withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    passenger.type.toUpperCase(),
+                                    style: TextStyle(
+                                      color: _getPassengerTypeColor(
+                                        passenger.type,
+                                      ),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            Container(
-                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: _getPassengerTypeColor(passenger.type).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                passenger.type.toUpperCase(),
+                            SizedBox(height: 4),
+                            // Show department for requester
+                            if (passenger.department != null)
+                              Text(
+                                _tripDetails!.requester.department,
                                 style: TextStyle(
-                                  color: _getPassengerTypeColor(passenger.type),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey[300],
+                                  fontSize: 12,
                                 ),
                               ),
-                            ),
+                            SizedBox(height: 4),
+                            if (passenger.contactNo != null &&
+                                passenger.contactNo!.isNotEmpty)
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      passenger.contactNo!,
+                                      style: TextStyle(
+                                        color: Colors.grey[400],
+                                        fontSize: 12,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: () =>
+                                        _makePhoneCall(passenger.contactNo!),
+                                    icon: Icon(
+                                      Icons.call,
+                                      color: Color(0xFFF9C80E),
+                                      size: 20,
+                                    ),
+                                    padding: EdgeInsets.zero,
+                                    constraints: BoxConstraints(),
+                                    tooltip: 'Call passenger',
+                                  ),
+                                ],
+                              ),
                           ],
                         ),
-                        SizedBox(height: 4),
-                        // Show department for requester
-                        if (passenger.department != null)
-                          Text(
-                            _tripDetails!.requester.department,
-                            style: TextStyle(color: Colors.grey[300], fontSize: 12),
-                          ),
-                        SizedBox(height: 4),
-                        if (passenger.contactNo != null && passenger.contactNo!.isNotEmpty)
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  passenger.contactNo!,
-                                  style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              IconButton(
-                                onPressed: () => _makePhoneCall(passenger.contactNo!),
-                                icon: Icon(Icons.call, color: Color(0xFFF9C80E), size: 20),
-                                padding: EdgeInsets.zero,
-                                constraints: BoxConstraints(),
-                                tooltip: 'Call passenger',
-                              ),
-                            ],
-                          ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-          ).toList(),
+                ),
+              )
+              .toList(),
         ],
       ),
     );
@@ -2645,19 +2759,27 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
   Color _getPassengerTypeColor(String type) {
     switch (type.toLowerCase()) {
-      case 'requester': return Colors.blue;
-      case 'group': return Colors.green;
-      case 'guest': return Colors.orange;
-      default: return Colors.grey;
+      case 'requester':
+        return Colors.blue;
+      case 'group':
+        return Colors.green;
+      case 'guest':
+        return Colors.orange;
+      default:
+        return Colors.grey;
     }
   }
 
   IconData _getPassengerTypeIcon(String type) {
     switch (type.toLowerCase()) {
-      case 'requester': return Icons.person;
-      case 'group': return Icons.group;
-      case 'guest': return Icons.person_outline;
-      default: return Icons.person;
+      case 'requester':
+        return Icons.person;
+      case 'group':
+        return Icons.group;
+      case 'guest':
+        return Icons.person_outline;
+      default:
+        return Icons.person;
     }
   }
 
@@ -2691,13 +2813,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               children: [
                 Text(
                   label,
-                  style: TextStyle(
-                    color: Colors.grey[300],
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.grey[300], fontSize: 12),
                 ),
                 SizedBox(height: 4),
-                // Show department 
+                // Show department
                 if (approver.department != null)
                   Text(
                     _tripDetails!.requester.department,
@@ -2745,19 +2864,27 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
   Color _getApprovalStatusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'approved': return Colors.green;
-      case 'rejected': return Colors.red;
-      case 'pending': return Colors.orange;
-      default: return Colors.grey;
+      case 'approved':
+        return Colors.green;
+      case 'rejected':
+        return Colors.red;
+      case 'pending':
+        return Colors.orange;
+      default:
+        return Colors.grey;
     }
   }
 
   IconData _getApprovalStatusIcon(String status) {
     switch (status.toLowerCase()) {
-      case 'approved': return Icons.check_circle;
-      case 'rejected': return Icons.cancel;
-      case 'pending': return Icons.pending;
-      default: return Icons.help;
+      case 'approved':
+        return Icons.check_circle;
+      case 'rejected':
+        return Icons.cancel;
+      case 'pending':
+        return Icons.pending;
+      default:
+        return Icons.help;
     }
   }
 
@@ -2768,10 +2895,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       body: _isLoading
           ? _buildLoadingState()
           : _errorMessage.isNotEmpty
-              ? _buildErrorState()
-              : _tripDetails == null
-                  ? _buildNoDataState()
-                  : _buildContent(),
+          ? _buildErrorState()
+          : _tripDetails == null
+          ? _buildNoDataState()
+          : _buildContent(),
     );
   }
 
@@ -3037,7 +3164,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
         // Reload trip details to update status
         await _loadTripDetails();
-
       } else {
         throw Exception(response['message'] ?? 'Failed to cancel trip');
       }
@@ -3367,7 +3493,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
   }
 
-
   Widget _buildScheduleInfoRow(
     IconData icon,
     String label,
@@ -3428,7 +3553,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     );
   }
 
-
   Widget _buildLoadingState() {
     return Column(
       children: [
@@ -3442,7 +3566,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   CircularProgressIndicator(color: Color(0xFFF9C80E)),
                 SizedBox(height: 16),
                 Text(
-                  _isInitializing ? 'Connecting to real-time updates...' : 'Loading trip details...',
+                  _isInitializing
+                      ? 'Connecting to real-time updates...'
+                      : 'Loading trip details...',
                   style: TextStyle(color: Colors.white, fontSize: 16),
                 ),
               ],
@@ -3516,5 +3642,4 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       ],
     );
   }
-
 }

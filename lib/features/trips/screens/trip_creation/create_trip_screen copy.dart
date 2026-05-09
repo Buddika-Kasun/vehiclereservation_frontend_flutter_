@@ -4,15 +4,12 @@ import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
-import 'package:vehiclereservation_frontend_flutter_/data/models/saved_location.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/home/home_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/trip_creation/schedule_passenger_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/nominatim_search_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/osrm_route_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/geocode_helper.dart';
 import 'dart:math' as math;
-
-import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/saved_locations_picker.dart';
 
 class CreateTripScreen extends StatefulWidget {
   @override
@@ -60,90 +57,6 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
     _scrollController.dispose();
     super.dispose();
   }
-
-  // Add to _CreateTripScreenState class
-
-  void _showSavedLocations(RouteStop stop) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => SavedLocationsPicker(
-        onLocationSelected: (location) async {
-          await _setLocationFromSaved(stop, location);
-        },
-        currentAddress: stop.controller.text,
-        currentCoordinates: stop.coordinates,
-      ),
-    );
-  }
-
-  Future<void> _setLocationFromSaved(
-    RouteStop stop,
-    SavedLocation location,
-  ) async {
-    try {
-      setState(() => _isLoading = true);
-
-      // Update the stop with saved location data
-      stop.controller.text = location.address;
-      stop.coordinates = location.coordinates;
-
-      // Increment use count
-      //await SavedLocationsService().incrementUseCount(location.id);
-      await ApiService.incrementUseCount(location.id);
-
-      // Update marker
-      _addOrUpdateMarkerForStop(stop, location.coordinates);
-
-      // Move map to location
-      mapController.move(location.coordinates, 15);
-
-      // Auto-calculate route
-      _autoCalculateRoute();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Location set: ${location.name}'),
-            duration: Duration(seconds: 1),
-          ),
-        );
-      }
-    } catch (e) {
-      print('Error setting saved location: $e');
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  // Save current location
-  /*
-Future<void> _saveCurrentLocation(RouteStop stop) async {
-  if (stop.controller.text.isEmpty || stop.coordinates == null) {
-    _showMessage('Please select a location first');
-    return;
-  }
-
-  try {
-    final result = await ApiService.createSavedLocation(
-      name: '', // Will be set in dialog
-      address: stop.controller.text,
-      latitude: stop.coordinates!.latitude,
-      longitude: stop.coordinates!.longitude,
-    );
-    
-    if (result['success'] == true) {
-      _showMessage('Location saved successfully');
-    }
-  } catch (e) {
-    print('Error saving location: $e');
-    _showMessage('Failed to save location');
-  }
-}
-*/
 
   Future<void> _loadDepartments() async {
     try {
@@ -450,36 +363,19 @@ Future<void> _saveCurrentLocation(RouteStop stop) async {
   }
 
   void _clearField(RouteStop stop) {
-    // Clear the text controller
     stop.controller.clear();
-
-    // Clear coordinates
-    stop.coordinates = null;
-
-    // Remove marker for this specific stop with proper key matching
+    stop.coordinates = null; // Clear coordinates too
     final stopIndex = stops.indexOf(stop);
-    markers.removeWhere((marker) {
-      final key = marker.key as ValueKey?;
-      if (key == null) return false;
-      final keyValue = key.value.toString();
-      return keyValue.contains(stop.type.toString()) &&
-          keyValue.contains(stopIndex.toString());
-    });
-
-    // Force rebuild
+    final markerKey = ValueKey('${stop.type}_$stopIndex');
+    markers.removeWhere((m) => m.key == markerKey);
     setState(() {});
 
-    // Clear route segments and reset totals
+    // If we had a route calculated, clear it
     if (routeSegments.isNotEmpty) {
-      setState(() {
-        routeSegments.clear();
-        _totalDistance = 0.0;
-        _totalDuration = 0.0;
-        _showRoutePanel = false;
-      });
+      routeSegments.clear();
+      setState(() {});
     }
 
-    // Recalculate route if there are still valid stops
     _autoCalculateRoute();
   }
 
@@ -1259,7 +1155,34 @@ Future<void> _saveCurrentLocation(RouteStop stop) async {
                             size: 20,
                           ),
                         ),
-                        suffixIcon: _buildCompactIconRow(stop)
+                        suffixIcon: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (stop.controller.text.isNotEmpty)
+                              IconButton(
+                                icon: Icon(
+                                  Icons.clear,
+                                  color: Colors.grey.shade400,
+                                  size: 18,
+                                ),
+                                onPressed: () => _clearField(stop),
+                                tooltip: 'Clear',
+                              ),
+                            IconButton(
+                              icon: Icon(
+                                Icons.my_location,
+                                color: Color(0xFFF9C80E),
+                                size: 18,
+                              ),
+                              onPressed: () {
+                                // Auto-hide panel when current location icon is clicked
+                                _autoHidePanel();
+                                _useCurrentLocation(stop);
+                              },
+                              tooltip: 'Use current location',
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -1324,57 +1247,6 @@ Future<void> _saveCurrentLocation(RouteStop stop) async {
           ],
         ),
         if (index < stops.length - 1) SizedBox(height: 12),
-      ],
-    );
-  }
-
-  Widget _buildCompactIconRow(RouteStop stop) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        
-        // Clear button (if text exists)
-        if (stop.controller.text.isNotEmpty)
-          InkWell(
-            onTap: () => _clearField(stop),
-            borderRadius: BorderRadius.circular(20),
-            child: Padding(
-              padding: EdgeInsets.all(6),
-              child: Icon(Icons.clear, color: Colors.grey.shade400, size: 18),
-            ),
-          ),
-
-        if (stop.controller.text.isNotEmpty) SizedBox(width: 2),
-
-        // Saved Locations
-        InkWell(
-          onTap: () {
-            _autoHidePanel();
-            _showSavedLocations(stop);
-          },
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: EdgeInsets.all(6),
-            child: Icon(Icons.bookmark, color: Color(0xFFF9C80E), size: 18),
-          ),
-        ),
-        SizedBox(width: 0),
-
-        // Current Location
-        InkWell(
-          onTap: () {
-            _autoHidePanel();
-            _useCurrentLocation(stop);
-          },
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: EdgeInsets.all(6),
-            child: Icon(Icons.my_location, color: Color(0xFFF9C80E), size: 18),
-          ),
-        ),
-
-        SizedBox(width: 4),
-
       ],
     );
   }
