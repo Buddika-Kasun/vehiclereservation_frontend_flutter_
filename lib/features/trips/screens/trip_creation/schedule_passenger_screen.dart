@@ -66,11 +66,17 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
   List<Map<String, dynamic>> _departments = [];
   bool _loadingDepartments = false;
 
+  // Approver selection state
+  String? _selectedApprover;
+  List<Map<String, dynamic>> _approvers = [];
+  bool _loadingApprovers = false;
+
   @override
   void initState() {
     super.initState();
     _loadUserData();
     //_loadDepartments();
+    _loadApprovers();
     _initializeDepartments();
     _calculateReturnDateTime();
     _fixedRateController = TextEditingController(text: _fixedRate);
@@ -190,6 +196,66 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
     }
   }
   */
+
+  Future<void> _loadApprovers() async {
+    try {
+      setState(() {
+        _loadingApprovers = true;
+      });
+
+      final response = await ApiService.getUsersByTripApproval();
+
+      print('Approvers API response: ${response.toString()}');
+
+      if (response['success'] == true) {
+        final approversData =
+            response['data']['users'] as List<dynamic>;
+
+        print('Found ${approversData.length} approvers');
+
+        final activeApprovers = approversData.toList();
+
+        print('${activeApprovers.length} active approvers');
+
+        setState(() {
+          _approvers = activeApprovers
+              .map(
+                (approver) => {
+                  'id': approver['id'].toString(),
+                  'name': approver['displayname'] ?? 'Unknown Approver',
+                },
+              )
+              .toList();
+
+          // Set first approver as default if available
+          if (_approvers.isNotEmpty) {
+            _selectedApprover = _approvers.first['id'];
+            print('Default approver set to: ${_approvers.first['name']}');
+          } else {
+            print('No active approvers found');
+          }
+        });
+      } else {
+        print('Failed to load approvers: ${response['message']}');
+        // Add default approver option
+        _approvers = [
+          {'id': 'default', 'name': 'Select Approver'},
+        ];
+        _selectedApprover = 'default';
+      }
+    } catch (e) {
+      print('Error loading approvers: $e');
+      // Add default approver option on error
+      _approvers = [
+        {'id': 'default', 'name': 'No approvers available'},
+      ];
+      _selectedApprover = 'default';
+    } finally {
+      setState(() {
+        _loadingApprovers = false;
+      });
+    }
+  }
 
   void _initializeDepartments() {
     if (widget.departmentData.isNotEmpty) {
@@ -416,7 +482,7 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
               child: Column(
                 children: [
-                  if (_canSchedule)
+                  //if (_canSchedule)
                     // Trip Type Dropdown
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -447,20 +513,31 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                                 style: TextStyle(color: Colors.yellow),
                               ),
                             ),
-                            DropdownMenuItem(
-                              value: 'fixed_rate',
+                            if (_approvers.length > 0) ...[
+                              DropdownMenuItem(
+                              value: 'emergency',
                               child: Text(
-                                'Fixed Rate',
+                                'Emergency',
                                 style: TextStyle(color: Colors.yellow),
                               ),
                             ),
-                            DropdownMenuItem(
-                              value: 'safety_approval',
-                              child: Text(
-                                'Safety Approval',
-                                style: TextStyle(color: Colors.yellow),
+                            ],
+                            if (_canSchedule) ...[
+                              DropdownMenuItem(
+                                value: 'fixed_rate',
+                                child: Text(
+                                  'Fixed Rate',
+                                  style: TextStyle(color: Colors.yellow),
+                                ),
                               ),
-                            ),
+                              DropdownMenuItem(
+                                value: 'safety_approval',
+                                child: Text(
+                                  'Safety Approval',
+                                  style: TextStyle(color: Colors.yellow),
+                                ),
+                              ),
+                            ]
                           ],
                           onChanged: (value) {
                             setState(() {
@@ -510,8 +587,52 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
                     ),
                   ],
 
+                  // Emergency Field (shown only when emergency is selected)
+                  if (_tripType == 'emergency') ...[
+                    SizedBox(height: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Approver',
+                          style: TextStyle(color: Colors.grey, fontSize: 14),
+                        ),
+                        SizedBox(height: 4),
+                        DropdownButtonFormField<String>(
+                          dropdownColor: Colors.grey[800],
+                          style: TextStyle(color: Colors.yellow),
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                          ),
+                          value: _selectedApprover,
+                          items: _approvers.map((approver) {
+                            return DropdownMenuItem<String>(
+                              value: approver['id'],
+                              child: Text(
+                                approver['name'],
+                                style: TextStyle(color: Colors.yellow),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedApprover = value;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+
                   // Reason Field (for all trip types)
-                  if (_canSchedule) SizedBox(height: 16),
+                  SizedBox(height: 16),
+
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -2084,6 +2205,9 @@ class _SchedulePassengersScreenState extends State<SchedulePassengersScreen> {
 
       final tripTypeData = {
         'tripType': _tripType,
+        'approverId': _tripType == 'emergency' && _selectedApprover != null
+            ? int.tryParse(_selectedApprover!)
+            : null,
         'fixedRate': _fixedRate,
         'reason': _reason,
         'departmentId': _selectedDepartment != null

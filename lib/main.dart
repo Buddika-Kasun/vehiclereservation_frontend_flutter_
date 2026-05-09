@@ -270,6 +270,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       title: 'PCW RIDE',
       navigatorKey: AuthManager.navigatorKey,
       theme: ThemeData(
+        fontFamily: 'system-ui',
         primarySwatch: Colors.blue,
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFFF5F5F5),

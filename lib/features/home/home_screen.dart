@@ -8,6 +8,7 @@ import 'package:vehiclereservation_frontend_flutter_/core/utils/navigation_helpe
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/all_trips_(Users)/all_trips_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/review_(Supervisors)/review_trips_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/ride_(Users)/rides_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/users/admin/approval_trip_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/approval_user_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicleType_managemnet_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/all_vehicles/vehicle_all_screen.dart';
@@ -406,10 +407,17 @@ class _HomeScreenState extends State<HomeScreen> {
           _currentScreen = ApprovalManagementScreen(
             //token: _token!,
             onApprovalUsersPressed: _switchToApprovalUsersScreen,
+            onApprovalTripsPressed: _switchToApprovalTripsScreen,
           );
           break;
         case 'approval_users':
           _currentScreen = ApprovalUsersScreen(
+            //token: _token!,
+            onBackToApprovalConfig: _switchToApprovalManagementScreen,
+          );
+          break;
+        case 'approval_trips':
+          _currentScreen = ApprovalTripsScreen(
             //token: _token!,
             onBackToApprovalConfig: _switchToApprovalManagementScreen,
           );
@@ -628,6 +636,15 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _navigateToApprovalTrips() {
+    setState(() {
+      _currentScreen = ApprovalTripsScreen(
+        //token: _token!,
+        onBackToApprovalConfig: _switchToApprovalManagementScreen,
+      );
+    });
+  }
+
   void _handleAdminMenuItem(String adminItem) {
     switch (adminItem) {
       case 'Company':
@@ -650,6 +667,9 @@ class _HomeScreenState extends State<HomeScreen> {
         break;
       case 'Approval Users':
         _navigateToApprovalUsers();
+        break;
+      case 'Approval Trips':
+        _navigateToApprovalTrips();
         break;
     }
   }
@@ -703,11 +723,21 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _switchToApprovalTripsScreen() {
+    setState(() {
+      _currentScreen = ApprovalTripsScreen(
+        //token: _token!,
+        onBackToApprovalConfig: _switchToApprovalManagementScreen,
+      );
+    });
+  }
+
   void _switchToApprovalManagementScreen() {
     setState(() {
       _currentScreen = ApprovalManagementScreen(
         //token: _token!,
         onApprovalUsersPressed: _switchToApprovalUsersScreen,
+        onApprovalTripsPressed: _switchToApprovalTripsScreen,
       );
     });
   }
