@@ -98,7 +98,6 @@ class _TopBarState extends State<TopBar> {
           _loadUnreadCount();
 
           if (event == 'notification' || event == 'notification_update') {
-
             int? newCount;
             if (message['data'] != null &&
                 message['data']['unreadCount'] != null) {
@@ -513,87 +512,90 @@ class _TopBarState extends State<TopBar> {
           ),
           centerTitle: true,
           actions: [
-            // Notification Icon
-            Stack(
-              children: [
-                IconButton(
-                  icon: _isInitializing || _isReconnecting
-                      ? SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
+            GestureDetector(
+              onTap:
+                  _handleNotificationTap, // This will trigger on ANY tap in this area
+              child: Stack(
+                children: [
+                  IconButton(
+                    icon: _isInitializing || _isReconnecting
+                        ? SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
                             ),
+                          )
+                        : Icon(
+                            Icons.notifications,
+                            color: _isConnected
+                                ? Colors.white
+                                : Colors.white.withOpacity(0.5),
                           ),
-                        )
-                      : Icon(
-                          Icons.notifications,
-                          color: _isConnected
-                              ? Colors.white
-                              : Colors.white.withOpacity(0.5),
-                        ),
-                  onPressed: _handleNotificationTap,
-                ),
+                    onPressed: _handleNotificationTap,
+                  ),
 
-                // Unread count badge
-                if (_unreadCount > 0 && !_isInitializing && !_isReconnecting)
+                  // Unread count badge
+                  if (_unreadCount > 0 && !_isInitializing && !_isReconnecting)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 18,
+                          minHeight: 18,
+                        ),
+                        child: Text(
+                          _unreadCount > 9 ? '9+' : _unreadCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+
+                  // Connection status dot
                   Positioned(
-                    right: 6,
-                    top: 6,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: Colors.redAccent,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 18,
-                        minHeight: 18,
-                      ),
-                      child: Text(
-                        _unreadCount > 9 ? '9+' : _unreadCount.toString(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
+                    right: 12,
+                    bottom: 12,
+                    child: GestureDetector(
+                      onTap: _refreshConnection,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _isReconnecting
+                              ? Colors.orangeAccent
+                              : _isInitializing
+                              ? Colors.orangeAccent
+                              : _isConnected
+                              ? Colors.greenAccent
+                              : Colors.redAccent,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: 2,
+                              spreadRadius: 1,
+                            ),
+                          ],
                         ),
-                        textAlign: TextAlign.center,
                       ),
                     ),
                   ),
-
-                // Connection status dot
-                Positioned(
-                  right: 12,
-                  bottom: 12,
-                  child: GestureDetector(
-                    onTap: _refreshConnection,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _isReconnecting
-                            ? Colors.orangeAccent
-                            : _isInitializing
-                            ? Colors.orangeAccent
-                            : _isConnected
-                            ? Colors.greenAccent
-                            : Colors.redAccent,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
-                            blurRadius: 2,
-                            spreadRadius: 1,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
 
             // Avatar
@@ -636,5 +638,4 @@ class _TopBarState extends State<TopBar> {
     }
     return 'U';
   }
-
 }
