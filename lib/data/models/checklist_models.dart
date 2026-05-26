@@ -1,15 +1,20 @@
 // models/checklist_models.dart
 
+import 'package:flutter/material.dart';
+
 class ChecklistResponse {
   final String id;
   final String vehicleId;
   final String vehicleRegNo;
   final DateTime checklistDate;
-  final CheckedBy checkedBy; // Changed to object
+  final CheckedBy checkedBy;
   final DateTime createdAt;
   final DateTime? updatedAt;
   final Map<String, ChecklistItemResponse> responses;
   final bool isSubmitted;
+  final String? status;
+  final CheckedBy? approvedBy;
+  final String? comment;
 
   ChecklistResponse({
     required this.id,
@@ -21,143 +26,90 @@ class ChecklistResponse {
     this.updatedAt,
     required this.responses,
     required this.isSubmitted,
+    this.status,
+    this.approvedBy,
+    this.comment,
   });
 
   factory ChecklistResponse.fromJson(Map<String, dynamic> json) {
-    print('🔄 Parsing ChecklistResponse from JSON');
-
-    // Debug print to see what we're receiving
-    print('JSON keys: ${json.keys}');
-    print('checkedBy type: ${json['checkedBy']?.runtimeType}');
-    print('responses type: ${json['responses']?.runtimeType}');
-
-    // Parse checkedBy object with proper type checking
-    CheckedBy checkedBy;
+    // Parse checkedBy
+    CheckedBy checkedBy = CheckedBy(id: '', name: '', role: '');
     try {
-      if (json['checkedBy'] != null) {
-        if (json['checkedBy'] is Map<String, dynamic>) {
-          checkedBy = CheckedBy.fromJson(
-            Map<String, dynamic>.from(json['checkedBy']),
-          );
-        } else if (json['checkedBy'] is Map) {
-          // Handle generic Map
-          checkedBy = CheckedBy.fromJson(
-            Map<String, dynamic>.from(json['checkedBy'] as Map),
-          );
-        } else {
-          print('⚠️ checkedBy is not a Map, using fallback');
-          checkedBy = CheckedBy(id: '', name: '', role: '');
-        }
-      } else {
-        print('⚠️ checkedBy is null, using fallback');
-        checkedBy = CheckedBy(id: '', name: '', role: '');
+      if (json['checkedBy'] != null && json['checkedBy'] is Map) {
+        checkedBy = CheckedBy.fromJson(
+          Map<String, dynamic>.from(json['checkedBy']),
+        );
       }
     } catch (e) {
-      print('❌ Error parsing checkedBy: $e');
-      checkedBy = CheckedBy(id: '', name: '', role: '');
+      print('Error parsing checkedBy: $e');
     }
 
-    // Parse responses with proper type checking
+    // Parse approvedBy
+    CheckedBy? approvedBy;
+    try {
+      if (json['approvedBy'] != null && json['approvedBy'] is Map) {
+        approvedBy = CheckedBy.fromJson(
+          Map<String, dynamic>.from(json['approvedBy']),
+        );
+      }
+    } catch (e) {
+      print('Error parsing approvedBy: $e');
+    }
+
+    // Parse responses
     Map<String, ChecklistItemResponse> responses = {};
     try {
-      if (json['responses'] != null) {
-        if (json['responses'] is Map<String, dynamic>) {
-          final responsesMap = Map<String, dynamic>.from(json['responses']);
-          responses = responsesMap.map((key, value) {
-            try {
-              if (value is Map<String, dynamic>) {
-                return MapEntry(key, ChecklistItemResponse.fromJson(value));
-              } else if (value is Map) {
-                return MapEntry(
-                  key,
-                  ChecklistItemResponse.fromJson(
-                    Map<String, dynamic>.from(value),
-                  ),
-                );
-              } else {
-                print(
-                  '⚠️ Response value for $key is not a Map: $value (type: ${value.runtimeType})',
-                );
-                return MapEntry(
-                  key,
-                  ChecklistItemResponse(status: null, remarks: null),
-                );
-              }
-            } catch (e) {
-              print('⚠️ Error parsing response item $key: $e');
+      if (json['responses'] != null && json['responses'] is Map) {
+        final responsesMap = Map<String, dynamic>.from(json['responses']);
+        responses = responsesMap.map((key, value) {
+          try {
+            if (value is Map) {
               return MapEntry(
                 key,
-                ChecklistItemResponse(status: null, remarks: null),
+                ChecklistItemResponse.fromJson(
+                  Map<String, dynamic>.from(value),
+                ),
               );
             }
-          });
-        } else if (json['responses'] is Map) {
-          // Handle generic Map
-          final responsesMap = Map.from(json['responses'] as Map);
-          responses = responsesMap.map((key, value) {
-            try {
-              if (value is Map) {
-                return MapEntry(
-                  key.toString(),
-                  ChecklistItemResponse.fromJson(
-                    Map<String, dynamic>.from(value),
-                  ),
-                );
-              } else {
-                print('⚠️ Response value for $key is not a Map: $value');
-                return MapEntry(
-                  key.toString(),
-                  ChecklistItemResponse(status: null, remarks: null),
-                );
-              }
-            } catch (e) {
-              print('⚠️ Error parsing response item $key: $e');
-              return MapEntry(
-                key.toString(),
-                ChecklistItemResponse(status: null, remarks: null),
-              );
-            }
-          });
-        } else {
-          print('⚠️ responses is not a Map: ${json['responses']}');
-        }
-      } else {
-        print('⚠️ responses is null');
+          } catch (e) {
+            print('Error parsing response $key: $e');
+          }
+          return MapEntry(
+            key,
+            ChecklistItemResponse(status: null, remarks: null),
+          );
+        });
       }
     } catch (e) {
-      print('❌ Error parsing responses: $e');
-      responses = {};
+      print('Error parsing responses: $e');
     }
 
-    // Parse dates with error handling
-    DateTime checklistDate;
+    // Parse dates
+    DateTime checklistDate = DateTime.now();
     try {
-      checklistDate = DateTime.parse(
-        json['checklistDate']?.toString() ?? DateTime.now().toString(),
-      );
+      if (json['checklistDate'] != null) {
+        checklistDate = DateTime.parse(json['checklistDate'].toString());
+      }
     } catch (e) {
-      print('⚠️ Error parsing checklistDate: $e');
-      checklistDate = DateTime.now();
+      print('Error parsing checklistDate: $e');
     }
 
-    DateTime createdAt;
+    DateTime createdAt = DateTime.now();
     try {
-      createdAt = DateTime.parse(
-        json['createdAt']?.toString() ?? DateTime.now().toString(),
-      );
+      if (json['createdAt'] != null) {
+        createdAt = DateTime.parse(json['createdAt'].toString());
+      }
     } catch (e) {
-      print('⚠️ Error parsing createdAt: $e');
-      createdAt = DateTime.now();
+      print('Error parsing createdAt: $e');
     }
 
     DateTime? updatedAt;
     try {
       if (json['updatedAt'] != null) {
-        updatedAt = DateTime.parse(json['updatedAt']!.toString());
+        updatedAt = DateTime.parse(json['updatedAt'].toString());
       }
     } catch (e) {
-      print('⚠️ Error parsing updatedAt: $e');
-      updatedAt = null;
+      print('Error parsing updatedAt: $e');
     }
 
     return ChecklistResponse(
@@ -170,13 +122,203 @@ class ChecklistResponse {
       updatedAt: updatedAt,
       responses: responses,
       isSubmitted: json['isSubmitted'] ?? false,
+      status: json['status']?.toString(),
+      approvedBy: approvedBy,
+      comment: json['comment']?.toString(),
     );
   }
 
-  // Helper getters for backward compatibility
-  String get checkedById => checkedBy.id;
-  String get checkedByName => checkedBy.name;
-  String get checkedByRole => checkedBy.role;
+  String getStatusText() {
+    switch (status?.toLowerCase()) {
+      case 'submitted':
+        return 'PENDING';
+      case 'approved':
+        return 'APPROVED';
+      case 'rejected':
+        return 'REJECTED';
+      default:
+        return status?.toUpperCase() ?? 'UNKNOWN';
+    }
+  }
+
+  Color getStatusColor() {
+    switch (status?.toLowerCase()) {
+      case 'submitted':
+        return Colors.orange;
+      case 'approved':
+        return Colors.green;
+      case 'rejected':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String formatCheckedDate() {
+    final sriLankanDate = _toSriLankanTime(checklistDate);
+    final sriLankanCreatedAt = _toSriLankanTime(createdAt);
+    final now = _toSriLankanTime(DateTime.now());
+
+    final today = DateTime(now.year, now.month, now.day);
+    final checkedDay = DateTime(
+      sriLankanDate.year,
+      sriLankanDate.month,
+      sriLankanDate.day,
+    );
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    if (checkedDay == today) {
+      return 'Today ${_formatTimeOnly(sriLankanCreatedAt)}';
+    } else if (checkedDay == yesterday) {
+      return 'Yesterday ${_formatTimeOnly(sriLankanCreatedAt)}';
+    } else {
+      return '${sriLankanDate.day}/${sriLankanDate.month}/${sriLankanDate.year} ${_formatTimeOnly(sriLankanCreatedAt)}';
+    }
+  }
+
+  DateTime _toSriLankanTime(DateTime utcTime) {
+    const sriLankanOffset = Duration(hours: 5, minutes: 30);
+    return utcTime.add(sriLankanOffset);
+  }
+
+  String _formatTimeOnly(DateTime dateTime) {
+    int hour = dateTime.hour;
+    int minute = dateTime.minute;
+    final period = hour >= 12 ? 'PM' : 'AM';
+    hour = hour % 12;
+    hour = hour == 0 ? 12 : hour;
+    final minuteStr = minute.toString().padLeft(2, '0');
+    return '$hour:$minuteStr $period';
+  }
+}
+
+class VehicleChecklistResponse {
+  final String id;
+  final String vehicleId;
+  final String vehicleRegNo;
+  final DateTime? checklistDate;
+  final CheckedBy? checkedBy;
+  final DateTime? createdAt;
+  final bool isSubmitted;
+  final String? status;
+
+  VehicleChecklistResponse({
+    required this.id,
+    required this.vehicleId,
+    required this.vehicleRegNo,
+    this.checklistDate,
+    this.checkedBy,
+    this.createdAt,
+    required this.isSubmitted,
+    this.status,
+  });
+
+  factory VehicleChecklistResponse.fromJson(Map<String, dynamic> json) {
+    // Parse checkedBy
+    CheckedBy checkedBy = CheckedBy(id: '', name: '', role: '');
+    try {
+      if (json['checkedBy'] != null && json['checkedBy'] is Map) {
+        checkedBy = CheckedBy.fromJson(
+          Map<String, dynamic>.from(json['checkedBy']),
+        );
+      }
+    } catch (e) {
+      print('Error parsing checkedBy: $e');
+    }
+
+    // Parse dates
+    DateTime checklistDate = DateTime.now();
+    try {
+      if (json['checklistDate'] != null) {
+        checklistDate = DateTime.parse(json['checklistDate'].toString());
+      }
+    } catch (e) {
+      print('Error parsing checklistDate: $e');
+    }
+
+    DateTime createdAt = DateTime.now();
+    try {
+      if (json['createdAt'] != null) {
+        createdAt = DateTime.parse(json['createdAt'].toString());
+      }
+    } catch (e) {
+      print('Error parsing createdAt: $e');
+    }
+
+    return VehicleChecklistResponse(
+      id: json['id']?.toString() ?? '',
+      vehicleId: json['vehicleId']?.toString() ?? '',
+      vehicleRegNo: json['vehicleRegNo']?.toString() ?? '',
+      checklistDate: checklistDate,
+      checkedBy: checkedBy,
+      createdAt: createdAt,
+      isSubmitted: json['isSubmitted'],
+      status: json['status']?.toString(),
+    );
+  }
+
+  String getStatusText() {
+    switch (status?.toLowerCase()) {
+      case 'submitted':
+        return 'REVIEW';
+      case 'approved':
+        return 'APPROVED';
+      case 'rejected':
+        return 'REJECTED';
+      default:
+        return status?.toUpperCase() ?? 'UNKNOWN';
+    }
+  }
+
+  Color getStatusColor() {
+    switch (status?.toLowerCase()) {
+      case 'submitted':
+        return Colors.orange;
+      case 'approved':
+        return Colors.green;
+      case 'rejected':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String formatCheckedDate() {
+    final sriLankanDate = _toSriLankanTime(checklistDate!);
+    final sriLankanCreatedAt = _toSriLankanTime(createdAt!);
+    final now = _toSriLankanTime(DateTime.now());
+
+    final today = DateTime(now.year, now.month, now.day);
+    final checkedDay = DateTime(
+      sriLankanDate.year,
+      sriLankanDate.month,
+      sriLankanDate.day,
+    );
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    if (checkedDay == today) {
+      return 'Today ${_formatTimeOnly(sriLankanCreatedAt)}';
+    } else if (checkedDay == yesterday) {
+      return 'Yesterday ${_formatTimeOnly(sriLankanCreatedAt)}';
+    } else {
+      return '${sriLankanDate.day}/${sriLankanDate.month}/${sriLankanDate.year} ${_formatTimeOnly(sriLankanCreatedAt)}';
+    }
+  }
+
+  DateTime _toSriLankanTime(DateTime utcTime) {
+    const sriLankanOffset = Duration(hours: 5, minutes: 30);
+    return utcTime.add(sriLankanOffset);
+  }
+
+  String _formatTimeOnly(DateTime dateTime) {
+    int hour = dateTime.hour;
+    int minute = dateTime.minute;
+    final period = hour >= 12 ? 'PM' : 'AM';
+    hour = hour % 12;
+    hour = hour == 0 ? 12 : hour;
+    final minuteStr = minute.toString().padLeft(2, '0');
+    return '$hour:$minuteStr $period';
+  }
 }
 
 class CheckedBy {
@@ -187,26 +329,20 @@ class CheckedBy {
   CheckedBy({required this.id, required this.name, required this.role});
 
   factory CheckedBy.fromJson(Map<String, dynamic> json) {
-    try {
-      return CheckedBy(
-        id: json['id']?.toString() ?? '',
-        name: json['name']?.toString() ?? '',
-        role: json['role']?.toString() ?? '',
-      );
-    } catch (e) {
-      print('❌ Error in CheckedBy.fromJson: $e');
-      print('❌ JSON: $json');
-      return CheckedBy(id: '', name: '', role: '');
-    }
+    return CheckedBy(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      role: json['role']?.toString() ?? '',
+    );
   }
-  
+
   Map<String, dynamic> toJson() {
     return {'id': id, 'name': name, 'role': role};
   }
 }
 
 class ChecklistItemResponse {
-  final String? status; // "good" or "bad"
+  final String? status;
   final String? remarks;
 
   ChecklistItemResponse({this.status, this.remarks});
@@ -216,10 +352,6 @@ class ChecklistItemResponse {
       status: json['status']?.toString(),
       remarks: json['remarks']?.toString(),
     );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {'status': status, 'remarks': remarks};
   }
 }
 
@@ -257,5 +389,92 @@ class ChecklistItemRequest {
 
   Map<String, dynamic> toJson() {
     return {'status': status, 'remarks': remarks ?? ''};
+  }
+}
+
+class ChecklistApiResponse {
+  final List<ChecklistResponse> checklists;
+  final int total;
+  final int page;
+  final int limit;
+  final bool hasMore;
+
+  ChecklistApiResponse({
+    required this.checklists,
+    required this.total,
+    required this.page,
+    required this.limit,
+    required this.hasMore,
+  });
+
+  factory ChecklistApiResponse.fromJson(Map<String, dynamic> json) {
+    List<ChecklistResponse> checklists = [];
+
+    if (json['checklists'] != null) {
+      checklists = (json['checklists'] as List)
+          .map(
+            (item) => ChecklistResponse.fromJson(item as Map<String, dynamic>),
+          )
+          .toList();
+    } else if (json['data'] != null && json['data']['checklists'] != null) {
+      checklists = (json['data']['checklists'] as List)
+          .map(
+            (item) => ChecklistResponse.fromJson(item as Map<String, dynamic>),
+          )
+          .toList();
+    }
+
+    return ChecklistApiResponse(
+      checklists: checklists,
+      total: json['total'] ?? checklists.length,
+      page: json['page'] ?? 1,
+      limit: json['limit'] ?? 10,
+      hasMore: json['hasMore'] ?? false,
+    );
+  }
+}
+
+class VehicleChecklistApiResponse {
+  final List<VehicleChecklistResponse> checklists;
+  final int total;
+  final int totalChecklists;
+  final int page;
+  final int limit;
+  final bool hasMore;
+
+  VehicleChecklistApiResponse({
+    required this.checklists,
+    required this.total,
+    required this.totalChecklists,
+    required this.page,
+    required this.limit,
+    required this.hasMore,
+  });
+
+  factory VehicleChecklistApiResponse.fromJson(Map<String, dynamic> json) {
+    List<VehicleChecklistResponse> checklists = [];
+
+    if (json['checklists'] != null) {
+      checklists = (json['checklists'] as List)
+          .map(
+            (item) => VehicleChecklistResponse.fromJson(item as Map<String, dynamic>),
+          )
+          .toList();
+    } else if (json['data'] != null && json['data']['checklists'] != null) {
+      checklists = (json['data']['checklists'] as List)
+          .map(
+            (item) => VehicleChecklistResponse.fromJson(item as Map<String, dynamic>),
+          )
+          .toList();
+    }
+
+    return VehicleChecklistApiResponse(
+      checklists: checklists,
+      total: json['total'] ?? checklists.length,
+      totalChecklists: json['totalChecklists'],
+      page: json['page'] ?? 1,
+      limit: json['limit'] ?? 10,
+      hasMore: json['hasMore'] ?? false,
+    );
   }
 }

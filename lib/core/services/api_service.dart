@@ -628,6 +628,36 @@ class ApiService {
     );
   }
 
+  static Future<Map<String, dynamic>> getUsersByFiltration({
+    required String page,
+    required String limit,
+    int? departmentId,
+    String? role,
+    String? sort,
+    String? search,
+  }) async {
+    final body = <String, dynamic>{'page': page, 'limit': limit};
+
+    if (departmentId != null) {
+      body['departmentId'] = departmentId;
+    }
+    if (role != null && role.isNotEmpty) {
+      body['role'] = role;
+    }
+    if (sort != null && sort.isNotEmpty) {
+      body['sort'] = sort;
+    }
+    if (search != null && search.isNotEmpty) {
+      body['search'] = search;
+    }
+
+    return await authenticatedApiCall(
+      'user/get-all-by-filtration',
+      method: 'POST',
+      body: body,
+    );
+  }
+
   static Future<Map<String, dynamic>> getUsersByDepartment(int departmentId) async {
     return await authenticatedApiCall(
       'user/get-all-by-department/$departmentId',
@@ -1154,6 +1184,50 @@ class ApiService {
     }
   }
 
+  static Future<ChecklistApiResponse> getChecklists(
+    TripCardListRequest request,
+  ) async {
+    try {
+      final response = await authenticatedApiCall(
+        'checklist/all-checklist',
+        method: 'POST',
+        body: request.toJson(),
+      );
+
+      // Handle different response structures
+      if (response['data'] != null) {
+        return ChecklistApiResponse.fromJson(response['data']);
+      } else {
+        return ChecklistApiResponse.fromJson(response);
+      }
+    } catch (e) {
+      print('Error getting checklists: $e');
+      rethrow;
+    }
+  }
+
+  static Future<VehicleChecklistApiResponse> getVehiclesChecklists(
+    TripCardListRequest request,
+  ) async {
+    try {
+      final response = await authenticatedApiCall(
+        'checklist/all-vehicles-checklists',
+        method: 'POST',
+        body: request.toJson(),
+      );
+
+      // Handle different response structures
+      if (response['data'] != null) {
+        return VehicleChecklistApiResponse.fromJson(response['data']);
+      } else {
+        return VehicleChecklistApiResponse.fromJson(response);
+      }
+    } catch (e) {
+      print('Error getting checklists: $e');
+      rethrow;
+    }
+  }
+
   static Future<TripCardResponse> getAllExceedTrips(
     TripCardListRequest request,
   ) async {
@@ -1511,6 +1585,15 @@ class ApiService {
     }
   }
   
+  static Future<Map<String, dynamic>> getFullUserById(String userId) async {
+    try {
+      return await authenticatedApiCall('user/get-full/$userId', method: 'GET');
+    } catch (e) {
+      print('Error fetching user by ID: $e');
+      rethrow;
+    }
+  }
+
   // Add a method to update user approval status (alternative to existing approveUser)
   static Future<Map<String, dynamic>> updateUserApprovalStatus(
     String userId,
@@ -1959,6 +2042,50 @@ class ApiService {
   }
 }
 
+  static Future<ChecklistResponse> getChecklistById(String checklistId) async {
+    try {
+      
+      final response = await authenticatedApiCall(
+        'checklist/get-by-id/$checklistId',
+        method: 'GET',
+      );
+
+      if (response.containsKey('id')) {
+        return ChecklistResponse.fromJson(response);
+      } else if (response['data'] != null) {
+        return ChecklistResponse.fromJson(response['data']);
+      } else {
+        throw Exception('No checklist data in response');
+      }
+    } catch (e) {
+      print('❌ Error in getChecklistById: $e');
+      print('❌ Stack trace: ${e.toString()}');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> approveChecklist({
+    required String checklistId,
+    required String comment,
+  }) async {
+    return await authenticatedApiCall(
+      'checklist/approve/$checklistId',
+      method: 'POST',
+      body: {'comment': comment},
+    );
+  }
+
+  static Future<Map<String, dynamic>> rejectChecklist({
+    required String checklistId,
+    required String comment,
+  }) async {
+    return await authenticatedApiCall(
+      'checklist/reject/$checklistId',
+      method: 'POST',
+      body: {'comment': comment},
+    );
+  }
+
   static Future<ChecklistResponse> submitChecklist({
     required String vehicleId,
     required String vehicleRegNo,
@@ -2017,7 +2144,8 @@ class ApiService {
     required DateTime date,
   }) async {
     try {
-      final formattedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      //final formattedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      final formattedDate = DateFormat('yyyy-MM-dd').format(date);
       
       print('🔍 Checking if checklist exists for vehicle $vehicleId on $formattedDate');
       

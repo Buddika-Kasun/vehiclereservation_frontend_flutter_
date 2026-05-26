@@ -652,7 +652,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                   style: TextStyle(
                     color: Colors.grey[400],
                     fontSize: 16,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -669,6 +669,210 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildApprovedBySection() {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.green.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.green.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.green, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Approved By',
+                style: TextStyle(
+                  color: Colors.green,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12),
+          Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.person, color: Colors.green, size: 28),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _existingChecklist!.approvedBy?.name ?? 'Unknown',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      _existingChecklist!.approvedBy?.role.toUpperCase() ?? '',
+                      style: TextStyle(
+                        color: Colors.green,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                _getSriLankanTime(_existingChecklist!.updatedAt!),
+                style: TextStyle(color: Colors.grey[400], fontSize: 12),
+              ),
+            ],
+          ),
+          if (_existingChecklist!.comment != null &&
+              _existingChecklist!.comment!.isNotEmpty) ...[
+            SizedBox(height: 12),
+            Text(
+              'Approval Comment:',
+              style: TextStyle(
+                color: Colors.green,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(height: 4),
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                _existingChecklist!.comment!,
+                style: TextStyle(color: Colors.white, fontSize: 14),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRejectionInfoSection() {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.red.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.cancel, color: Colors.red, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Rejected',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12),
+          Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.person, color: Colors.red, size: 28),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _existingChecklist!.approvedBy?.name ?? 'Unknown',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      _existingChecklist!.approvedBy?.role.toUpperCase() ?? '',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                _getSriLankanTime(_existingChecklist!.updatedAt!),
+                style: TextStyle(color: Colors.grey[400], fontSize: 12),
+              ),
+            ],
+          ),
+          if (_existingChecklist!.comment != null &&
+              _existingChecklist!.comment!.isNotEmpty) ...[
+            SizedBox(height: 12),
+            Text(
+              'Rejection Reason:',
+              style: TextStyle(
+                color: Colors.red,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(height: 4),
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                _existingChecklist!.comment!,
+                style: TextStyle(color: Colors.white, fontSize: 14),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+   String _getSriLankanTime(DateTime utcTime) {
+    const sriLankanOffset = Duration(hours: 5, minutes: 30);
+    final localTime = utcTime.add(sriLankanOffset);
+    return DateFormat('hh:mm a').format(localTime);
   }
 
   Widget _buildFilterRow() {
@@ -838,18 +1042,23 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.2),
+                      color: _getStatusColor(
+                        _existingChecklist?.status,
+                      ).withOpacity(0.2),
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: Colors.green),
+                      border: Border.all(
+                        color: _getStatusColor(_existingChecklist?.status),
+                      ),
                     ),
                     child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.check_circle, size: 12, color: Colors.green),
+                        _getStatusIcon(_existingChecklist?.status),
                         SizedBox(width: 4),
                         Text(
-                          'SUBMITTED',
+                          _getStatusText(_existingChecklist?.status),
                           style: TextStyle(
-                            color: Colors.green,
+                            color: _getStatusColor(_existingChecklist?.status),
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.5,
@@ -885,6 +1094,16 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
               ],
             ),
           ),
+
+          
+          if (_existingChecklist?.status == 'approved' &&
+              _existingChecklist?.approvedBy != null) ...[
+            _buildApprovedBySection(),
+          ],
+          if (_existingChecklist?.status == 'rejected') ...[
+            _buildRejectionInfoSection(),
+          ],
+          
 
           // Checklist Form
           Expanded(
@@ -1015,6 +1234,45 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     );
   }
 
+  Color _getStatusColor(String? status) {
+    switch (status) {
+      case 'submitted':
+        return Colors.orange;
+      case 'approved':
+        return Colors.green;
+      case 'rejected':
+        return Colors.red;
+      default:
+        return Colors.blue;
+    }
+  }
+
+  Icon _getStatusIcon(String? status) {
+    switch (status) {
+      case 'submitted':
+        return Icon(Icons.hourglass_top, size: 12, color: Colors.orange);
+      case 'approved':
+        return Icon(Icons.check_circle, size: 12, color: Colors.green);
+      case 'rejected':
+        return Icon(Icons.cancel, size: 12, color: Colors.red);
+      default:
+        return Icon(Icons.info, size: 12, color: Colors.blue);
+    }
+  }
+
+  String _getStatusText(String? status) {
+    switch (status) {
+      case 'submitted':
+        return 'REVIEWING';
+      case 'approved':
+        return 'APPROVED';
+      case 'rejected':
+        return 'REJECTED';
+      default:
+        return status?.toUpperCase() ?? 'UNKNOWN';
+    }
+  }
+
   Widget _buildChecklistItem({required String item}) {
     final status = _checklistResponses[item]!['status'] as String? ?? '';
     final remarks = _checklistResponses[item]!['remarks'] as String? ?? '';
@@ -1066,7 +1324,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        if (hasRemarks && !isExpanded && _isViewOnly)
+                        if (!isExpanded)
                           Padding(
                             padding: EdgeInsets.only(top: 4),
                             child: Row(
@@ -1078,7 +1336,10 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                                 ),
                                 SizedBox(width: 4),
                                 Text(
-                                  'Has remarks',
+                                  //'Has remarks (Click to view)',
+                                  hasRemarks ? 
+                                    'Has remarks (Click to view)' : 
+                                    !_isViewOnly ? 'Click to Add remarks (optional)' : 'No remarks',
                                   style: TextStyle(
                                     color: Colors.grey[400],
                                     fontSize: 11,
@@ -1232,6 +1493,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                 children: [
                   if (hasRemarks && _isViewOnly)
                     Container(
+                      width: double.infinity,
                       padding: EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         color: Colors.grey[900],

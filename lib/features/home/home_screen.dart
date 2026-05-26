@@ -13,12 +13,15 @@ import 'package:vehiclereservation_frontend_flutter_/features/users/admin/approv
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/approval_user_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicleType_managemnet_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/all_vehicles/vehicle_all_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicle_management/checklist/review_checklist_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicle_management/checklist/vehicle_checklists.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicle_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/assigned_(Drivers)/assigned_rides_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/ride_(Users)/ride_details_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/secure_storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/views_reports/all_users/all_users_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/shared/widgets/side_menu.dart';
 import 'package:vehiclereservation_frontend_flutter_/shared/widgets/top_bar.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/login_screen.dart';
@@ -66,6 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = true;
   bool _redirectToLogin = false;
   bool _showAdminConsole = false;
+  bool _showReportsConsole = false;
 
   // Current screen state - Start with Dashboard
   Widget _currentScreen = DashboardScreen();
@@ -349,6 +353,12 @@ class _HomeScreenState extends State<HomeScreen> {
             //token: _token!,
           );
           break;
+        case 'review_checklists':
+          _currentScreen = ReviewChecklistsScreen(
+            userRole: data?['userRole'] ?? _user!.role,
+            //token: _token!,
+          );
+          break;
         case 'trip_details':
           if (data != null && data['tripId'] != null) {
             _currentScreen = TripDetailsScreen(
@@ -456,9 +466,24 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
+    if (menuItem == 'Open Reports') {
+      // Open Views & Report Console sidebar
+      setState(() {
+        _showReportsConsole = true;
+      });
+      _scaffoldKey.currentState?.openDrawer();
+      return;
+    }
+
     if (menuItem.startsWith('Admin: ')) {
       final adminItem = menuItem.replaceFirst('Admin: ', '');
       _handleAdminMenuItem(adminItem);
+      return;
+    }
+
+    if (menuItem.startsWith('Report: ')) {
+      final reportItem = menuItem.replaceFirst('Report: ', '');
+      _handleReportMenuItem(reportItem);
       return;
     }
 
@@ -493,6 +518,9 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'Exceed Trips':
         _navigateToExceedTrips();
         break;
+      case 'Review Checklists':
+        _navigateToReviewChecklists();
+        break;
       case 'Review Trips':
         _navigateToReviewTrips();
         break;
@@ -517,6 +545,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _handleBackToMain() {
     setState(() {
       _showAdminConsole = false;
+      _showReportsConsole = false;
     });
   }
 
@@ -574,6 +603,15 @@ class _HomeScreenState extends State<HomeScreen> {
   void _navigateToExceedTrips() {
     setState(() {
       _currentScreen = ExceedTripsScreen(
+        userRole: _user!.role,
+        //token: _token!
+      );
+    });
+  }
+
+  void _navigateToReviewChecklists() {
+    setState(() {
+      _currentScreen = ReviewChecklistsScreen(
         userRole: _user!.role,
         //token: _token!
       );
@@ -693,6 +731,20 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _handleReportMenuItem(String reportItem) {
+    switch (reportItem) {
+      case 'All Users':
+        _navigateToAllUsersView();
+        break;
+      case 'All Vehicles':
+        _navigateToVehicleManagement();
+        break;
+      case 'Vehicle Checklists':
+        _navigateToVehicleChecklistsView();
+        break;
+    }
+  }
+
   void _navigateToCompanyManagement() {
     setState(() {
       _currentScreen = CompanyManagementScreen(
@@ -763,6 +815,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _navigateToAdminApprovalManagement() {
     _switchToApprovalManagementScreen();
+  }
+
+  void _navigateToAllUsersView() {
+    setState(() {
+      _currentScreen = AllUsersScreen(
+        //token: _token!
+      );
+    });
+  }
+
+  void _navigateToVehicleChecklistsView() {
+    setState(() {
+      _currentScreen = VehicleChecklistsScreen(
+        //token: _token!
+      );
+    });
   }
 
   Future<void> _showLogoutDialog() async {
@@ -1025,12 +1093,14 @@ class _HomeScreenState extends State<HomeScreen> {
         user: _user!,
         onMenuTap: _handleMenuTap,
         isAdminConsole: _showAdminConsole,
-        onBackToMain: _showAdminConsole ? _handleBackToMain : null,
+        isReportConsole: _showReportsConsole,
+        onBackToMain: (_showAdminConsole || _showReportsConsole) ? _handleBackToMain : null,
       ),
       onDrawerChanged: (isOpened) {
         if (!isOpened) {
           setState(() {
             _showAdminConsole = false;
+            _showReportsConsole = false;
           });
         }
       },

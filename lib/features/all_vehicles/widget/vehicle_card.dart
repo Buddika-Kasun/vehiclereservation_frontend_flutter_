@@ -8,7 +8,7 @@ import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart
 import 'package:vehiclereservation_frontend_flutter_/data/models/vehicle_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/color_generator.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/constant.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/users/admin/check_list_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicle_management/checklist/check_list_screen.dart';
 
 class VehicleCard extends StatefulWidget {
   final Vehicle vehicle;

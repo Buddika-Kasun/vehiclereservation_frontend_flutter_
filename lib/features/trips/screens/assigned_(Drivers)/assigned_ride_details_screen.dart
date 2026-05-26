@@ -17,7 +17,7 @@ import 'package:flutter/foundation.dart';
 // Import new WebSocket structure
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/websocket_manager.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/trip_handler.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/users/admin/check_list_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicle_management/checklist/check_list_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/shared/widgets/message_overlay.dart';
 
 class RideDetailsScreen extends StatefulWidget {
