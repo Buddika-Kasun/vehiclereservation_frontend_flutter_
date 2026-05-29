@@ -1717,7 +1717,7 @@ class _AllTripDetailsScreenState extends State<AllTripDetailsScreen> {
   Widget _buildApprovalSection() {
     // Check if approval details are available
     final hasApprovers =
-        (_tripDetails!.details.approval.approvers.hod != null ||
+        (_tripDetails!.details.approval.approvers.hod?.id != -1 ||
         _tripDetails!.details.approval.approvers.secondary != null ||
         _tripDetails!.details.approval.approvers.safety != null);
 
@@ -1813,7 +1813,8 @@ class _AllTripDetailsScreenState extends State<AllTripDetailsScreen> {
             _buildApproverRow(
               'Auto approved',
               Approver(
-                name: 'Night trip (8PM-12AM) - No HOD approval needed',
+                //name: 'Night trip (8PM-12AM) - No HOD approval needed',
+                name: _tripDetails!.details.approval.approvers.hod?.comments ?? "Not a special",
                 status: 'approved',
               ),
             ),
@@ -1851,7 +1852,8 @@ class _AllTripDetailsScreenState extends State<AllTripDetailsScreen> {
             _buildApproverRow(
               'Auto approved',
               Approver(
-                name: 'Night trip (8PM-12AM) - No HOD approval needed',
+                //name: 'Night trip (8PM-12AM) - No HOD approval needed',
+                name: _tripDetails!.details.approval.approvers.hod?.comments ?? "Not a special",
                 status: 'approved',
               ),
             ),
