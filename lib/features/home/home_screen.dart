@@ -6,6 +6,7 @@ import 'package:vehiclereservation_frontend_flutter_/core/services/pending_navig
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/global_websocket.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/navigation_helper.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/all_trips_(Users)/all_trips_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/exceed_trips_(Sysadmin)/exceed_trips_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/review_(Supervisors)/review_trips_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/ride_(Users)/rides_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/approval_trip_screen.dart';
@@ -342,6 +343,12 @@ class _HomeScreenState extends State<HomeScreen> {
             //token: _token!,
           );
           break;
+        case 'exceed_trips':
+          _currentScreen = ExceedTripsScreen(
+            userRole: data?['userRole'] ?? _user!.role,
+            //token: _token!,
+          );
+          break;
         case 'trip_details':
           if (data != null && data['tripId'] != null) {
             _currentScreen = TripDetailsScreen(
@@ -483,6 +490,9 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'All Trips':
         _navigateToAllTrips();
         break;
+      case 'Exceed Trips':
+        _navigateToExceedTrips();
+        break;
       case 'Review Trips':
         _navigateToReviewTrips();
         break;
@@ -555,6 +565,15 @@ class _HomeScreenState extends State<HomeScreen> {
   void _navigateToAllTrips() {
     setState(() {
       _currentScreen = AllTripsScreen(
+        userRole: _user!.role,
+        //token: _token!
+      );
+    });
+  }
+
+  void _navigateToExceedTrips() {
+    setState(() {
+      _currentScreen = ExceedTripsScreen(
         userRole: _user!.role,
         //token: _token!
       );
