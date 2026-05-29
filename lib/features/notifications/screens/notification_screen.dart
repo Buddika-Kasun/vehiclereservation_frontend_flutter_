@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/navigation_helper.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/notification_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/home/home_screen.dart';
@@ -46,6 +47,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
     _loadInitialData();
     _initializeWebSocket();
+
   }
 
   
@@ -352,17 +354,389 @@ class _NotificationScreenState extends State<NotificationScreen> {
     }
   }
 
+  // Replace the _handleNotificationTap method with this:
+
   void _handleNotificationTap(NotificationModel notification) {
     // Mark as read if not already read
     if (!notification.read) {
       _markAsRead(notification.id);
     }
 
-    // Get metadata
-    final NotificationMetadata? metadata = notification.metadata;
+    // Show notification details dialog
+    _showNotificationActionDialog(notification);
+  }
 
+  // New method to show notification with action buttons
+  void _showNotificationActionDialog(NotificationModel notification) {
+    final canUserCreation = StorageService.userData?.canUserCreate;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.9,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 20,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header with icon and type
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: _getNotificationColor(notification.type),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        _getNotificationIcon(notification.type),
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            notification.title,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _getNotificationTypeLabel(notification.type),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white.withOpacity(0.8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Content
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Message
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey[200]!),
+                      ),
+                      child: Text(
+                        notification.message,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          color: Colors.black87,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Time and status
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.access_time,
+                          size: 14,
+                          color: Colors.grey[500],
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _formatTime(notification.createdAt),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: notification.read
+                                ? Colors.blue.withOpacity(0.1)
+                                : Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            notification.read ? 'READ' : 'NEW',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: notification.read
+                                  ? Colors.blue
+                                  : Colors.red,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // Additional data if available
+                    if (notification.data != null &&
+                        _hasRelevantData(notification.data!)) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Trip Details:',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            if (notification.data!.tripId != null)
+                              _buildInfoRow(
+                                'Trip ID',
+                                '#${notification.data!.tripId}',
+                              ),
+                            if (notification.data!.message != null)
+                              _buildInfoRow(
+                                'Message',
+                                notification.data!.message!,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              // Action Buttons
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(20),
+                    bottomRight: Radius.circular(20),
+                  ),
+                  border: Border(top: BorderSide(color: Colors.grey[200]!)),
+                ),
+                child: Row(
+                  children: [
+                    // Cancel Button
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.grey[700],
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          side: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        child: const Text(
+                          'CANCEL',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+
+                    // View Button
+                    if ((
+                      notification.type == 'USER_REGISTERED' ||
+                      notification.type == 'USER_APPROVED' ||
+                      notification.type == 'USER_REJECTED'
+                      ) && !canUserCreation!
+                    )
+                      SizedBox(width: 0, height: 0) // Don't show VIEW button if user cannot create
+                    else ...[
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context); // Close dialog first
+                            _navigateToRelevantScreen(notification);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFF9C80E),
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'VIEW',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                    ]
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Helper method to build info rows
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Text(
+            '$label: ',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 12, color: Colors.black87),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Check if notification data has relevant info
+  bool _hasRelevantData(NotificationData data) {
+    return data.tripId != null || data.message != null;
+  }
+
+  // Get notification type label
+  String _getNotificationTypeLabel(String type) {
+    switch (type) {
+      // User registration
+      case 'USER_REGISTERED':
+        return 'New User Registration';
+      case 'USER_APPROVED':
+        return 'User Approved';
+      case 'USER_REJECTED':
+        return 'User Rejected';
+
+      // Trip requester/passenger
+      case 'TRIP_CREATED':
+        return 'Trip Created';
+      case 'TRIP_CANCELLED':
+        return 'Trip Cancelled';
+      case 'TRIP_APPROVED':
+        return 'Trip Approved';
+      case 'TRIP_REJECTED':
+        return 'Trip Rejected';
+      case 'TRIP_STARTED_FOR_PASSENGER':
+        return 'Trip Started';
+      case 'TRIP_COMPLETED_FOR_REQUESTER':
+        return 'Trip Completed';
+
+      // Supervisor
+      case 'TRIP_CREATED_AS_DRAFT':
+        return 'Trip Draft Created';
+      case 'TRIP_CONFIRMED':
+        return 'Trip Confirmed';
+
+      // Approver
+      case 'TRIP_CONFIRMED_FOR_APPROVAL':
+        return 'Pending Approval';
+      case 'TRIP_APPROVED_BY_APPROVER':
+        return 'Approved';
+      case 'TRIP_REJECTED_BY_APPROVER':
+        return 'Rejected';
+
+      // Driver
+      case 'TRIP_APPROVED_FOR_DRIVER':
+        return 'New Trip Assigned';
+      case 'TRIP_STARTED':
+        return 'Trip Started';
+
+      // Security
+      case 'TRIP_APPROVED_FOR_SECURITY':
+        return 'Security Check Required';
+      case 'TRIP_READING_START':
+        return 'Meter Reading Required';
+
+      // Vehicle
+      case 'VEHICLE_ASSIGNED':
+        return 'Vehicle Assigned';
+      case 'VEHICLE_UNASSIGNED':
+        return 'Vehicle Unassigned';
+
+      default:
+        return 'Notification';
+    }
+  }
+
+  // Get notification color
+  Color _getNotificationColor(String type) {
+    if (type.contains('APPROVED')) return Colors.green;
+    if (type.contains('REJECTED') || type.contains('CANCELLED'))
+      return Colors.red;
+    if (type.contains('CREATED') || type.contains('REGISTERED'))
+      return Colors.blue;
+    if (type.contains('STARTED')) return Colors.orange;
+    if (type.contains('COMPLETED')) return Colors.teal;
+    if (type.contains('ASSIGNED')) return Colors.purple;
+    return Colors.black;
+  }
+
+  // Navigation after user clicks VIEW
+  void _navigateToRelevantScreen(NotificationModel notification) {
     switch (notification.type) {
-      // User registration notifications - go to user creations screen
+      // User registration notifications
       case 'USER_REGISTERED':
         NavigationHelper.toUserCreations('pending');
         break;
@@ -373,8 +747,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
         NavigationHelper.toUserCreations('rejected');
         break;
 
-      // Trip related notifications
-      // REQUESTER or PASSENGER related notifications
+      // Trip requester/passenger
       case 'TRIP_CREATED':
       case 'TRIP_CANCELLED':
       case 'TRIP_CANCELLED_REQUESTER':
@@ -386,8 +759,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
       case 'TRIP_COMPLETED_FOR_REQUESTER':
         NavigationHelper.toMyRideTripDetails(notification.data?.tripId ?? 0);
         break;
-        
-      // SUPERVISOR related notifications
+
+      // Supervisor
       case 'TRIP_CREATED_AS_DRAFT':
       case 'TRIP_CONFIRMED':
       case 'TRIP_CANCELLED_SUPERVISOR':
@@ -397,23 +770,25 @@ class _NotificationScreenState extends State<NotificationScreen> {
         NavigationHelper.toReviewTripDetails(notification.data?.tripId ?? 0);
         break;
 
-      // APPROVER related notifications
+      // Approver
       case 'TRIP_CONFIRMED_FOR_APPROVAL':
       case 'TRIP_APPROVED_BY_APPROVER':
       case 'TRIP_REJECTED_BY_APPROVER':
         NavigationHelper.toApprovalTripDetails(notification.data?.tripId ?? 0);
         break;
 
-      // DRIVER related notifications
+      // Driver
       case 'TRIP_APPROVED_FOR_DRIVER':
       case 'TRIP_READING_START_FOR_DRIVER':
       case 'TRIP_STARTED':
       case 'TRIP_FINISHED':
       case 'TRIP_COMPLETED_FOR_DRIVER':
-        NavigationHelper.toAssignRideTripDetails(notification.data?.tripId ?? 0);
+        NavigationHelper.toAssignRideTripDetails(
+          notification.data?.tripId ?? 0,
+        );
         break;
 
-      // SECURITY related notifications
+      // Security
       case 'TRIP_APPROVED_FOR_SECURITY':
       case 'TRIP_READING_START':
       case 'TRIP_STARTED_FOR_SECURITY':
@@ -421,19 +796,14 @@ class _NotificationScreenState extends State<NotificationScreen> {
         NavigationHelper.toMeterReading();
         break;
 
-      // Vehicle related notifications
+      // Vehicle
       case 'VEHICLE_ASSIGNED':
       case 'VEHICLE_UNASSIGNED':
         _showVehicleNotificationDialog(notification);
         break;
 
-      case 'TRIP_PASSENGER_JOINED':
-      case 'TRIP_PASSENGERS_ADDED':
-
-      // Default case for other notifications
       default:
-        // Show notification details in a dialog
-        _showNotificationDetails(notification);
+        // Just close the dialog, no navigation
         break;
     }
   }
@@ -583,35 +953,75 @@ class _NotificationScreenState extends State<NotificationScreen> {
   void _showVehicleNotificationDialog(NotificationModel notification) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(notification.title),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(notification.message),
-            SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                // Navigate to vehicles screen
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => HomeScreen(screenName: 'my_vehicles'),
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                notification.type == 'VEHICLE_ASSIGNED'
+                    ? Icons.check_circle
+                    : Icons.warning,
+                size: 60,
+                color: notification.type == 'VEHICLE_ASSIGNED'
+                    ? Colors.green
+                    : Colors.orange,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                notification.title,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                notification.message,
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('CANCEL'),
+                    ),
                   ),
-                );
-              },
-              child: Text('View Vehicles'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Close'),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const HomeScreen(screenName: 'my_vehicles'),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFF9C80E),
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('VIEW VEHICLES'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

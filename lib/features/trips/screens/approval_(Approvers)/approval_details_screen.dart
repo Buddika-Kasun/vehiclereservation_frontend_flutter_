@@ -2474,8 +2474,111 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
   }
 
   Widget _buildApprovalSection() {
-    if (_tripDetails?.details.approval.hasApproval != true) {
-      return SizedBox.shrink();
+    // Check if approval details are available
+    final hasApprovers =
+        (_tripDetails!.details.approval.approvers.hod != null ||
+        _tripDetails!.details.approval.approvers.secondary != null ||
+        _tripDetails!.details.approval.approvers.safety != null);
+
+    final hasApproval = _tripDetails?.details.approval.hasApproval == true;
+
+    if (!hasApproval) {
+      return Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey[900],
+          border: Border(bottom: BorderSide(color: Colors.grey[800]!)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Approval Status',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 12),
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[800],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.schedule, color: Colors.orange, size: 24),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          //'Vehicle assignment pending',
+                          _tripDetails?.schedule.isInstance == true
+                              ? _tripDetails?.status.toLowerCase() == 'pending'
+                                    ? 'Master trip under reviewing'
+                                    : 'Master trip approved'
+                              : 'Vehicle assignment pending',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          //'Approvers will be assigned shortly',
+                          _tripDetails?.schedule.isInstance == true
+                              ? _tripDetails?.status.toLowerCase() == 'pending'
+                                    ? 'Master trip under reviewing and approvers will be assigned shortly'
+                                    : 'Master trip approved and no need for instance approvals'
+                              : 'Approvers will be assigned shortly',
+                          style: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    } else if (hasApproval && !hasApprovers) {
+      return Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey[900],
+          border: Border(bottom: BorderSide(color: Colors.grey[800]!)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Approval Status',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 12),
+            _buildApproverRow(
+              'Auto approved',
+              Approver(
+                name: 'Night trip (8PM-12AM) - No HOD approval needed',
+                status: 'approved',
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     return Container(
@@ -2496,13 +2599,22 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
             ),
           ),
           SizedBox(height: 12),
-          if (_tripDetails?.details.approval.approvers.hod != null)
+          if (_tripDetails?.details.approval.approvers.hod != null) ...[
             _buildApproverRow(
               _tripDetails!.tripType == 'emergency'
                   ? 'Emergency Approval'
                   : 'HOD Approval',
               _tripDetails!.details.approval.approvers.hod!,
             ),
+          ] else ...[
+            _buildApproverRow(
+              'Auto approved',
+              Approver(
+                name: 'Night trip (8PM-12AM) - No HOD approval needed',
+                status: 'approved',
+              ),
+            ),
+          ],
           if (_tripDetails?.details.approval.approvers.secondary != null)
             _buildApproverRow(
               'Secondary Approval',
