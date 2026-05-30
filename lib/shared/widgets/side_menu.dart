@@ -118,6 +118,7 @@ class SideMenu extends StatelessWidget {
           MenuItem(Icons.directions_car, 'Assigned Rides'),
           MenuItem(Icons.directions_transit, 'All Trips'),
           //MenuItem(Icons.car_rental_sharp, 'All Vehicles'),
+          MenuItem(Icons.verified, 'Review Checklists'),
           MenuItem(
             Icons.file_present_sharp,
             'Views & Reports',
