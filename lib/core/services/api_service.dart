@@ -2164,6 +2164,33 @@ class ApiService {
     }
   }
 
+  static Future<int> checkIfChecklistApproved({
+    required String vehicleId,
+    required DateTime date,
+  }) async {
+    try {
+      //final formattedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      final formattedDate = DateFormat('yyyy-MM-dd').format(date);
+
+      print(
+        '🔍 Checking if checklist is approved for vehicle $vehicleId on $formattedDate',
+      );
+
+      final response = await authenticatedApiCall(
+        'checklist/vehicle/$vehicleId/date/$formattedDate/approved',
+        method: 'GET',
+      );
+
+      print('📥 Approved check response: $response');
+      print('  approved value: ${response['approved']}');
+
+      return response['approved'] ?? 0;
+    } catch (e) {
+      print('❌ Error checking checklist approval: $e');
+      return 0;
+    }
+  }
+
   /*
   static Future<void> updateFcmToken({
     required fcmToken
