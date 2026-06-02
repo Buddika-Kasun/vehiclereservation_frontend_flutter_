@@ -4,9 +4,12 @@ import 'package:vehiclereservation_frontend_flutter_/features/home/home_screen.d
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/all_trips_(Users)/all_trips_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/approval_(Approvers)/approval_details_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/assigned_(Drivers)/assigned_ride_details_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/exceed_trips_(Sysadmin)/exceed_trip_details_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/review_(Supervisors)/review_trip_details_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/reading_(Security)/meter_reading_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/ride_(Users)/ride_details_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicle_management/checklist/check_list_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicle_management/checklist/checklist_details_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/welcome/welcome_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/auth/screens/login_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/app_updates/admin_login_screen.dart';
@@ -71,6 +74,42 @@ class RouteGenerator {
           );
         }
         return _errorRoute('Trip ID is required for Assign Ride Trip Details');
+
+      case AppRoutes.exceededTripDetails:
+        if (args is Map<String, dynamic> && args['tripId'] != null) {
+          return MaterialPageRoute(
+            builder: (_) => ExceedTripDetailsScreen(
+              tripId: args['tripId'],
+              userRole: args['userRole'],
+            ),
+          );
+        }
+        return _errorRoute('Trip ID is required for Exceeded Trip Details');
+
+      case AppRoutes.reviewChecklistDetails:
+        if (args is Map<String, dynamic> && args['checklistId'] != null) {
+          return MaterialPageRoute(
+            builder: (_) => ChecklistDetailsScreen(
+              checklistId: args['checklistId'].toString(),
+              hasActions: true,
+            ),
+          );
+        }
+        return _errorRoute('Checklist ID is required for Review Checklist Details');
+      
+      case AppRoutes.checklistDetails:
+        if (args is Map<String, dynamic>) {
+          return MaterialPageRoute(
+            builder: (_) => ChecklistScreen(
+              vehicleId: args['vehicleId'].toString(),
+              vehicleRegNo: args['vehicleRegNo'],
+              userId: args['userId'].toString(),
+              userName: args['userName'],
+              userRole: args['userRole'],
+            ),
+          );
+        }
+        return _errorRoute('Checklist data is required for Checklist Details'); 
 
       case AppRoutes.meterReading:
         return MaterialPageRoute(

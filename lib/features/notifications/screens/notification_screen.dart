@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/storage_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/navigation_helper.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/notification_model.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/home/home_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 
@@ -756,6 +757,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
         return 'Trip Started';
       case 'TRIP_COMPLETED_FOR_REQUESTER':
         return 'Trip Completed';
+      case 'TRIP_EXCEED':
+        return 'Trip Exceeded';
 
       // Supervisor
       case 'TRIP_CREATED_AS_DRAFT':
@@ -776,6 +779,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
         return 'New Trip Assigned';
       case 'TRIP_STARTED':
         return 'Trip Started';
+      case 'TRIP_EXCEED_FOR_DRIVER':
+        return 'Trip Exceeded';
 
       // Security
       case 'TRIP_APPROVED_FOR_SECURITY':
@@ -789,6 +794,17 @@ class _NotificationScreenState extends State<NotificationScreen> {
       case 'VEHICLE_UNASSIGNED':
         return 'Vehicle Unassigned';
 
+      // Checklist
+      case 'CHECKLIST_SUBMITTED':
+      case 'CHECKLIST_SUBMITTED_FOR_DRIVER':
+        return 'Checklist Submitted';
+      case 'CHECKLIST_APPROVED':
+      case 'CHECKLIST_APPROVED_FOR_DRIVER':
+        return 'Checklist Approved';
+      case 'CHECKLIST_REJECTED':
+      case 'CHECKLIST_REJECTED_FOR_DRIVER':
+        return 'Checklist Rejected';
+
       default:
         return 'Notification';
     }
@@ -796,10 +812,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
   // Get notification color
   Color _getNotificationColor(String type) {
-    if (type.contains('APPROVED')) return Colors.green;
+    if (type.contains('APPROVED') || type.contains('CONFIRM'))
+      return Colors.green;
     if (type.contains('REJECTED') || type.contains('CANCELLED'))
       return Colors.red;
-    if (type.contains('CREATED') || type.contains('REGISTERED'))
+    if (type.contains('CREATED') ||
+        type.contains('REGISTERED') ||
+        type.contains('SUBMITTED'))
       return Colors.blue;
     if (type.contains('STARTED')) return Colors.orange;
     if (type.contains('COMPLETED')) return Colors.teal;
@@ -819,6 +838,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
         break;
       case 'USER_REJECTED':
         NavigationHelper.toUserCreations('rejected');
+        break;
+
+      case 'TRIP_EXCEED':
+        NavigationHelper.toExceededTripDetails(
+          notification.data?.tripId ?? 0,
+          StorageService.userData?.role ?? UserRole.sysadmin,
+        );
         break;
 
       // Trip requester/passenger
@@ -857,6 +883,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       case 'TRIP_STARTED':
       case 'TRIP_FINISHED':
       case 'TRIP_COMPLETED_FOR_DRIVER':
+      case 'TRIP_EXCEED_FOR_DRIVER':
         NavigationHelper.toAssignRideTripDetails(
           notification.data?.tripId ?? 0,
         );
@@ -874,6 +901,29 @@ class _NotificationScreenState extends State<NotificationScreen> {
       case 'VEHICLE_ASSIGNED':
       case 'VEHICLE_UNASSIGNED':
         _showVehicleNotificationDialog(notification);
+        break;
+
+      case 'CHECKLIST_SUBMITTED':
+      case 'CHECKLIST_APPROVED':
+      case 'CHECKLIST_REJECTED':
+        NavigationHelper.toReviewChecklistDetails(
+          notification.data?.checklistId ?? 0,
+        );
+        break;
+
+      case 'CHECKLIST_SUBMITTED_FOR_DRIVER':
+      case 'CHECKLIST_APPROVED_FOR_DRIVER':
+      case 'CHECKLIST_REJECTED_FOR_DRIVER':
+        final checklistData = {
+          'vehicleId': notification.data?.vehicleId.toString() ?? '',
+          'vehicleRegNo': notification.data?.vehicleRegNo ?? '',
+          'userId': widget.userId.toString(),
+          'userName': StorageService.userData?.displayname ?? '',
+          'userRole': StorageService.userData?.role.value ?? '',
+        };
+        NavigationHelper.toChecklistDetails(
+          checklistData,
+        );
         break;
 
       default:
@@ -1957,6 +2007,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
       case 'VEHICLE_ASSIGNED':
       case 'VEHICLE_UNASSIGNED':
         return Icons.directions_car_filled;
+      case 'CHECKLIST_SUBMITTED':
+      case 'CHECKLIST_APPROVED':
+      case 'CHECKLIST_REJECTED':
+      case 'CHECKLIST_SUBMITTED_FOR_DRIVER':
+      case 'CHECKLIST_APPROVED_FOR_DRIVER':
+      case 'CHECKLIST_REJECTED_FOR_DRIVER':
+        return Icons.list_alt;
       default:
         return Icons.notifications;
     }

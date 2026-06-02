@@ -113,6 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final type = data['type']?.toString().toUpperCase() ?? 'GENERAL';
     final id = data['id']?.toString();
     final tripId = int.tryParse(data['tripId']?.toString() ?? id ?? '0') ?? 0;
+    final checklistId = int.tryParse(data['checklistId']?.toString() ?? id ?? '0') ?? 0;
 
     // Navigate using your existing switch statement
     switch (type) {
@@ -163,6 +164,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'TRIP_STARTED':
       case 'TRIP_FINISHED':
       case 'TRIP_COMPLETED_FOR_DRIVER':
+      case 'TRIP_EXCEED_FOR_DRIVER':
         NavigationHelper.toAssignRideTripDetails(tripId);
         break;
 
@@ -172,6 +174,29 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'TRIP_STARTED_FOR_SECURITY':
       case 'TRIP_COMPLETED':
         NavigationHelper.toMeterReading();
+        break;
+
+      case 'TRIP_EXCEED':
+        NavigationHelper.toExceededTripDetails(tripId, _user!.role);
+        break;
+      
+      case 'CHECKLIST_SUBMITTED':
+      case 'CHECKLIST_APPROVED':
+      case 'CHECKLIST_REJECTED':
+        NavigationHelper.toReviewChecklistDetails(checklistId);
+        break;
+
+      case 'CHECKLIST_SUBMITTED_FOR_APPROVER':
+      case 'CHECKLIST_APPROVED_FOR_APPROVER':
+      case 'CHECKLIST_REJECTED_FOR_APPROVER':
+        final Map<String, Object> checklistData = {
+          'vehicleId': data['vehicleId']?.toString() ?? '',
+          'vehicleRegNo': data['vehicleRegNo'] ?? '',
+          'userId': StorageService.userData?.id.toString() ?? '',
+          'userName': StorageService.userData?.displayname ?? '',
+          'userRole': StorageService.userData?.role.value ?? '',
+        };
+        NavigationHelper.toChecklistDetails(checklistData);
         break;
 
       // Keep backward compatibility with old notification types

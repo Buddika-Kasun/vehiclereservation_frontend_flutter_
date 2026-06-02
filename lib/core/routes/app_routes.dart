@@ -11,6 +11,10 @@ class AppRoutes {
   static const String reviewTripDetails = '/review-trip-details';
   static const String approvalTripDetails = '/approval-trip-details';
   static const String assignRideTripDetails = '/assign-ride-trip-details';
+  static const String exceededTripDetails = '/exceeded-trip-details';
+
+  static const String reviewChecklistDetails = '/review-checklist-details';
+  static const String checklistDetails = '/checklist-details';
 
   // Main container route (HomeScreen with internal navigation)
   static const String home = '/home';

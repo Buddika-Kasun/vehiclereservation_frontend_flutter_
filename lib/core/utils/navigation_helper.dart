@@ -30,8 +30,20 @@ class NavigationHelper {
     _nav.toAssignRideTripDetails(tripId);
   }
 
+  static void toExceededTripDetails(int tripId, UserRole userRole) {
+    _nav.toExceededTripDetails(tripId, userRole);
+  }
+
   static void toMeterReading() {
     _nav.toMeterReading();
+  }
+
+  static void toReviewChecklistDetails(int checklistId) {
+    _nav.toReviewChecklist(checklistId);
+  }
+
+  static void toChecklistDetails(Map<String, Object> checklistData) {
+    _nav.toChecklistDetails(checklistData);
   }
 
   static void toAllTrips(UserRole userRole) {
