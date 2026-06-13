@@ -100,6 +100,10 @@ class NotificationData {
   final String? message;
   final bool? requiresScreenRefresh;
 
+  final int? checklistId;
+  final int? vehicleId;
+  final String? vehicleRegNo;
+
   NotificationData({
     this.role,
     this.email,
@@ -113,6 +117,9 @@ class NotificationData {
     this.registrationDate,
     this.message,
     this.requiresScreenRefresh,
+    this.checklistId,
+    this.vehicleId,
+    this.vehicleRegNo,
   });
 
   factory NotificationData.fromJson(Map<String, dynamic> json) {
@@ -129,6 +136,9 @@ class NotificationData {
       registrationDate: json['registrationDate'],
       message: json['message'],
       requiresScreenRefresh: json['requiresScreenRefresh'],
+      checklistId: json['checklistId'] != null ? int.tryParse(json['checklistId'].toString()) : null,
+      vehicleId: json['vehicleId'] != null ? int.tryParse(json['vehicleId'].toString()) : null,
+      vehicleRegNo: json['vehicleRegNo'],
     );
   }
 
@@ -145,6 +155,7 @@ class NotificationData {
       'registrationDate': registrationDate,
       'message': message,
       'requiresScreenRefresh': requiresScreenRefresh,
+      'checklistId': checklistId,
     };
   }
 }

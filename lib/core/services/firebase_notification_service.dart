@@ -58,8 +58,7 @@ class FirebaseNotificationService {
         // For web: register device
         await WebDeviceRegistration().register();
         print('✅ Web device registered successfully');
-      } 
-      else {
+      } else {
         await _initializeForMobile();
       }
       _isInitialized = true;
@@ -410,7 +409,7 @@ class FirebaseNotificationService {
       }
     }
   }
-  
+
   // NOTIFICATION CLICK HANDLER - For BOTH system and local notifications
   void _handleNotificationClick(RemoteMessage message) {
     print("🖱️ Notification clicked");
@@ -526,6 +525,7 @@ class FirebaseNotificationService {
       final type = data['type']?.toString().toUpperCase() ?? 'GENERAL';
       final id = data['id']?.toString();
       final tripId = int.tryParse(data['tripId']?.toString() ?? id ?? '0') ?? 0;
+      final checklistId = int.tryParse(data['checklistId']?.toString() ?? id ?? '0') ?? 0;
 
       print("🚀 Navigating to notification type: $type, tripId: $tripId");
 
@@ -576,6 +576,24 @@ class FirebaseNotificationService {
         case 'TRIP_COMPLETED':
           NavigationHelper.toMeterReading();
           break;
+        case 'CHECKLIST_SUBMITTED':
+        case 'CHECKLIST_APPROVED':
+        case 'CHECKLIST_REJECTED':
+          NavigationHelper.toReviewChecklistDetails(checklistId);
+          break;
+        case 'CHECKLIST_SUBMITTED_FOR_APPROVER':
+        case 'CHECKLIST_APPROVED_FOR_APPROVER':
+        case 'CHECKLIST_REJECTED_FOR_APPROVER':
+          final Map<String, Object> checklistData = {
+            'vehicleId': data['vehicleId']?.toString() ?? '',
+            'vehicleRegNo': data['vehicleRegNo'] ?? '',
+            'userId': StorageService.userData?.id.toString() ?? '',
+            'userName': StorageService.userData?.displayname ?? '',
+            'userRole': StorageService.userData?.role.value ?? '',
+          };
+          NavigationHelper.toChecklistDetails(checklistData);
+          break;
+          
         default:
           NavigationHelper.toNotifications();
       }
@@ -628,10 +646,9 @@ class FirebaseNotificationService {
 
   Future<void> onUserLogout() async {
     try {
-      if (kIsWeb){
+      if (kIsWeb) {
         await WebDeviceRegistration().unregister();
-      }
-      else {
+      } else {
         final user = StorageService.userData;
         await ApiService.deleteFcmToken(user?.id);
       }
@@ -647,5 +664,4 @@ class FirebaseNotificationService {
     _notificationStream.close();
     _isInitialized = false;
   }
-
 }

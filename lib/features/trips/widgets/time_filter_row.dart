@@ -6,6 +6,8 @@ class TimeFilterRow extends StatelessWidget {
   final Function(String) onFilterSelected;
   final Color activeColor;
   final Color inactiveColor;
+  final List<Map<String, String>>? filters;
+  final String? selectedDate;
 
   const TimeFilterRow({
     Key? key,
@@ -13,11 +15,14 @@ class TimeFilterRow extends StatelessWidget {
     required this.onFilterSelected,
     this.activeColor = const Color(0xFFF9C80E),
     this.inactiveColor = Colors.black87,
+    this.filters,
+    this.selectedDate,
+
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final filters = [
+    final filters = this.filters ?? [
       {'label': 'Today', 'value': 'today'},
       {'label': 'Week', 'value': 'week'},
       {'label': 'Month', 'value': 'month'},
@@ -31,7 +36,9 @@ class TimeFilterRow extends StatelessWidget {
         children: filters.map((filter) {
           return Expanded(
             child: _buildFilterButton(
-              label: filter['label'] as String,
+              label: filter['label'] == 'Select Date' && selectedDate != null
+                  ? _formatDateForDisplay(selectedDate!)
+                  : filter['label']!,
               value: filter['value'] as String,
               isSelected: currentFilter == filter['value'],
             ),
@@ -66,5 +73,14 @@ class TimeFilterRow extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _formatDateForDisplay(String date) {
+    try {
+      final dateTime = DateTime.parse(date);
+      return '${dateTime.day}/${dateTime.month}';
+    } catch (e) {
+      return date;
+    }
   }
 }
