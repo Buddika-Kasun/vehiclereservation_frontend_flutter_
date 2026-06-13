@@ -52,6 +52,7 @@ class NotificationHandler {
         _handleNotificationUpdate(data);
         break;
       case 'refresh':
+      case 'notification_refresh':
         _handleRefresh(data);
         break;
     }

@@ -11,6 +11,7 @@ class StatusFilterDropdownCustomized extends StatefulWidget {
   final Color inactiveColor;
   final Function(String)? onSearch;
   final bool enableSearch;
+  final String? selectedDate;
 
   const StatusFilterDropdownCustomized({
     Key? key,
@@ -21,6 +22,8 @@ class StatusFilterDropdownCustomized extends StatefulWidget {
     this.inactiveColor = Colors.black87,
     this.onSearch,
     this.enableSearch = false,
+    this.selectedDate,
+    
   }) : super(key: key);
 
   @override
@@ -123,7 +126,11 @@ class _StatusFilterDropdownCustomizedState
             ...widget.statusFilters.map(
               (filter) => Expanded(
                 child: _buildFilterButton(
-                  label: filter['label'] as String,
+                  //label: filter['label'] as String,
+                  label:
+                      filter['label'] == 'Select Date' && widget.selectedDate != null
+                      ? _formatDateForDisplay(widget.selectedDate!)
+                      : filter['label']!,
                   value: filter['value'] as String?,
                 ),
               ),
@@ -159,6 +166,15 @@ class _StatusFilterDropdownCustomizedState
         ],
       ),
     );
+  }
+
+  String _formatDateForDisplay(String date) {
+    try {
+      final dateTime = DateTime.parse(date);
+      return '${dateTime.day}/${dateTime.month}';
+    } catch (e) {
+      return date;
+    }
   }
 
   Widget _buildFilterButton({required String label, required String? value}) {

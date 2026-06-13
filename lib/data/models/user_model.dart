@@ -40,6 +40,12 @@ class User {
   final bool canUserCreate;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final DateTime? lastLogin;
+  final DateTime? lastAccess;
+  final String? device;
+  final String? platform;
+  final String? appVersion;
+  final bool? canLogin;
 
   User({
     required this.id,
@@ -57,6 +63,12 @@ class User {
     required this.canUserCreate,
     required this.createdAt,
     required this.updatedAt,
+    this.lastLogin,
+    this.lastAccess,
+    this.device,
+    this.platform,
+    this.appVersion,    
+    this.canLogin,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -78,6 +90,16 @@ class User {
       canUserCreate: json['permissions']['canUserCreate'] as bool,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
+      lastLogin: json['activityLogs']?['lastLogin'] != null
+          ? DateTime.parse(json['activityLogs']?['lastLogin'] as String)
+          : null,
+      lastAccess: json['activityLogs']?['lastAccess'] != null
+          ? DateTime.parse(json['activityLogs']?['lastAccess'] as String)
+          : null,
+      device: json['activityLogs']?['device'] as String?,
+      platform: json['activityLogs']?['platform'] as String?,
+      appVersion: json['activityLogs']?['appVersion'] as String?,
+      canLogin: json['activityLogs']?['canLogin'] as bool?,
     );
   }
 
