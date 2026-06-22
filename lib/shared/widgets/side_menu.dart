@@ -7,6 +7,7 @@ class SideMenu extends StatelessWidget {
   final User user;
   final Function(String) onMenuTap;
   final bool isAdminConsole;
+  final bool isReportConsole;
   final VoidCallback? onBackToMain;
 
   const SideMenu({
@@ -14,6 +15,7 @@ class SideMenu extends StatelessWidget {
     required this.user,
     required this.onMenuTap,
     this.isAdminConsole = false,
+    this.isReportConsole = false,
     this.onBackToMain,
   }) : super(key: key);
 
@@ -27,6 +29,28 @@ class SideMenu extends StatelessWidget {
         MenuItem(Icons.directions_car, 'Vehicles'),
         MenuItem(Icons.verified, 'Approvals'),
       ];
+    }
+
+    if (isReportConsole) {
+      switch (user.role) {
+        case UserRole.sysadmin:
+          return [
+            MenuItem(Icons.person, 'All Users'),
+            MenuItem(Icons.car_rental_sharp, 'All Vehicles'),
+            MenuItem(Icons.checklist, 'Vehicle Checklists'),
+          ];
+        case UserRole.supervisor:
+         return [
+            MenuItem(Icons.car_rental_sharp, 'All Vehicles'),
+            MenuItem(Icons.checklist, 'Vehicle Checklists'),
+          ];
+        case UserRole.admin:
+        case UserRole.hr:
+        case UserRole.manager:
+        case UserRole.security:
+        case UserRole.driver:
+        case UserRole.employee:
+      }
     }
 
     final items = <MenuItem>[];
@@ -60,18 +84,24 @@ class SideMenu extends StatelessWidget {
 
       case UserRole.sysadmin:
         items.addAll([
+          MenuItem(Icons.verified, 'Review Trips'),
           MenuItem(Icons.directions_car, 'My Rides'),
           MenuItem(Icons.directions_transit, 'All Trips'),
-          MenuItem(Icons.verified, 'Review Trips'),
           //MenuItem(Icons.car_rental_sharp, 'My Vehicles'),
-          MenuItem(Icons.car_rental_sharp, 'All Vehicles'),
           MenuItem(Icons.verified, 'Meter Reading'),
           MenuItem(Icons.directions_car, 'Assigned Rides'),
           MenuItem(Icons.verified, 'Exceed Trips'),
+          //MenuItem(Icons.car_rental_sharp, 'All Vehicles'),
+          MenuItem(Icons.verified, 'Review Checklists'),
+          MenuItem(
+            Icons.file_present_sharp, 
+            'Views & Reports',
+            route: 'reports',
+          ),
           MenuItem(
             Icons.admin_panel_settings,
             'Admin Console',
-            isSysAdmin: true,
+            route: 'admin',
           ),
         ]);
         break;
@@ -82,12 +112,18 @@ class SideMenu extends StatelessWidget {
 
       case UserRole.supervisor:
         items.addAll([
-          MenuItem(Icons.directions_car, 'My Rides'),
-          MenuItem(Icons.directions_transit, 'All Trips'),
-          MenuItem(Icons.car_rental_sharp, 'My Vehicles'),
-          MenuItem(Icons.car_rental_sharp, 'All Vehicles'),
-          MenuItem(Icons.directions_car, 'Assigned Rides'),
           MenuItem(Icons.verified, 'Review Trips'),
+          MenuItem(Icons.directions_car, 'My Rides'),
+          MenuItem(Icons.car_rental_sharp, 'My Vehicles'),
+          MenuItem(Icons.directions_car, 'Assigned Rides'),
+          MenuItem(Icons.directions_transit, 'All Trips'),
+          //MenuItem(Icons.car_rental_sharp, 'All Vehicles'),
+          MenuItem(Icons.verified, 'Review Checklists'),
+          MenuItem(
+            Icons.file_present_sharp,
+            'Views & Reports',
+            route: 'reports',
+          ),
         ]);
         break;
 
@@ -145,11 +181,11 @@ class SideMenu extends StatelessWidget {
             toolbarHeight: 70,
             leading: IconButton(
               icon: Icon(
-                isAdminConsole ? Icons.arrow_back : Icons.close,
+                (isAdminConsole || isReportConsole) ? Icons.arrow_back : Icons.close,
                 color: Colors.white,
               ),
               onPressed: () {
-                if (isAdminConsole && onBackToMain != null) {
+                if ((isAdminConsole || isReportConsole) && onBackToMain != null) {
                   onBackToMain!();
                 } else {
                   Navigator.pop(context);
@@ -157,7 +193,8 @@ class SideMenu extends StatelessWidget {
               },
             ),
             title: Text(
-              isAdminConsole ? 'Admin Console' : 'PCW RIDE',
+              //isAdminConsole ? 'Admin Console' : 'PCW RIDE',
+              getTitleForRoute(),
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -191,7 +228,7 @@ class SideMenu extends StatelessWidget {
             ],
           ),
 
-          if (!isAdminConsole) _buildUserCard(),
+          if (!isAdminConsole && !isReportConsole) _buildUserCard(),
 
           Expanded(
             child: Container(
@@ -374,58 +411,115 @@ class SideMenu extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: item.isSysAdmin
-              ? [
-                  const Color.fromARGB(97, 243, 58, 58),
-                  const Color.fromARGB(10, 174, 65, 65),
-                ]
-              : [const Color.fromARGB(28, 5, 3, 0), Colors.transparent],
+          colors: getItemBgColor(item),
         ),
         borderRadius: BorderRadius.circular(12),
       ),
       child: ListTile(
         leading: Icon(
           item.icon,
-          color: item.isSysAdmin
-              ? const Color.fromARGB(255, 210, 28, 16)
-              : Colors.black,
+          color: getItemColor(item),
         ),
         title: Text(
           item.title,
           style: TextStyle(
-            color: item.isSysAdmin
-                ? const Color.fromARGB(255, 210, 28, 16)
-                : Colors.black,
+            color: getItemColor(item),
             fontWeight: FontWeight.w900,
           ),
         ),
         trailing: Icon(
           Icons.arrow_forward_ios,
           size: 16,
-          color: item.isSysAdmin
-              ? const Color.fromARGB(255, 210, 28, 16)
-              : Colors.grey[600],
+          color: getItemArrowColor(item),
         ),
-        onTap: () {
-          if (isAdminConsole) {
-            Navigator.pop(context);
-            onMenuTap('Admin: ${item.title}');
-          } else if (item.isSysAdmin) {
-            onMenuTap('Open Admin Console');
-          } else {
-            Navigator.pop(context);
-            onMenuTap(item.title);
-          }
-        },
+        onTap: () => handleMenuItemTap(context, item),
       ),
     );
   }
+
+  void handleMenuItemTap(BuildContext context, MenuItem item) {
+    switch (true) {
+      case true when isAdminConsole:
+        Navigator.pop(context);
+        onMenuTap('Admin: ${item.title}');
+        break;
+      case true when isReportConsole:
+        Navigator.pop(context);
+        onMenuTap('Report: ${item.title}');
+        break;
+      case true when item.route == 'admin':
+        onMenuTap('Open Admin Console');
+        break;
+      case true when item.route == 'reports':
+        onMenuTap('Open Reports'); 
+        break;
+      default:
+        Navigator.pop(context);
+        onMenuTap(item.title);
+        break;
+    }
+  }
+
+  String getTitleForRoute() {
+    switch (true) {
+      case true when isAdminConsole:
+        return 'Admin Console';
+      case true when isReportConsole:
+        return 'Views & Reports';
+      default:
+        return 'PCW RIDE';
+    }
+  }
+
 }
 
 class MenuItem {
   final IconData icon;
   final String title;
-  final bool isSysAdmin;
+  final String? route;
 
-  MenuItem(this.icon, this.title, {this.isSysAdmin = false});
+  MenuItem(this.icon, this.title, {this.route});
 }
+
+Color getItemColor(item) {
+  switch (true) {
+    case true when item.route == 'admin':
+      return const Color.fromARGB(255, 210, 28, 16);
+    case true when item.route == 'reports':
+      return const Color.fromARGB(255, 0, 73, 200);
+    default:
+      return Colors.black;
+  }
+}
+
+Color getItemArrowColor(item) {
+  switch (true) {
+    case true when item.route == 'admin':
+      return const Color.fromARGB(255, 210, 28, 16);
+    case true when item.route == 'reports':
+      return const Color.fromARGB(255, 0, 73, 200);
+    default:
+      return Colors.grey[600]!;
+  }
+}
+
+List<Color> getItemBgColor(item) {
+  switch (true) {
+    case true when item.route == 'admin':
+      return [
+        const Color.fromARGB(97, 243, 58, 58),
+        const Color.fromARGB(10, 174, 65, 65),
+      ];
+    case true when item.route == 'reports':
+      return [
+        const Color.fromARGB(72, 86, 148, 254),
+        const Color.fromARGB(8, 2, 82, 220),
+      ];
+    default:
+      return [
+        const Color.fromARGB(28, 5, 3, 0), 
+        Colors.transparent
+      ];
+  }
+}
+

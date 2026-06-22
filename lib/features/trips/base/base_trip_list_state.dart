@@ -322,11 +322,11 @@ abstract class BaseTripListState<T extends StatefulWidget> extends State<T> {
   }
 
   // Helper to get dynamic badge label
-  String getDynamicBadgeLabel() {
+  String getDynamicBadgeLabel({String? item}) {
     if (searchQuery.isNotEmpty) {
       return 'Search Results';
     }
-    return '${getTripStatusLabel(statusFilter)} Trips';
+    return '${getTripStatusLabel(statusFilter)} ${item ?? "Trips"}';
   }
 
   // Helper to build search indicator (can be used by child classes)

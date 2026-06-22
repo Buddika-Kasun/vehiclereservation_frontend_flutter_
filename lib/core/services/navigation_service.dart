@@ -135,9 +135,36 @@ class NavigationService {
     );
   }
 
+  void toExceededTripDetails(int tripId, UserRole userRole) {
+    navigateTo(
+      AppRoutes.exceededTripDetails,
+      arguments: {'tripId': tripId, 'userRole': userRole},
+    );
+  }
+
   void toMeterReading() {
     navigateToHomeWithScreen(
       screenName: 'meter_reading',
+    );
+  }
+
+  void toReviewChecklist(int checklistId) {
+    navigateTo(
+      AppRoutes.reviewChecklistDetails,
+      arguments: {'checklistId': checklistId, },
+    );
+  }
+
+  void toChecklistDetails(Map<String, Object> checklistData) {
+    navigateTo(
+      AppRoutes.checklistDetails,
+      arguments: {
+        'vehicleId': checklistData['vehicleId'],
+        'vehicleRegNo': checklistData['vehicleRegNo'],
+        'userId': checklistData['userId'],
+        'userName': checklistData['userName'],
+        'userRole': checklistData['userRole'],
+      }
     );
   }
 

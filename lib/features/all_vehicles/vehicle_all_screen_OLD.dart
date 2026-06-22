@@ -8,7 +8,7 @@ import 'package:vehiclereservation_frontend_flutter_/data/models/vehicle_model.d
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/color_generator.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/constant.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/users/admin/check_list_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicle_management/checklist/check_list_screen.dart';
 
 class VehicleAllScreen extends StatefulWidget {
   final User user;
