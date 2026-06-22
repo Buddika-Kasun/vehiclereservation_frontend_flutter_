@@ -3,12 +3,14 @@ import 'dart:math';
 class UpdateCheckResponse {
   final bool updateAvailable;
   final String? updateType;
+  final bool? isMandatory;
   final AppUpdate? data;
   final String? message;
 
   UpdateCheckResponse({
     required this.updateAvailable,
     this.updateType,
+    this.isMandatory,
     this.data,
     this.message,
   });
@@ -17,6 +19,7 @@ class UpdateCheckResponse {
     return UpdateCheckResponse(
       updateAvailable: json['updateAvailable'] ?? false,
       updateType: json['updateType'],
+      isMandatory: json['isMandatory'] ?? false,
       data: json['data'] != null ? AppUpdate.fromJson(json['data']) : null,
       message: json['message'],
     );

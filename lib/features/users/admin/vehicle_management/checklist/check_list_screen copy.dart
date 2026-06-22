@@ -35,10 +35,8 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
   // Checklist data
   ChecklistResponse? _existingChecklist;
-  List<ChecklistResponse> _allChecklists = [];
   bool _hasRecord = false;
   bool _isViewOnly = false;
-  int _currentVersion = 0;
 
   // Checklist Form State
   Map<String, Map<String, dynamic>> _checklistResponses = {};
@@ -80,58 +78,49 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         _isLoading = true;
         _errorMessage = '';
         _expandedItems.clear();
-        _allChecklists.clear();
       });
 
       final currentDate = _selectedDate ?? DateTime.now();
       final isToday = _isToday(currentDate);
 
+      ChecklistResponse? checklist;
+      bool exists = false;
+
       print('📅 Loading checklist for date: $currentDate');
       print('📅 Is Today: $isToday');
 
-      // Fetch all versions
-      await _fetchAllVersions(currentDate);
-
-      // Check if any checklists exist
-      bool exists = _allChecklists.isNotEmpty;
-      print('✅ Checklists exist: $exists, Count: ${_allChecklists.length}');
-
-      if (_allChecklists.isNotEmpty) {
-        // Get the latest checklist (last one after sorting)
-        final latestChecklist = _allChecklists.last;
-        print(
-          '✅ Latest checklist: ID=${latestChecklist.id}, Status=${latestChecklist.status}, Version=${latestChecklist.version}',
+      // First, check if checklist exists
+      try {
+        exists = await ApiService.checkIfChecklistExists(
+          vehicleId: widget.vehicleId,
+          date: currentDate,
         );
-
-        setState(() {
-          _existingChecklist = latestChecklist;
-          _hasRecord = true;
-          _isViewOnly = true;
-          _currentVersion = latestChecklist.version ?? _allChecklists.length;
-          _loadExistingChecklistData(latestChecklist);
-          _isLoading = false;
-        });
-      } else {
-        // No checklists exist
-        if (isToday) {
-          setState(() {
-            _hasRecord = false;
-            _isViewOnly = false;
-            _existingChecklist = null;
-            _currentVersion = 0;
-            _initializeChecklistForm();
-            _isLoading = false;
-          });
-        } else {
-          setState(() {
-            _hasRecord = false;
-            _isViewOnly = true;
-            _existingChecklist = null;
-            _currentVersion = 0;
-            _isLoading = false;
-          });
-        }
+        print('✅ Checklist exists check: $exists');
+      } catch (e) {
+        print('⚠️ Error in exists check: $e');
       }
+
+      // If exists is true, try to get the full checklist
+      if (exists) {
+        try {
+          print('🔄 Fetching full checklist data...');
+          checklist = await ApiService.getChecklistByDate(
+            vehicleId: widget.vehicleId,
+            date: currentDate,
+          );
+          print('✅ Full checklist fetched: ${checklist != null}');
+          if (checklist != null) {
+            print('📋 Checklist ID: ${checklist.id}');
+            print('📋 Is Submitted: ${checklist.isSubmitted}');
+          }
+        } catch (e) {
+          print('⚠️ Error fetching full checklist: $e');
+        }
+      } else {
+        print('ℹ️ Checklist does not exist according to exists endpoint');
+      }
+
+      _processChecklistData(checklist, isToday, exists);
     } catch (e) {
       print('❌ Error in _loadChecklistData: $e');
       setState(() {
@@ -141,53 +130,60 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     }
   }
 
-  Future<void> _fetchAllVersions(DateTime date) async {
-    try {
-      print('📚 Fetching all versions for date: $date');
+  void _processChecklistData(
+    ChecklistResponse? checklist,
+    bool isToday,
+    bool exists,
+  ) {
+    print('🔄 Processing checklist data...');
+    print('  Checklist object: ${checklist != null}');
+    print('  Exists endpoint: $exists');
+    print('  Is Today: $isToday');
 
-      final allChecklists = await ApiService.getAllChecklistsByDate(
-        vehicleId: widget.vehicleId,
-        date: date,
-      );
-
-      print('📚 Raw response length: ${allChecklists.length}');
-
-      if (allChecklists.isEmpty) {
-        print('ℹ️ No checklists found for this date');
-        setState(() {
-          _allChecklists = [];
-          _currentVersion = 0;
-        });
-        return;
-      }
-
-      // Sort by version number
-      allChecklists.sort((a, b) {
-        final versionA = a.version ?? int.tryParse(a.id) ?? 0;
-        final versionB = b.version ?? int.tryParse(b.id) ?? 0;
-        return versionA.compareTo(versionB);
-      });
-
-      setState(() {
-        _allChecklists = allChecklists;
-        _currentVersion = allChecklists.isNotEmpty
-            ? (allChecklists.last.version ?? allChecklists.length)
-            : 0;
-      });
-
-      print('📚 Total versions found: ${allChecklists.length}');
-      for (var i = 0; i < allChecklists.length; i++) {
-        print(
-          '  Version ${allChecklists[i].version ?? i + 1}: ID=${allChecklists[i].id}, Status=${allChecklists[i].status}',
-        );
-      }
-    } catch (e) {
-      print('⚠️ Error fetching all versions: $e');
-      setState(() {
-        _allChecklists = [];
-        _currentVersion = 0;
-      });
+    if (checklist != null) {
+      print('  Checklist ID: ${checklist.id}');
+      print('  Vehicle: ${checklist.vehicleRegNo}');
+      print('  Responses count: ${checklist.responses.length}');
+      print('  Is Submitted: ${checklist.isSubmitted}');
     }
+
+    setState(() {
+      _existingChecklist = checklist;
+
+      // Update hasRecord based on both checklist object and exists endpoint
+      _hasRecord = checklist != null || exists;
+
+      print('  Setting hasRecord to: $_hasRecord');
+
+      if (_hasRecord && checklist != null) {
+        // We have the full checklist data - ALWAYS view only
+        _isViewOnly = true;
+        _loadExistingChecklistData(checklist);
+        print('✅ Loaded existing checklist in view-only mode');
+      } else if (_hasRecord && checklist == null) {
+        // Checklist exists but we couldn't fetch the full data - also view only
+        _isViewOnly = true;
+        print('⚠️ Checklist exists but data not loaded - showing empty form');
+      } else {
+        // No checklist exists
+        if (isToday) {
+          _isViewOnly = false;
+          _initializeChecklistForm();
+          print('✅ No record for today - initialized editable form');
+        } else {
+          _isViewOnly = true;
+          print('❌ No record for past date');
+        }
+      }
+
+      _isLoading = false;
+
+      print('=== FINAL STATE ===');
+      print('  Has Record: $_hasRecord');
+      print('  Is View Only: $_isViewOnly');
+      print('  Is Today: $isToday');
+      print('  Can Submit: ${isToday && !_isViewOnly && !_hasRecord}');
+    });
   }
 
   void _loadExistingChecklistData(ChecklistResponse checklist) {
@@ -208,14 +204,19 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
           final remarks = response.remarks ?? '';
 
           _checklistResponses[item] = {
-            'status': status ?? '',
+            'status': status ?? '', // Ensure not null
             'remarks': remarks,
           };
 
           _reasonControllers[item] = TextEditingController(text: remarks);
+
+          // Debug print
+          print('📝 Loaded: $item - Status: $status - Remarks: $remarks');
         } else {
+          // Item not found in API response
           _checklistResponses[item] = {'status': '', 'remarks': ''};
           _reasonControllers[item] = TextEditingController();
+          print('⚠️ Item not in API response: $item');
         }
       }
     }
@@ -271,6 +272,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
     setState(() {
       _checklistResponses[item]!['status'] = status;
+      print('Updated $item to $status');
     });
   }
 
@@ -285,6 +287,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
   Future<void> _submitChecklist() async {
     if (_isViewOnly || _isSubmitting) return;
 
+    // Validate all items are checked
     bool allChecked = true;
     final uncheckedItems = [];
     final checklistItems = _getChecklistSections();
@@ -300,10 +303,20 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     }
 
     if (!allChecked) {
+      /*
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please check all items before submitting. Missing: ${uncheckedItems.length} items',
+          ),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      */
       MessageOverlay.showError(
         context: context,
-        message:
-            'Please check all items before submitting. Missing: ${uncheckedItems.length} items',
+        message: 'Please check all items before submitting. Missing: ${uncheckedItems.length} items',
         position: OverlayPosition.top,
         showBackgroundOverlay: true,
         showOkButton: true,
@@ -316,6 +329,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         _isSubmitting = true;
       });
 
+      // Convert to API format
       final Map<String, ChecklistItemRequest> apiResponses = {};
 
       for (var item in _checklistResponses.keys) {
@@ -330,32 +344,97 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         }
       }
 
-      await ApiService.submitChecklist(
-        vehicleId: widget.vehicleId,
-        vehicleRegNo: widget.vehicleRegNo,
-        checklistDate: _selectedDate ?? DateTime.now(),
-        checkedById: widget.userId,
-        checkedByName: widget.userName,
-        checkedByRole: widget.userRole,
-        responses: apiResponses,
-      );
+      print('Submitting checklist with ${apiResponses.length} items');
 
-      await _loadChecklistData();
+      try {
+        // Submit to API
+        final ChecklistResponse response = await ApiService.submitChecklist(
+          vehicleId: widget.vehicleId,
+          vehicleRegNo: widget.vehicleRegNo,
+          checklistDate: _selectedDate ?? DateTime.now(),
+          checkedById: widget.userId,
+          checkedByName: widget.userName,
+          checkedByRole: widget.userRole,
+          responses: apiResponses,
+        );
 
-      MessageOverlay.showSuccess(
-        context: context,
-        message:
-            'Checklist submitted successfully! Version ${_allChecklists.length}',
-        position: OverlayPosition.top,
-        showBackgroundOverlay: true,
-        duration: const Duration(seconds: 2),
-        onComplete: () {},
-      );
+        print('✅ Checklist submitted successfully!');
+        print('Response ID: ${response.id}');
+        print('Submitted: ${response.isSubmitted}');
+
+        // CRITICAL: Force a complete reload of the checklist data
+        await _loadChecklistData();
+
+        /*
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Checklist submitted successfully!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        */
+        MessageOverlay.showSuccess(
+          context: context,
+          message: 'Checklist submitted successfully!',
+          position: OverlayPosition.top,
+          showBackgroundOverlay: true,
+          duration: const Duration(seconds: 2),
+          onComplete: () {},
+        );
+      } catch (parseError) {
+        print('⚠️ Parse error: $parseError');
+
+        // IMPORTANT: Even if parsing fails, the API call was successful
+        // So we should still refresh the data
+        await _loadChecklistData();
+
+        // Show success message anyway (API call succeeded)
+        /*
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ Checklist submitted successfully!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        */
+        MessageOverlay.showSuccess(
+          context: context,
+          message: 'Checklist submitted successfully!',
+          position: OverlayPosition.top,
+          showBackgroundOverlay: true,
+          duration: const Duration(seconds: 2),
+          onComplete: () {
+
+          },
+        );
+      }
     } catch (e) {
       print('❌ Error submitting checklist: $e');
+
+      // Show error message
+      String errorMessage = 'Error submitting checklist';
+      if (e.toString().contains('already exists')) {
+        errorMessage = 'Checklist already exists for today';
+        // Refresh to show existing checklist
+        await _loadChecklistData();
+      }
+
+      /*
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ $errorMessage'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 4),
+        ),
+      );
+      */
+
       MessageOverlay.showError(
         context: context,
-        message: 'Error submitting checklist: ${e.toString()}',
+        message: errorMessage,
         position: OverlayPosition.top,
         showBackgroundOverlay: true,
         showOkButton: true,
@@ -365,16 +444,6 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         _isSubmitting = false;
       });
     }
-  }
-
-  Future<void> _resubmitChecklist() async {
-    _initializeChecklistForm();
-    setState(() {
-      _isViewOnly = false;
-      _hasRecord = false;
-      _existingChecklist = null;
-      _currentVersion = _allChecklists.length;
-    });
   }
 
   Map<String, List<String>> _getChecklistSections() {
@@ -424,75 +493,12 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     return checkDate == today;
   }
 
-  String _getStatusText(String? status) {
-    switch (status) {
-      case 'draft':
-        return 'NOT SUBMITTED';
-      case 'submitted':
-        return 'REVIEWING';
-      case 'approved':
-        return 'APPROVED';
-      case 'rejected':
-        return 'REJECTED';
-      default:
-        return status?.toUpperCase() ?? 'UNKNOWN';
-    }
-  }
-
-  Color _getStatusColor(String? status) {
-    switch (status) {
-      case 'draft':
-        return Colors.orange;
-      case 'submitted':
-        return Colors.orange;
-      case 'approved':
-        return Colors.green;
-      case 'rejected':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  IconData _getStatusIcon(String? status) {
-    switch (status) {
-      case 'draft':
-        return Icons.edit;
-      case 'submitted':
-        return Icons.hourglass_top;
-      case 'approved':
-        return Icons.check_circle;
-      case 'rejected':
-        return Icons.cancel;
-      default:
-        return Icons.info;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final double statusBarHeight = MediaQuery.of(context).padding.top;
     final double appBarHeight = 80.0;
     final currentDate = _selectedDate ?? DateTime.now();
     final isToday = _isToday(currentDate);
-
-    // Check if this is the latest version and it's rejected
-    final isLatestVersion =
-        _existingChecklist != null &&
-        _allChecklists.isNotEmpty &&
-        _existingChecklist!.id == _allChecklists.last.id;
-
-    final isRejected = _existingChecklist?.status == 'rejected';
-
-    // Only show resubmit in top-right if:
-    // 1. It's the latest version
-    // 2. It's rejected
-    // 3. It's today
-    final showResubmitInTopBar =
-        isToday && !_isViewOnly && isLatestVersion && isRejected;
-
-    // Show submit button if it's today, not view only, and not rejected (or no record)
-    final showSubmitInTopBar = isToday && !_isViewOnly && !isRejected;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -577,49 +583,10 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                               ),
                             ),
 
-                            // Submit/Resubmit Button
-                            if (showResubmitInTopBar)
-                              Container(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: _isSubmitting
-                                      ? Colors.grey
-                                      : Colors.orange,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color:
-                                          (_isSubmitting
-                                                  ? Colors.grey
-                                                  : Colors.orange)
-                                              .withOpacity(0.3),
-                                      blurRadius: 6,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: IconButton(
-                                  icon: _isSubmitting
-                                      ? SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white,
-                                          ),
-                                        )
-                                      : Icon(
-                                          Icons.refresh,
-                                          color: Colors.white,
-                                        ),
-                                  onPressed: _isSubmitting
-                                      ? null
-                                      : _resubmitChecklist,
-                                  padding: const EdgeInsets.all(10),
-                                  iconSize: 24,
-                                  constraints: const BoxConstraints(),
-                                ),
-                              )
-                            else if (showSubmitInTopBar)
+                            // Submit Button - Show ONLY when:
+                            // 1. It's today AND
+                            // 2. We're not in view-only mode (no existing record)
+                            if (isToday && !_isViewOnly)
                               Container(
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
@@ -648,7 +615,10 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                                             color: Colors.white,
                                           ),
                                         )
-                                      : Icon(Icons.check, color: Colors.white),
+                                      : const Icon(
+                                          Icons.check,
+                                          color: Colors.white,
+                                        ),
                                   onPressed: _isSubmitting
                                       ? null
                                       : _submitChecklist,
@@ -676,7 +646,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
               // Vehicle Reg No
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 0),
+                padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Text(
                   widget.vehicleRegNo,
                   style: TextStyle(
@@ -697,68 +667,6 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
           if (_isLoading) _buildLoadingOverlay(),
         ],
-      ),
-    );
-  }
-
-  Widget _buildVersionChips() {
-    if (_allChecklists.isEmpty) return const SizedBox.shrink();
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-      height: 40,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: _allChecklists.length,
-        itemBuilder: (context, index) {
-          final checklist = _allChecklists[index];
-          final version = checklist.version ?? index + 1;
-          final isActive =
-              _existingChecklist != null &&
-              checklist.id == _existingChecklist?.id;
-
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ActionChip(
-              label: Text(
-                'v$version',
-                style: TextStyle(
-                  color: isActive ? Colors.black : Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-              ),
-              backgroundColor: isActive
-                  ? _getStatusColor(checklist.status)
-                  : Colors.grey[800],
-              side: BorderSide(
-                color: _getStatusColor(checklist.status),
-                width: 1,
-              ),
-              avatar: CircleAvatar(
-                backgroundColor: isActive
-                    ? Colors.white.withOpacity(0.3)
-                    : Colors.transparent,
-                radius: 12,
-                child: Icon(
-                  _getStatusIcon(checklist.status),
-                  size: 12,
-                  color: isActive
-                      ? Colors.black
-                      : _getStatusColor(checklist.status),
-                ),
-              ),
-              onPressed: () {
-                setState(() {
-                  _existingChecklist = checklist;
-                  _loadExistingChecklistData(checklist);
-                  _isViewOnly = true;
-                  _currentVersion = checklist.version ?? index + 1;
-                });
-              },
-            ),
-          );
-        },
       ),
     );
   }
@@ -863,24 +771,9 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
   }
 
   Widget _buildRejectionInfoSection() {
-    // Check if this is the latest version and it's rejected
-    final isLatestVersion =
-        _existingChecklist != null &&
-        _allChecklists.isNotEmpty &&
-        _existingChecklist!.id == _allChecklists.last.id;
-
-    final isRejected = _existingChecklist?.status == 'rejected';
-    final isToday = _isToday(_selectedDate ?? DateTime.now());
-
-    // Only show resubmit button if:
-    // 1. It's the latest version
-    // 2. It's rejected
-    // 3. It's today
-    final showResubmitButton = isLatestVersion && isRejected && isToday;
-
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      padding: EdgeInsets.fromLTRB(16, 8, 16, 2),
+      margin: EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.red.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
@@ -960,7 +853,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
             SizedBox(height: 4),
             Container(
               width: double.infinity,
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.red.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(8),
@@ -971,33 +864,12 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
               ),
             ),
           ],
-          // Resubmit button - only for latest rejected version on today
-          if (showResubmitButton) ...[
-            Padding(
-              padding: EdgeInsets.only(top: 12, bottom: 8),
-              child: ElevatedButton.icon(
-                onPressed: _resubmitChecklist,
-                icon: Icon(Icons.refresh),
-                label: Text('Resubmit Checklist'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  foregroundColor: Colors.black,
-                  textStyle: TextStyle(fontWeight: FontWeight.bold),
-                  minimumSize: Size(double.infinity, 40),
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
-              ),
-            ),
-          ]
-          else ...[
-            SizedBox(height: 8,)
-          ]
         ],
       ),
     );
   }
 
-  String _getSriLankanTime(DateTime utcTime) {
+   String _getSriLankanTime(DateTime utcTime) {
     const sriLankanOffset = Duration(hours: 5, minutes: 30);
     final localTime = utcTime.add(sriLankanOffset);
     return DateFormat('hh:mm a').format(localTime);
@@ -1005,7 +877,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
   Widget _buildFilterRow() {
     return Container(
-      padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       color: Colors.black,
       child: Row(
         children: [
@@ -1138,7 +1010,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         children: [
           // Date Display with Status
           Container(
-            padding: EdgeInsets.all(10),
+            padding: EdgeInsets.all(16),
             margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               color: Colors.grey[900],
@@ -1163,30 +1035,10 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    if (_allChecklists.isNotEmpty) ...[
-                      SizedBox(width: 12),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[800],
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          'v${_existingChecklist?.version ?? _currentVersion}',
-                          style: TextStyle(
-                            color: Colors.grey[400],
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
                 // Status Badge
-                if (_hasRecord && _existingChecklist != null)
+                if (_hasRecord)
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
@@ -1201,11 +1053,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          _getStatusIcon(_existingChecklist?.status),
-                          size: 12,
-                          color: _getStatusColor(_existingChecklist?.status),
-                        ),
+                        _getStatusIcon(_existingChecklist?.status),
                         SizedBox(width: 4),
                         Text(
                           _getStatusText(_existingChecklist?.status),
@@ -1247,10 +1095,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
             ),
           ),
 
-          // Version Chips
-          if (_allChecklists.isNotEmpty) _buildVersionChips(),
-
-          // Status sections
+          
           if (_existingChecklist?.status == 'approved' &&
               _existingChecklist?.approvedBy != null) ...[
             _buildApprovedBySection(),
@@ -1258,6 +1103,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
           if (_existingChecklist?.status == 'rejected') ...[
             _buildRejectionInfoSection(),
           ],
+          
 
           // Checklist Form
           Expanded(
@@ -1388,10 +1234,52 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     );
   }
 
+  Color _getStatusColor(String? status) {
+    switch (status) {
+      case 'submitted':
+        return Colors.orange;
+      case 'approved':
+        return Colors.green;
+      case 'rejected':
+        return Colors.red;
+      default:
+        return Colors.blue;
+    }
+  }
+
+  Icon _getStatusIcon(String? status) {
+    switch (status) {
+      case 'submitted':
+        return Icon(Icons.hourglass_top, size: 12, color: Colors.orange);
+      case 'approved':
+        return Icon(Icons.check_circle, size: 12, color: Colors.green);
+      case 'rejected':
+        return Icon(Icons.cancel, size: 12, color: Colors.red);
+      default:
+        return Icon(Icons.info, size: 12, color: Colors.blue);
+    }
+  }
+
+  String _getStatusText(String? status) {
+    switch (status) {
+      case 'submitted':
+        return 'REVIEWING';
+      case 'approved':
+        return 'APPROVED';
+      case 'rejected':
+        return 'REJECTED';
+      default:
+        return status?.toUpperCase() ?? 'UNKNOWN';
+    }
+  }
+
   Widget _buildChecklistItem({required String item}) {
     final status = _checklistResponses[item]!['status'] as String? ?? '';
     final remarks = _checklistResponses[item]!['remarks'] as String? ?? '';
     final controller = _reasonControllers[item];
+
+    // Debug print
+    print('UI Building: $item - Status: $status - Remarks: $remarks');
 
     // Initialize expanded state
     if (!_expandedItems.containsKey(item)) {
@@ -1414,6 +1302,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
           // Item with Status buttons
           InkWell(
             onTap: () {
+              // Always allow expanding to see remarks
               setState(() {
                 _expandedItems[item] = !isExpanded;
               });
@@ -1422,6 +1311,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
               padding: EdgeInsets.all(12),
               child: Row(
                 children: [
+                  // Item name
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1446,11 +1336,10 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                                 ),
                                 SizedBox(width: 4),
                                 Text(
-                                  hasRemarks
-                                      ? 'Has remarks (Click to view)'
-                                      : !_isViewOnly
-                                      ? 'Click to Add remarks (optional)'
-                                      : 'No remarks',
+                                  //'Has remarks (Click to view)',
+                                  hasRemarks ? 
+                                    'Has remarks (Click to view)' : 
+                                    !_isViewOnly ? 'Click to Add remarks (optional)' : 'No remarks',
                                   style: TextStyle(
                                     color: Colors.grey[400],
                                     fontSize: 11,
@@ -1466,6 +1355,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
                   SizedBox(width: 8),
 
+                  // Status indicator
                   if (_isViewOnly)
                     Container(
                       padding: EdgeInsets.symmetric(
@@ -1526,6 +1416,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                   else
                     Row(
                       children: [
+                        // Good button
                         InkWell(
                           onTap: _isSubmitting
                               ? null
@@ -1558,6 +1449,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
                         SizedBox(width: 6),
 
+                        // Bad button
                         InkWell(
                           onTap: _isSubmitting
                               ? null
@@ -1592,6 +1484,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
             ),
           ),
 
+          // Expandable Remarks field
           if (isExpanded)
             Padding(
               padding: EdgeInsets.fromLTRB(12, 0, 12, 12),
@@ -1735,4 +1628,5 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
       ),
     );
   }
+
 }

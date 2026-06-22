@@ -37,6 +37,7 @@ class User {
   final String? profilePicture;
   final int authenticationLevel;
   final bool canTripApprove;
+  final bool canSafetyApprove;
   final bool canUserCreate;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -61,6 +62,7 @@ class User {
     required this.authenticationLevel,
     required this.canTripApprove,
     required this.canUserCreate,
+    required this.canSafetyApprove,
     required this.createdAt,
     required this.updatedAt,
     this.lastLogin,
@@ -87,6 +89,7 @@ class User {
       profilePicture: json['profilePicture'],
       authenticationLevel: json['authenticationLevel'] as int,
       canTripApprove: json['permissions']['canTripApprove'] as bool,
+      canSafetyApprove: json['permissions']['canSafetyApprove'] as bool,
       canUserCreate: json['permissions']['canUserCreate'] as bool,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),

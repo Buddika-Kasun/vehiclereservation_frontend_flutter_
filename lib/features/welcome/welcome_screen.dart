@@ -77,11 +77,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       // Add a small delay to ensure animation is visible
       await Future.delayed(const Duration(milliseconds: 500));
 
-      final updateResponse = await _updateService.checkForUpdate();
+      // final updateResponse = await _updateService.checkForUpdate();
+      final updateResponse = await _updateService.checkPlayStoreUpdate();
 
       if (mounted) {
         if (updateResponse.updateAvailable) {
-          _handleUpdate(updateResponse);
+          // _handleUpdate(updateResponse);
+          _handlePlayStoreUpdate(updateResponse);
         } else {
           _proceedToApp();
         }
@@ -110,6 +112,17 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     }
   }
 
+  void _handlePlayStoreUpdate(UpdateCheckResponse response) {
+    if (!mounted) return;
+
+    // For Play Store updates, only handle store_redirect
+    if (response.updateType == 'store_redirect' && response.data != null) {
+      _showPlayStoreUpdateDialog(response.data!);
+    } else {
+      _proceedToApp();
+    }
+  }
+
   void _performSilentUpdate(AppUpdate update) {
     if (!mounted) return;
 
@@ -121,7 +134,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         fileSize: update.fileSize,
         downloadTask: (onProgress) async {
           try {
-            await _updateService.downloadAndInstallUpdate(
+            /* await _updateService.downloadAndInstallUpdate(
               downloadUrl: update.downloadUrl!,
               fileName:
                   update.originalFileName ?? 'update_v${update.version}.apk',
@@ -147,6 +160,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 _showErrorDialog('Update failed: $error');
               },
             );
+            */
           } catch (e) {
             Navigator.of(context).pop();
             _showErrorDialog('Update error: $e');
@@ -313,6 +327,27 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 _proceedToApp();
               },
       ),
+    );
+  }
+
+  void _showPlayStoreUpdateDialog(AppUpdate update) {
+    if (!mounted) return;
+
+    _updateService.showUpdateDialog(
+      context,
+      update: update,
+      onUpdate: () async {
+        await _updateService.redirectToPlayStore();
+        if (update.isMandatory) {
+          // Show mandatory update dialog
+          _updateService.showUpdateRequiredDialog(context);
+        } else {
+          _proceedToApp();
+        }
+      },
+      onLater: () {
+        _proceedToApp();
+      },
     );
   }
 
