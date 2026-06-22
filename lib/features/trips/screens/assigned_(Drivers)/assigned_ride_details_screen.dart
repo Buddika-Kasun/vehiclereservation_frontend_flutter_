@@ -17,7 +17,7 @@ import 'package:flutter/foundation.dart';
 // Import new WebSocket structure
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/websocket_manager.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/trip_handler.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/users/admin/check_list_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicle_management/checklist/check_list_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/shared/widgets/message_overlay.dart';
 
 class RideDetailsScreen extends StatefulWidget {
@@ -56,7 +56,8 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
 
   // Checklist state
   bool _checkingChecklist = false;
-  bool _checklistExists = false;
+  //bool _checklistExists = false;
+  int _checklistExists = 0;
   bool _checklistChecked = false;
 
   @override
@@ -215,7 +216,8 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
       setState(() {
         _isLoading = true;
         _errorMessage = '';
-        _checklistExists = false;
+        //_checklistExists = false;
+        _checklistExists = 0;
         _checklistChecked = false;
         _checkingChecklist = false;
       });
@@ -270,7 +272,7 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
           ? DateFormat('yyyy-MM-dd').parse(_tripDetails!.startDate)
           : DateTime.now();
       
-      final exists = await ApiService.checkIfChecklistExists(
+      final exists = await ApiService.checkIfChecklistApproved(
         vehicleId: vehicleId,
         date: tripDate,
       );
@@ -2732,11 +2734,12 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
     final tripStatus = _tripDetails?.status?.toLowerCase() ?? '';
 
     // Determine which button to show
+    bool showApprovalButton = isPrimaryDriver && tripStatus == 'approved';
     bool showStartButton = isPrimaryDriver && tripStatus == 'read';
     bool showEndButton = isPrimaryDriver && tripStatus == 'ongoing';
 
     // If not driver or no valid action, show nothing
-    if (!isPrimaryDriver || (!showStartButton && !showEndButton)) {
+    if (!isPrimaryDriver || (!showStartButton && !showEndButton && !showApprovalButton)) {
       return SizedBox.shrink();
     }
 
@@ -2852,7 +2855,7 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
                   )
                 
                 // Checklist exists - Show START TRIP button
-                else if (_checklistChecked && _checklistExists)
+                else if (_checklistChecked && _checklistExists == 2)
                   ElevatedButton(
                     onPressed: () => _showStartTripConfirmation(),
                     style: ElevatedButton.styleFrom(
@@ -2880,7 +2883,7 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
                   )
                 
                 // Checklist doesn't exist - Show CHECK VEHICLE button
-                else if (_checklistChecked && !_checklistExists)
+                else if (_checklistChecked && !(_checklistExists > 1))
                   Column(
                     children: [
                       // Info message
@@ -2901,7 +2904,9 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Vehicle Check Required',
+                                    _checklistExists == 0
+                                        ? 'Vehicle Check Required'
+                                        : 'Vehicle Check Pending Approval',
                                     style: TextStyle(
                                       color: Colors.orange,
                                       fontSize: 14,
@@ -2910,7 +2915,9 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
                                   ),
                                   SizedBox(height: 4),
                                   Text(
-                                    'Complete vehicle checklist before starting the trip',
+                                    _checklistExists == 0
+                                        ? 'Please complete the vehicle checklist before starting the trip.'
+                                        : 'Vehicle checklist submitted, awaiting approval.',
                                     style: TextStyle(
                                       color: Colors.orange[300],
                                       fontSize: 12,
@@ -2940,7 +2947,9 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
                             Icon(Icons.checklist, size: 20),
                             SizedBox(width: 8),
                             Text(
-                              'Check Vehicle First',
+                              _checklistExists == 0
+                                  ? 'Check Vehicle'
+                                  : 'View Checklist',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -2976,6 +2985,21 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
                       ],
                     ),
                   ),
+              ],
+            ),
+          
+          if(showApprovalButton)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '✓ Trip approved • Driver must visit security for meter reading to begin trip',
+                    style: TextStyle(fontSize: 16, height: 1.2, color: Colors.greenAccent),
+                    softWrap: true,
+                  ),
+                ),
               ],
             ),
         ],
