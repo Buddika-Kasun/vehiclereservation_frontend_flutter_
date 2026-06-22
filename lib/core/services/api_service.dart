@@ -3,7 +3,6 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart'; // Add this import
-import 'package:vehiclereservation_frontend_flutter_/core/services/firebase_notification_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/auth_manager.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/device_helper.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/available_vehicles_response.dart';
@@ -29,30 +28,26 @@ class ApiService {
   //static String get baseUrl => ApiConfig.baseUrl;
 
   static bool _isRefreshing = false;
-  
+
   // Add a flag to track if session is expired
   static bool _sessionExpired = false;
 
-
   static Future<Map<String, dynamic>> login(
-      String username, String password) async {
-
+    String username,
+    String password,
+  ) async {
     // Reset API service session flag
     ApiService.resetSession();
 
     final response = await http.post(
       Uri.parse('$baseUrl/auth/login'),
       headers: {'Content-Type': 'application/json'},
-      body: json.encode({
-        'username': username,
-        'password': password,
-      }),
+      body: json.encode({'username': username, 'password': password}),
     );
 
     final res = json.decode(response.body);
 
     if (res['success'] == true) {
-
       // Save tokens securely
       await SecureStorageService().saveTokens(
         accessToken: res['data']['accessToken'],
@@ -62,11 +57,8 @@ class ApiService {
       // Convert the user map to User object and save
       final userMap = res['data']['user'] as Map<String, dynamic>;
       final user = User.fromJson(userMap);
-      
-      await StorageService.saveUserData(
-        userData: user,
-        originalJson: userMap
-      );
+
+      await StorageService.saveUserData(userData: user, originalJson: userMap);
 
       return res;
     } else {
@@ -129,8 +121,7 @@ class ApiService {
         Uri.parse('$baseUrl/validate/canRegisterUser'),
         headers: {'Content-Type': 'application/json'},
       );
-      
-      
+
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
@@ -143,9 +134,15 @@ class ApiService {
 
   // Add other API methods here
   static Future<Map<String, dynamic>> signUp(
-      String username, String password, String confirmPassword, String? email,
-      {required String phone, required String displayName, String? role, String? departmentId}) async {
-    
+    String username,
+    String password,
+    String confirmPassword,
+    String? email, {
+    required String phone,
+    required String displayName,
+    String? role,
+    String? departmentId,
+  }) async {
     // Check if passwords match
     if (password != confirmPassword) {
       throw Exception('Passwords do not match');
@@ -281,7 +278,6 @@ class ApiService {
     dynamic body,
     int retryCount = 0,
   }) async {
-
     if (_sessionExpired) {
       throw Exception('Session expired. Please login again.');
     }
@@ -369,8 +365,7 @@ class ApiService {
           body: body,
           retryCount: retryCount + 1,
         );
-      }
-      else {
+      } else {
         // Refresh failed - mark session as expired, clear tokens, and show timeout
         _sessionExpired = true;
         AuthManager.handleSessionTimeout();
@@ -402,7 +397,6 @@ class ApiService {
     final res = await authenticatedApiCall('user/initial-user-by-id/$id');
 
     if (res['success'] == true) {
-
       // Convert the user map to User object and save
       final userMap = res['data']['user'] as Map<String, dynamic>;
       final user = User.fromJson(userMap);
@@ -416,12 +410,10 @@ class ApiService {
     }
   }
 
-
-
   // Company API methods
   static Future<Map<String, dynamic>> getAllCompanies() async {
     final response = await authenticatedApiCall('company/get-all');
-    
+
     // Handle the nested companies array
     if (response['success'] == true) {
       final data = response['data'];
@@ -440,7 +432,9 @@ class ApiService {
     return await authenticatedApiCall('company/get/$id');
   }
 
-  static Future<Map<String, dynamic>> createCompany(Map<String, dynamic> companyData) async {
+  static Future<Map<String, dynamic>> createCompany(
+    Map<String, dynamic> companyData,
+  ) async {
     return await authenticatedApiCall(
       'company/create',
       method: 'POST',
@@ -448,7 +442,10 @@ class ApiService {
     );
   }
 
-  static Future<Map<String, dynamic>> updateCompany(int id, Map<String, dynamic> companyData) async {
+  static Future<Map<String, dynamic>> updateCompany(
+    int id,
+    Map<String, dynamic> companyData,
+  ) async {
     return await authenticatedApiCall(
       'company/update/$id',
       method: 'PUT',
@@ -457,32 +454,20 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> deleteCompany(int id) async {
-    return await authenticatedApiCall(
-      'company/delete/$id',
-      method: 'DELETE',
-    );
+    return await authenticatedApiCall('company/delete/$id', method: 'DELETE');
   }
 
   // Status API methods
   static Future<Map<String, dynamic>> getCompanyStatus() async {
-    return await authenticatedApiCall(
-      'validate/haveCompany',
-      method: 'GET',
-    );
+    return await authenticatedApiCall('validate/haveCompany', method: 'GET');
   }
 
   static Future<Map<String, dynamic>> getCostCenterStatus() async {
-    return await authenticatedApiCall(
-      'validate/haveCostCenter',
-      method: 'GET',
-    );
+    return await authenticatedApiCall('validate/haveCostCenter', method: 'GET');
   }
 
   static Future<Map<String, dynamic>> getDepartmentStatus() async {
-    return await authenticatedApiCall(
-      'validate/haveDepartment',
-      method: 'GET',
-    );
+    return await authenticatedApiCall('validate/haveDepartment', method: 'GET');
   }
 
   // CostCenter API methods
@@ -510,7 +495,9 @@ class ApiService {
     return await authenticatedApiCall(url, method: 'GET');
   }
 
-  static Future<Map<String, dynamic>> createCostCenter(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> createCostCenter(
+    Map<String, dynamic> data,
+  ) async {
     return await authenticatedApiCall(
       'cost-center/create',
       method: 'POST',
@@ -518,7 +505,10 @@ class ApiService {
     );
   }
 
-  static Future<Map<String, dynamic>> updateCostCenter(int id, Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> updateCostCenter(
+    int id,
+    Map<String, dynamic> data,
+  ) async {
     return await authenticatedApiCall(
       'cost-center/update/$id',
       method: 'PUT',
@@ -577,7 +567,9 @@ class ApiService {
     return await authenticatedApiCall(url, method: 'GET');
   }
 
-  static Future<Map<String, dynamic>> getDepartmentsForReg([int? companyId]) async {
+  static Future<Map<String, dynamic>> getDepartmentsForReg([
+    int? companyId,
+  ]) async {
     String url = '$baseUrl/department/get-all';
 
     if (companyId != null) {
@@ -596,8 +588,9 @@ class ApiService {
     }
   }
 
-
-  static Future<Map<String, dynamic>> createDepartment(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> createDepartment(
+    Map<String, dynamic> data,
+  ) async {
     return await authenticatedApiCall(
       'department/create',
       method: 'POST',
@@ -605,7 +598,10 @@ class ApiService {
     );
   }
 
-  static Future<Map<String, dynamic>> updateDepartment(int id, Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> updateDepartment(
+    int id,
+    Map<String, dynamic> data,
+  ) async {
     return await authenticatedApiCall(
       'department/update/$id',
       method: 'PUT',
@@ -622,10 +618,7 @@ class ApiService {
 
   // User API methods
   static Future<Map<String, dynamic>> getUsers() async {
-    return await authenticatedApiCall(
-      'user/get-all',
-      method: 'GET',
-    );
+    return await authenticatedApiCall('user/get-all', method: 'GET');
   }
 
   static Future<Map<String, dynamic>> getUsersByFiltration({
@@ -658,7 +651,9 @@ class ApiService {
     );
   }
 
-  static Future<Map<String, dynamic>> getUsersByDepartment(int departmentId) async {
+  static Future<Map<String, dynamic>> getUsersByDepartment(
+    int departmentId,
+  ) async {
     return await authenticatedApiCall(
       'user/get-all-by-department/$departmentId',
       method: 'GET',
@@ -666,15 +661,10 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> getAllHodUsers() async {
-    return await authenticatedApiCall(
-      'user/get-all-hod',
-      method: 'GET',
-    );
+    return await authenticatedApiCall('user/get-all-hod', method: 'GET');
   }
 
-  static Future<Map<String, dynamic>> getUsersByRole(
-      String role,
-  ) async {
+  static Future<Map<String, dynamic>> getUsersByRole(String role) async {
     return await authenticatedApiCall(
       'user/get-all-by-role/$role',
       method: 'GET',
@@ -704,20 +694,32 @@ class ApiService {
     );
   }
 
-  static Future<Map<String, dynamic>> searchTripsApprovalUsers(String query) async {
+  static Future<Map<String, dynamic>> searchTripsApprovalUsers(
+    String query,
+  ) async {
     return await authenticatedApiCall(
       'user/search-trip-approval?query=$query',
       method: 'GET',
     );
   }
 
-  static Future<Map<String, dynamic>> approveUser(String userId, bool state) async {
+  static Future<Map<String, dynamic>> searchSafetyApprovalUsers(
+    String query,
+  ) async {
+    return await authenticatedApiCall(
+      'user/search-safety-approval?query=$query',
+      method: 'GET',
+    );
+  }
+
+  static Future<Map<String, dynamic>> approveUser(
+    String userId,
+    bool state,
+  ) async {
     return await authenticatedApiCall(
       'user/set-approval/$userId',
       method: 'PUT',
-      body: {
-        'state': state,
-      },
+      body: {'state': state},
     );
   }
 
@@ -727,6 +729,17 @@ class ApiService {
   ) async {
     return await authenticatedApiCall(
       'user/set-trip-approval/$userId',
+      method: 'PUT',
+      body: {'state': state},
+    );
+  }
+
+  static Future<Map<String, dynamic>> safetyApproveUser(
+    String userId,
+    bool state,
+  ) async {
+    return await authenticatedApiCall(
+      'user/set-safety-approval/$userId',
       method: 'PUT',
       body: {'state': state},
     );
@@ -746,17 +759,23 @@ class ApiService {
     );
   }
 
-  // VehicleTypes API methods
-  static Future<Map<String, dynamic>> getVehicleTypes() async {
-    String url = 'cost-configurations/get-all';
-    
+  static Future<Map<String, dynamic>> getUsersBySafetyApproval() async {
     return await authenticatedApiCall(
-      url,
+      'user/get-user-by-safety-approval',
       method: 'GET',
     );
   }
 
-  static Future<Map<String, dynamic>> createVehicleType(Map<String, dynamic> data) async {
+  // VehicleTypes API methods
+  static Future<Map<String, dynamic>> getVehicleTypes() async {
+    String url = 'cost-configurations/get-all';
+
+    return await authenticatedApiCall(url, method: 'GET');
+  }
+
+  static Future<Map<String, dynamic>> createVehicleType(
+    Map<String, dynamic> data,
+  ) async {
     return await authenticatedApiCall(
       'cost-configurations/create',
       method: 'POST',
@@ -764,7 +783,10 @@ class ApiService {
     );
   }
 
-  static Future<Map<String, dynamic>> updateVehicleType(int id, Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> updateVehicleType(
+    int id,
+    Map<String, dynamic> data,
+  ) async {
     return await authenticatedApiCall(
       'cost-configurations/update/$id',
       method: 'PUT',
@@ -782,23 +804,19 @@ class ApiService {
   // Vehicle API methods
   static Future<Map<String, dynamic>> getVehicles() async {
     String url = 'vehicle/get-all';
-    
-    return await authenticatedApiCall(
-      url,
-      method: 'GET',
-    );
+
+    return await authenticatedApiCall(url, method: 'GET');
   }
 
   static Future<Map<String, dynamic>> getDriverVehicles(int id) async {
     String url = 'vehicle/driver/$id';
-    
-    return await authenticatedApiCall(
-      url,
-      method: 'GET',
-    );
+
+    return await authenticatedApiCall(url, method: 'GET');
   }
 
-  static Future<Map<String, dynamic>> createVehicle(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> createVehicle(
+    Map<String, dynamic> data,
+  ) async {
     return await authenticatedApiCall(
       'vehicle/create',
       method: 'POST',
@@ -806,7 +824,10 @@ class ApiService {
     );
   }
 
-  static Future<Map<String, dynamic>> updateVehicle(int id, Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> updateVehicle(
+    int id,
+    Map<String, dynamic> data,
+  ) async {
     return await authenticatedApiCall(
       'vehicle/update/$id',
       method: 'PUT',
@@ -815,10 +836,7 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> deleteVehicle(int id) async {
-    return await authenticatedApiCall(
-      'vehicle/delete/$id',
-      method: 'DELETE',
-    );
+    return await authenticatedApiCall('vehicle/delete/$id', method: 'DELETE');
   }
 
   // UserCreation API methods
@@ -846,15 +864,15 @@ class ApiService {
     required String role,
     required String? departmentId, // Change to departmentId
   }) async {
-    final body = {
-      'role': role,
-    };
-    
+    final body = {'role': role};
+
     // Only add departmentId if it's not null and not empty
-    if (departmentId != null && departmentId.isNotEmpty && departmentId != 'None') {
+    if (departmentId != null &&
+        departmentId.isNotEmpty &&
+        departmentId != 'None') {
       body['departmentId'] = departmentId;
     }
-    
+
     return await authenticatedApiCall(
       'user/approve/$userCreationId',
       method: 'PUT',
@@ -862,7 +880,9 @@ class ApiService {
     );
   }
 
-  static Future<Map<String, dynamic>> rejectUserCreation(int userCreationId) async {
+  static Future<Map<String, dynamic>> rejectUserCreation(
+    int userCreationId,
+  ) async {
     return await authenticatedApiCall(
       'user/reject/$userCreationId',
       method: 'PUT',
@@ -872,11 +892,7 @@ class ApiService {
 
   // Approval Configuration API methods
   static Future<Map<String, dynamic>> getApprovalConfig() async {
-    return await authenticatedApiCall(
-      'approval-config/get-all',
-      method: 'GET',
-    );
-    
+    return await authenticatedApiCall('approval-config/get-all', method: 'GET');
   }
 
   static Future<Map<String, dynamic>> getMenuApprovalConfig() async {
@@ -884,31 +900,35 @@ class ApiService {
       'approval-config/get-menu-approvals',
       method: 'GET',
     );
-    
   }
 
-  static Future<Map<String, dynamic>> createApprovalConfig(Map<String, dynamic> configData) async {
-  return await authenticatedApiCall(
-    'approval-config/create',
-    method: 'POST',
-    body: configData,
-  );
-}
+  static Future<Map<String, dynamic>> createApprovalConfig(
+    Map<String, dynamic> configData,
+  ) async {
+    return await authenticatedApiCall(
+      'approval-config/create',
+      method: 'POST',
+      body: configData,
+    );
+  }
 
-  static Future<Map<String, dynamic>> updateApprovalConfig(int id, Map<String, dynamic> configData) async {
-  return await authenticatedApiCall(
-    'approval-config/update/$id',
-    method: 'PUT',
-    body: configData,
-  );
-}
+  static Future<Map<String, dynamic>> updateApprovalConfig(
+    int id,
+    Map<String, dynamic> configData,
+  ) async {
+    return await authenticatedApiCall(
+      'approval-config/update/$id',
+      method: 'PUT',
+      body: configData,
+    );
+  }
 
   static Future<Map<String, dynamic>> deleteApprovalConfig(int id) async {
-  return await authenticatedApiCall(
-    'approval-config/delete/$id',
-    method: 'DELETE',
-  );
-}
+    return await authenticatedApiCall(
+      'approval-config/delete/$id',
+      method: 'DELETE',
+    );
+  }
 
   // Status check for approval configuration
   static Future<Map<String, dynamic>> getApprovalConfigStatus() async {
@@ -928,7 +948,10 @@ class ApiService {
   }
 
   // Reverse geocode using authenticatedApiCall
-  static Future<Map<String, dynamic>> reverseGeocode(double lat, double lon) async {
+  static Future<Map<String, dynamic>> reverseGeocode(
+    double lat,
+    double lon,
+  ) async {
     return await authenticatedApiCall(
       'locations/reverse?lat=$lat&lon=$lon',
       method: 'GET',
@@ -936,23 +959,24 @@ class ApiService {
   }
 
   // Route calculation using authenticatedApiCall
-  static Future<Map<String, dynamic>> calculateRoute(List<Map<String, dynamic>> coordinates) async {
+  static Future<Map<String, dynamic>> calculateRoute(
+    List<Map<String, dynamic>> coordinates,
+  ) async {
     final data = await authenticatedApiCall(
       'routes/calculate',
       method: 'POST',
-      body: {
-        'points': coordinates,
-        'vehicleType': 'car'
-      },
+      body: {'points': coordinates, 'vehicleType': 'car'},
     );
 
     return data;
   }
 
-  static Future<AvailableVehiclesResponse> getAvailableVehicles(TripRequest tripRequest) async {
+  static Future<AvailableVehiclesResponse> getAvailableVehicles(
+    TripRequest tripRequest,
+  ) async {
     try {
       print('Sending available vehicles request: ${tripRequest.toJson()}');
-      
+
       final response = await authenticatedApiCall(
         'trips/available-vehicles',
         method: 'POST',
@@ -962,22 +986,25 @@ class ApiService {
       print('Available vehicles API response: $response');
 
       // Check if the response contains the expected data structure
-      if (response.containsKey('recommendedVehicles') || response.containsKey('allVehicles')) {
-        print('Successfully parsed available vehicles - direct response structure');
+      if (response.containsKey('recommendedVehicles') ||
+          response.containsKey('allVehicles')) {
+        print(
+          'Successfully parsed available vehicles - direct response structure',
+        );
         return AvailableVehiclesResponse.fromJson(response);
-      } 
+      }
       // Check if response has nested data structure
       else if (response['success'] == true && response['data'] != null) {
         print('Successfully parsed available vehicles - nested data structure');
         return AvailableVehiclesResponse.fromJson(response['data']);
-      } 
+      }
       // Check if response has success field but no data
       else if (response['success'] == true) {
         print('Successfully parsed available vehicles - success response');
         return AvailableVehiclesResponse.fromJson(response);
-      } 
-      else {
-        final errorMessage = response['message'] ?? 'Failed to fetch available vehicles';
+      } else {
+        final errorMessage =
+            response['message'] ?? 'Failed to fetch available vehicles';
         print('API returned error: $errorMessage');
         throw Exception(errorMessage);
       }
@@ -988,13 +1015,11 @@ class ApiService {
   }
 
   static Future<AvailableVehiclesResponse> getReviewAvailableVehicles(
-    String tripId,
-    {
-      int page = 0,
-      int pageSize = 10,
-      String? search,
-    }
-  ) async {
+    String tripId, {
+    int page = 0,
+    int pageSize = 10,
+    String? search,
+  }) async {
     try {
       // Build query parameters
       final Map<String, dynamic> queryParams = {
@@ -1073,7 +1098,9 @@ class ApiService {
     return TripBookingResponse.fromJson(response);
   }
 
-  static Future<TripBookingResponse> bookTripAsDraft(TripRequest tripRequest) async {
+  static Future<TripBookingResponse> bookTripAsDraft(
+    TripRequest tripRequest,
+  ) async {
     final response = await authenticatedApiCall(
       'trips/create-as-draft',
       method: 'POST',
@@ -1084,32 +1111,24 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> cancelTrip(int tripId) async {
-    return await authenticatedApiCall(
-      'trips/cancel/$tripId',
-      method: 'POST',
-    );
+    return await authenticatedApiCall('trips/cancel/$tripId', method: 'POST');
   }
 
   static Future<Map<String, dynamic>> joinTrip(int tripId) async {
-    return await authenticatedApiCall(
-      'trips/join/$tripId', 
-      method: 'POST'
-    );
+    return await authenticatedApiCall('trips/join/$tripId', method: 'POST');
   }
 
   static Future<Map<String, dynamic>> addMultiplePassengersToTrip(
     int tripId,
-    List<dynamic> passengerIds
+    List<dynamic> passengerIds,
   ) async {
     return await authenticatedApiCall(
-      'trips/add-multiple-passengers/$tripId', 
+      'trips/add-multiple-passengers/$tripId',
       method: 'POST',
-      body: {
-        'passengerIds': passengerIds
-      }
+      body: {'passengerIds': passengerIds},
     );
   }
-  
+
   static Future<Map<String, dynamic>> confirmReviewTrip(int tripId) async {
     return await authenticatedApiCall(
       'trips/confirm-review/$tripId',
@@ -1118,16 +1137,13 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> getTripStatus(int tripId) async {
-    return await authenticatedApiCall(
-      'trips/status/$tripId',
-      method: 'GET',
-    );
+    return await authenticatedApiCall('trips/status/$tripId', method: 'GET');
   }
 
   static Future<TripListResponse> getUserTrips(TripListRequest request) async {
     try {
       print('Getting user trips with filters: ${request.toJson()}');
-      
+
       final response = await authenticatedApiCall(
         'trips/user-trips',
         method: 'POST',
@@ -1140,7 +1156,8 @@ class ApiService {
         print('Successfully parsed user trips');
         return TripListResponse.fromJson(response['data']);
       } else {
-        final errorMessage = response['message'] ?? 'Failed to fetch user trips';
+        final errorMessage =
+            response['message'] ?? 'Failed to fetch user trips';
         print('API returned error: $errorMessage');
         throw Exception(errorMessage);
       }
@@ -1151,7 +1168,7 @@ class ApiService {
   }
 
   static Future<TripCardResponse> getUserTripsNew(
-    TripCardListRequest request
+    TripCardListRequest request,
   ) async {
     try {
       return await ApiService.authenticatedApiCall(
@@ -1245,9 +1262,7 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> acceptExceedTrip(
-    int tripId,
-  ) async {
+  static Future<Map<String, dynamic>> acceptExceedTrip(int tripId) async {
     try {
       return await ApiService.authenticatedApiCall(
         'trips/accept-exceed-trip/$tripId',
@@ -1259,7 +1274,9 @@ class ApiService {
     }
   }
 
-  static Future<TripListResponse> getSupervisorTrips(TripListRequest request) async {
+  static Future<TripListResponse> getSupervisorTrips(
+    TripListRequest request,
+  ) async {
     try {
       //print('Getting user trips with filters: ${request.toJson()}');
 
@@ -1303,10 +1320,12 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> getPendingApprovals(Map<String, dynamic> request) async {
+  static Future<Map<String, dynamic>> getPendingApprovals(
+    Map<String, dynamic> request,
+  ) async {
     try {
       print('Getting pending approvals with filters: $request');
-      
+
       final response = await authenticatedApiCall(
         'trips/pending-approvals',
         method: 'POST',
@@ -1318,7 +1337,8 @@ class ApiService {
       if (response['success'] == true) {
         return response;
       } else {
-        final errorMessage = response['message'] ?? 'Failed to fetch pending approvals';
+        final errorMessage =
+            response['message'] ?? 'Failed to fetch pending approvals';
         print('API returned error: $errorMessage');
         throw Exception(errorMessage);
       }
@@ -1329,7 +1349,7 @@ class ApiService {
   }
 
   static Future<TripCardResponse> getPendingApprovalsNew(
-    TripCardListRequest request
+    TripCardListRequest request,
   ) async {
     try {
       return await ApiService.authenticatedApiCall(
@@ -1344,7 +1364,6 @@ class ApiService {
       rethrow;
     }
   }
-
 
   // Dashboard API methods
   static Future<DashboardStats> getDashboardStats() async {
@@ -1369,7 +1388,6 @@ class ApiService {
     }
   }
 
-
   static Future<Map<String, dynamic>> getTripById(int tripId) async {
     try {
       return await authenticatedApiCall(
@@ -1382,27 +1400,29 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> approveTrip(int tripId, String comment) async {
+  static Future<Map<String, dynamic>> approveTrip(
+    int tripId,
+    String comment,
+  ) async {
     return await authenticatedApiCall(
       'trips/approve/$tripId',
       method: 'POST',
-      body: {
-        'comment': comment,
-      },
+      body: {'comment': comment},
     );
   }
 
-  static Future<Map<String, dynamic>> rejectTrip(int tripId, String comment) async {
+  static Future<Map<String, dynamic>> rejectTrip(
+    int tripId,
+    String comment,
+  ) async {
     return await authenticatedApiCall(
       'trips/reject/$tripId',
       method: 'POST',
-      body: {
-        'rejectionReason': comment,
-      },
+      body: {'rejectionReason': comment},
     );
   }
 
-// Add these methods to your ApiService class
+  // Add these methods to your ApiService class
   static Future<Map<String, dynamic>> approveScheduledTrip(
     int masterTripId,
     String comment,
@@ -1430,7 +1450,7 @@ class ApiService {
       rethrow;
     }
   }
-//
+  //
 
   static Future<Map<String, dynamic>> getTripsForMeterReading(
     Map<String, dynamic> request,
@@ -1522,7 +1542,10 @@ class ApiService {
     return await authenticatedApiCall('trips/start/$tripId', method: 'POST');
   }
 
-  static Future<Map<String, dynamic>> endTrip(int tripId, int passengerCount) async {
+  static Future<Map<String, dynamic>> endTrip(
+    int tripId,
+    int passengerCount,
+  ) async {
     return await authenticatedApiCall(
       'trips/end/$tripId',
       method: 'POST',
@@ -1530,8 +1553,7 @@ class ApiService {
     );
   }
 
-
-    // Add these methods using your existing authenticatedApiCall method
+  // Add these methods using your existing authenticatedApiCall method
   static Future<Map<String, dynamic>> getPendingUsers({
     int page = 1,
     int limit = 20,
@@ -1540,11 +1562,7 @@ class ApiService {
       return await authenticatedApiCall(
         'user/get-all-by-status',
         method: 'POST',
-        body: {
-          'status': 'pending',
-          'page': page,
-          'limit': limit,
-        },
+        body: {'status': 'pending', 'page': page, 'limit': limit},
       );
     } catch (e) {
       print('Error fetching pending users: $e');
@@ -1561,30 +1579,24 @@ class ApiService {
       return await authenticatedApiCall(
         'user/get-user-by-approval',
         method: 'POST',
-        body: {
-          'page': page,
-          'limit': limit,
-        },
+        body: {'page': page, 'limit': limit},
       );
     } catch (e) {
       print('Error fetching approval users with pagination: $e');
       rethrow;
     }
   }
-  
+
   // Add a method to get user details by ID
   static Future<Map<String, dynamic>> getUserById(String userId) async {
     try {
-      return await authenticatedApiCall(
-        'user/get/$userId',
-        method: 'GET',
-      );
+      return await authenticatedApiCall('user/get/$userId', method: 'GET');
     } catch (e) {
       print('Error fetching user by ID: $e');
       rethrow;
     }
   }
-  
+
   static Future<Map<String, dynamic>> getFullUserById(String userId) async {
     try {
       return await authenticatedApiCall('user/get-full/$userId', method: 'GET');
@@ -1603,17 +1615,13 @@ class ApiService {
       return await authenticatedApiCall(
         'user/set-approval/$userId',
         method: 'PUT',
-        body: {
-          'state': isApproved,
-        },
+        body: {'state': isApproved},
       );
     } catch (e) {
       print('Error updating user approval status: $e');
       rethrow;
     }
   }
-
-
 
   // Notification API methods
   static Future<Map<String, dynamic>> getNotifications({
@@ -1719,7 +1727,6 @@ class ApiService {
       rethrow;
     }
   }
-
 
   static Future<Map<String, dynamic>> getAdminDashboardStats({
     String? departmentId,
@@ -1988,63 +1995,180 @@ class ApiService {
   }
 
   static Future<ChecklistResponse?> getChecklistByDate({
-  required String vehicleId,
-  required DateTime date,
-}) async {
-  try {
-    final formattedDate = DateFormat('yyyy-MM-dd').format(date);
-    
-    print('🔍 Fetching checklist for vehicle $vehicleId on $formattedDate');
-    
-    final response = await authenticatedApiCall(
-      'checklist/vehicle/$vehicleId/date/$formattedDate',
-      method: 'GET',
-    );
-    
-    print('📥 FULL API Response:');
-    print('  Response type: ${response.runtimeType}');
-    print('  Response keys: ${response.keys}');
-    print('  Has data key: ${response.containsKey('data')}');
-    print('  Data value: ${response['data']}');
-    print('  Data type: ${response['data']?.runtimeType}');
-    
-    // Try different approaches to get the data
-    dynamic checklistData;
-    
-    if (response['data'] != null && response['data'] != false) {
-      checklistData = response['data'];
-      print('✅ Using response[\'data\']');
-    } else if (response.isNotEmpty && response.containsKey('id')) {
-      // Maybe the data is directly in the response
-      checklistData = response;
-      print('✅ Using direct response');
-    } else {
-      print('❌ No checklist data found');
-      return null;
-    }
-    
-    print('📋 Parsing checklist data...');
+    required String vehicleId,
+    required DateTime date,
+  }) async {
     try {
-      final checklist = ChecklistResponse.fromJson(checklistData);
-      print('✅ Checklist parsed successfully. ID: ${checklist.id}');
-      print('✅ Checklist has ${checklist.responses.length} responses');
-      return checklist;
+      final formattedDate = DateFormat('yyyy-MM-dd').format(date);
+
+      print('🔍 Fetching checklist for vehicle $vehicleId on $formattedDate');
+
+      final response = await authenticatedApiCall(
+        'checklist/vehicle/$vehicleId/date/$formattedDate',
+        method: 'GET',
+      );
+
+      print('📥 FULL API Response:');
+      print('  Response type: ${response.runtimeType}');
+      print('  Response keys: ${response.keys}');
+      print('  Has data key: ${response.containsKey('data')}');
+      print('  Data value: ${response['data']}');
+      print('  Data type: ${response['data']?.runtimeType}');
+
+      // Try different approaches to get the data
+      dynamic checklistData;
+
+      if (response['data'] != null && response['data'] != false) {
+        checklistData = response['data'];
+        print('✅ Using response[\'data\']');
+      } else if (response.isNotEmpty && response.containsKey('id')) {
+        // Maybe the data is directly in the response
+        checklistData = response;
+        print('✅ Using direct response');
+      } else {
+        print('❌ No checklist data found');
+        return null;
+      }
+
+      print('📋 Parsing checklist data...');
+      try {
+        final checklist = ChecklistResponse.fromJson(checklistData);
+        print('✅ Checklist parsed successfully. ID: ${checklist.id}');
+        print('✅ Checklist has ${checklist.responses.length} responses');
+        return checklist;
+      } catch (e) {
+        print('❌ Error parsing checklist: $e');
+        print('❌ Checklist data structure: $checklistData');
+        return null;
+      }
     } catch (e) {
-      print('❌ Error parsing checklist: $e');
-      print('❌ Checklist data structure: $checklistData');
+      print('❌ Error in getChecklistByDate: $e');
+      print('❌ Stack trace: ${e.toString()}');
       return null;
     }
-    
-  } catch (e) {
-    print('❌ Error in getChecklistByDate: $e');
-    print('❌ Stack trace: ${e.toString()}');
-    return null;
   }
-}
 
+  static Future<List<ChecklistResponse>> getAllChecklistsByDate({
+    required String vehicleId,
+    required DateTime date,
+  }) async {
+    try {
+      final formattedDate = DateFormat('yyyy-MM-dd').format(date);
+
+      // Get the token directly
+      final token = await SecureStorageService().accessToken;
+      if (token == null) {
+        print('❌ No access token available');
+        return [];
+      }
+
+      final url = Uri.parse(
+        '$baseUrl/checklist/vehicle/$vehicleId/date/$formattedDate/all',
+      );
+      final headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
+
+      print('📡 Making direct GET request to: $url');
+      final response = await http.get(url, headers: headers);
+
+      print('📥 Response status: ${response.statusCode}');
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        // Parse the response
+        final dynamic responseData = json.decode(response.body);
+
+        List<ChecklistResponse> checklists = [];
+
+        // If response is a List directly
+        if (responseData is List) {
+          print('✅ Response is a List with ${responseData.length} items');
+          for (var item in responseData) {
+            if (item is Map<String, dynamic>) {
+              try {
+                checklists.add(ChecklistResponse.fromJson(item));
+              } catch (e) {
+                print('⚠️ Error parsing item: $e');
+              }
+            }
+          }
+        }
+        // If response is a Map
+        else if (responseData is Map<String, dynamic>) {
+          print('✅ Response is a Map');
+
+          // Check if it's a single checklist
+          if (responseData.containsKey('id')) {
+            try {
+              checklists.add(ChecklistResponse.fromJson(responseData));
+              print('✅ Parsed single checklist');
+            } catch (e) {
+              print('⚠️ Error parsing single checklist: $e');
+            }
+          } else {
+            // Try to find a list in the Map
+            bool foundList = false;
+            for (var key in responseData.keys) {
+              final value = responseData[key];
+              if (value is List) {
+                print('✅ Found list in key "$key" with ${value.length} items');
+                for (var item in value) {
+                  if (item is Map<String, dynamic>) {
+                    try {
+                      checklists.add(ChecklistResponse.fromJson(item));
+                    } catch (e) {
+                      print('⚠️ Error parsing item: $e');
+                    }
+                  }
+                }
+                foundList = true;
+                break;
+              }
+            }
+
+            if (!foundList) {
+              print('⚠️ No list found in response structure');
+            }
+          }
+        } else {
+          print('❌ Unexpected response type: ${responseData.runtimeType}');
+          return [];
+        }
+
+        // Sort by version number instead of ID
+        checklists.sort((a, b) {
+          // Use version field if available, fallback to ID
+          final versionA = a.version ?? int.tryParse(a.id) ?? 0;
+          final versionB = b.version ?? int.tryParse(b.id) ?? 0;
+          return versionA.compareTo(versionB);
+        });
+
+        print('📊 Total checklists parsed: ${checklists.length}');
+        for (var checklist in checklists) {
+          print(
+            '  Version ${checklist.version}: ID=${checklist.id}, Status=${checklist.status}',
+          );
+        }
+        return checklists;
+      } else {
+        print('❌ Error response: ${response.statusCode}');
+        try {
+          final errorData = json.decode(response.body);
+          print('❌ Error message: ${errorData['message'] ?? 'Unknown error'}');
+        } catch (_) {
+          print('❌ Could not parse error response');
+        }
+        return [];
+      }
+    } catch (e) {
+      print('❌ Error in getAllChecklistsByDate: $e');
+      return [];
+    }
+  }
+  
   static Future<ChecklistResponse> getChecklistById(String checklistId) async {
     try {
-      
       final response = await authenticatedApiCall(
         'checklist/get-by-id/$checklistId',
         method: 'GET',
@@ -2138,7 +2262,7 @@ class ApiService {
       rethrow;
     }
   }
-  
+
   static Future<bool> checkIfChecklistExists({
     required String vehicleId,
     required DateTime date,
@@ -2146,17 +2270,19 @@ class ApiService {
     try {
       //final formattedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
       final formattedDate = DateFormat('yyyy-MM-dd').format(date);
-      
-      print('🔍 Checking if checklist exists for vehicle $vehicleId on $formattedDate');
-      
+
+      print(
+        '🔍 Checking if checklist exists for vehicle $vehicleId on $formattedDate',
+      );
+
       final response = await authenticatedApiCall(
         'checklist/vehicle/$vehicleId/date/$formattedDate/exists',
         method: 'GET',
       );
-      
+
       print('📥 Exists check response: $response');
       print('  exists value: ${response['exists']}');
-      
+
       return response['exists'] ?? false;
     } catch (e) {
       print('❌ Error checking checklist existence: $e');
@@ -2211,9 +2337,7 @@ class ApiService {
   }
   */
 
-  static Future<void> updateFcmToken({
-    required fcmToken,
-  }) async {
+  static Future<void> updateFcmToken({required fcmToken}) async {
     try {
       print('🔄 Updating FCM token: $fcmToken');
 
@@ -2221,7 +2345,7 @@ class ApiService {
       final deviceId = await DeviceHelper.getDeviceId();
       final deviceName = await DeviceHelper.getDeviceName();
       final deviceType = DeviceHelper.getDeviceType();
-      
+
       await authenticatedApiCall(
         'notifications/update-fcm-token-new',
         method: 'PUT',
@@ -2299,7 +2423,10 @@ class ApiService {
     }
   }
 
-  static Future<void> unregisterWebDevice({required String deviceId, int? userId}) async {
+  static Future<void> unregisterWebDevice({
+    required String deviceId,
+    int? userId,
+  }) async {
     try {
       /*
       await authenticatedApiCall(
@@ -2319,7 +2446,9 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>?> trackUserActivity({bool? isLogin}) async {
+  static Future<Map<String, dynamic>?> trackUserActivity({
+    bool? isLogin,
+  }) async {
     try {
       print('🔄 Current action : ${isLogin == true ? "Login" : "Access"}');
 
@@ -2469,6 +2598,4 @@ class ApiService {
       rethrow;
     }
   }
-
 }
-

@@ -2,15 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/approvalConfig_model.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/users/admin/approval_user_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/constant.dart';
 
 class ApprovalManagementScreen extends StatefulWidget {
   final VoidCallback? onApprovalUsersPressed;
   final VoidCallback? onApprovalTripsPressed;
+  final VoidCallback? onApprovalSafetyPressed;
 
-  const ApprovalManagementScreen({Key? key, this.onApprovalUsersPressed, this.onApprovalTripsPressed}) : super(key: key);
+  const ApprovalManagementScreen({Key? key, this.onApprovalUsersPressed, this.onApprovalTripsPressed, this.onApprovalSafetyPressed}) : super(key: key);
 
   @override
   _ApprovalManagementScreenState createState() => _ApprovalManagementScreenState();
@@ -63,7 +63,7 @@ class _ApprovalManagementScreenState extends State<ApprovalManagementScreen> {
                 Icon(Icons.group_add, color: Colors.white, size: 20),
                 SizedBox(width: 8),
                 Text(
-                  'Approval Users Management',
+                  'Approval(Users) Management',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -105,7 +105,7 @@ class _ApprovalManagementScreenState extends State<ApprovalManagementScreen> {
                   Icon(Icons.group_add, color: Colors.white, size: 20),
                   SizedBox(width: 8),
                   Text(
-                    'Approval Trips Management',
+                    'Approval(Trips) Management',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 16,
@@ -119,6 +119,48 @@ class _ApprovalManagementScreenState extends State<ApprovalManagementScreen> {
         ),
       );
     }
+
+  Widget _buildApprovalSafetyButton() {
+    return Container(
+      width: double.infinity,
+      height: 46,
+      decoration: BoxDecoration(
+        color: Colors.deepOrangeAccent,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.deepOrangeAccent.withOpacity(0.3),
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: widget.onApprovalSafetyPressed, // Use the callback here
+          child: Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.group_add, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Approval(Safety) Management',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   Future<void> _loadApprovalConfiguration() async {
     try {
@@ -617,6 +659,11 @@ class _ApprovalManagementScreenState extends State<ApprovalManagementScreen> {
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             child: _buildApprovalTripsButton(),
+          ),
+
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            child: _buildApprovalSafetyButton(),
           ),
 
         // Create/Edit Button Section

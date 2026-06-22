@@ -15,6 +15,7 @@ class ChecklistResponse {
   final String? status;
   final CheckedBy? approvedBy;
   final String? comment;
+  final int? version;
 
   ChecklistResponse({
     required this.id,
@@ -29,6 +30,7 @@ class ChecklistResponse {
     this.status,
     this.approvedBy,
     this.comment,
+    this.version,
   });
 
   factory ChecklistResponse.fromJson(Map<String, dynamic> json) {
@@ -125,6 +127,7 @@ class ChecklistResponse {
       status: json['status']?.toString(),
       approvedBy: approvedBy,
       comment: json['comment']?.toString(),
+      version: json['version'] ?? 1,
     );
   }
 
@@ -201,6 +204,7 @@ class VehicleChecklistResponse {
   final DateTime? createdAt;
   final bool isSubmitted;
   final String? status;
+  final int? version;
 
   VehicleChecklistResponse({
     required this.id,
@@ -211,6 +215,7 @@ class VehicleChecklistResponse {
     this.createdAt,
     required this.isSubmitted,
     this.status,
+    this.version,
   });
 
   factory VehicleChecklistResponse.fromJson(Map<String, dynamic> json) {
@@ -254,6 +259,7 @@ class VehicleChecklistResponse {
       createdAt: createdAt,
       isSubmitted: json['isSubmitted'],
       status: json['status']?.toString(),
+      version: json['version'],
     );
   }
 
