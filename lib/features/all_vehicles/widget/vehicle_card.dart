@@ -411,12 +411,14 @@ class _VehicleCardState extends State<VehicleCard> {
                       _buildDetailItem(
                         icon: Icons.list,
                         title: 'Today Checking',
-                        value: vehicle.todayChecked == true
-                            ? 'Checked'
-                            : 'Not Checked',
-                        valueColor: vehicle.todayChecked == true
-                            ? Colors.greenAccent
-                            : Colors.orangeAccent,
+                        // value: vehicle.todayChecked == true
+                        //     ? 'Checked'
+                        //     : 'Not Checked',
+                        value: getChecklistStatus(vehicle.checklistStatus!),
+                        // valueColor: vehicle.todayChecked == true
+                        //     ? Colors.greenAccent
+                        //     : Colors.orangeAccent,
+                        valueColor: getChecklistStatusColor(vehicle.checklistStatus!)
                       ),
                     ],
                   ),
@@ -647,5 +649,25 @@ class _VehicleCardState extends State<VehicleCard> {
         ),
       ),
     );
+  }
+
+  String getChecklistStatus(String status) {
+    final statusMap = {
+      'draft': 'Not Submitted',
+      'submitted': 'Submitted (Reviewing)',
+      'approved': 'Approved',
+      'rejected': 'Rejected (want to resubmit)',
+    };
+    return statusMap[status] ?? 'Unknown';
+  }
+
+  Color getChecklistStatusColor(String status) {
+    final colorMap = {
+      'draft': Colors.orange,
+      'submitted': Colors.yellow,
+      'approved': Colors.greenAccent,
+      'rejected': Colors.redAccent,
+    };
+    return colorMap[status] ?? Colors.grey;
   }
 }

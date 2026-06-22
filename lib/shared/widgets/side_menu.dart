@@ -40,7 +40,7 @@ class SideMenu extends StatelessWidget {
             MenuItem(Icons.checklist, 'Vehicle Checklists'),
           ];
         case UserRole.supervisor:
-         return [
+          return [
             MenuItem(Icons.car_rental_sharp, 'All Vehicles'),
             MenuItem(Icons.checklist, 'Vehicle Checklists'),
           ];
@@ -50,6 +50,9 @@ class SideMenu extends StatelessWidget {
         case UserRole.security:
         case UserRole.driver:
         case UserRole.employee:
+          if (user.canSafetyApprove) {
+            return [MenuItem(Icons.checklist, 'Vehicle Checklists')];
+          }
       }
     }
 
@@ -61,7 +64,7 @@ class SideMenu extends StatelessWidget {
       items.add(MenuItem(Icons.person_add, 'User Creations'));
     }
 
-    if (user.canTripApprove) {
+    if (user.canTripApprove || user.canSafetyApprove) {
       items.add(MenuItem(Icons.verified, 'Trip Approvals'));
     }
 
@@ -94,15 +97,11 @@ class SideMenu extends StatelessWidget {
           //MenuItem(Icons.car_rental_sharp, 'All Vehicles'),
           MenuItem(Icons.verified, 'Review Checklists'),
           MenuItem(
-            Icons.file_present_sharp, 
+            Icons.file_present_sharp,
             'Views & Reports',
             route: 'reports',
           ),
-          MenuItem(
-            Icons.admin_panel_settings,
-            'Admin Console',
-            route: 'admin',
-          ),
+          MenuItem(Icons.admin_panel_settings, 'Admin Console', route: 'admin'),
         ]);
         break;
 
@@ -135,6 +134,13 @@ class SideMenu extends StatelessWidget {
         break;
     }
 
+    if (user.canSafetyApprove &&
+        !(user.role == UserRole.sysadmin || user.role == UserRole.supervisor)) {
+      items.add(
+        MenuItem(Icons.file_present_sharp, 'Views & Reports', route: 'reports'),
+      );
+    }
+
     return items;
   }
 
@@ -161,7 +167,7 @@ class SideMenu extends StatelessWidget {
           return 'Employee (Both Authorities)';
         } else if (user.canUserCreate) {
           return 'Employee (User Creation)';
-        } else if (user.canTripApprove) {
+        } else if (user.canTripApprove || user.canSafetyApprove) {
           return 'Employee (Trip Approval)';
         }
         return 'Employee';
@@ -181,11 +187,14 @@ class SideMenu extends StatelessWidget {
             toolbarHeight: 70,
             leading: IconButton(
               icon: Icon(
-                (isAdminConsole || isReportConsole) ? Icons.arrow_back : Icons.close,
+                (isAdminConsole || isReportConsole)
+                    ? Icons.arrow_back
+                    : Icons.close,
                 color: Colors.white,
               ),
               onPressed: () {
-                if ((isAdminConsole || isReportConsole) && onBackToMain != null) {
+                if ((isAdminConsole || isReportConsole) &&
+                    onBackToMain != null) {
                   onBackToMain!();
                 } else {
                   Navigator.pop(context);
@@ -387,7 +396,6 @@ class SideMenu extends StatelessWidget {
                 fontWeight: FontWeight.bold,
                 letterSpacing: 0.5,
                 color: Colors.white, // This will be replaced by gradient
-                
               ),
             ),
           ),
@@ -410,16 +418,11 @@ class SideMenu extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: getItemBgColor(item),
-        ),
+        gradient: LinearGradient(colors: getItemBgColor(item)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: ListTile(
-        leading: Icon(
-          item.icon,
-          color: getItemColor(item),
-        ),
+        leading: Icon(item.icon, color: getItemColor(item)),
         title: Text(
           item.title,
           style: TextStyle(
@@ -451,7 +454,7 @@ class SideMenu extends StatelessWidget {
         onMenuTap('Open Admin Console');
         break;
       case true when item.route == 'reports':
-        onMenuTap('Open Reports'); 
+        onMenuTap('Open Reports');
         break;
       default:
         Navigator.pop(context);
@@ -470,7 +473,6 @@ class SideMenu extends StatelessWidget {
         return 'PCW RIDE';
     }
   }
-
 }
 
 class MenuItem {
@@ -516,10 +518,6 @@ List<Color> getItemBgColor(item) {
         const Color.fromARGB(8, 2, 82, 220),
       ];
     default:
-      return [
-        const Color.fromARGB(28, 5, 3, 0), 
-        Colors.transparent
-      ];
+      return [const Color.fromARGB(28, 5, 3, 0), Colors.transparent];
   }
 }
-

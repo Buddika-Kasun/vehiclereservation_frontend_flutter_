@@ -9,14 +9,15 @@ class ApiConfig {
   static Future<void> init() async {
     if (!_initialized) {
       if (kIsWeb) {
-        if (!ApiConfig.isProduction) {
-          await dotenv.load(fileName: "assets/.env"); // Dev
-        }
-        else{
-          // For web (Railway), load from hardcoded config
-          _loadWebConfig();                         // Prod
-        }
-        //await dotenv.load(fileName: "assets/.env"); // Dev
+        // if (!ApiConfig.isProduction) {
+        //   await dotenv.load(fileName: "assets/.env"); // Dev
+        // }
+        // else{
+        //   // For web (Railway), load from hardcoded config
+        //   _loadWebConfig();                         // Prod
+        // }
+        _loadWebConfig();                         // Prod
+        // await dotenv.load(fileName: "assets/.env"); // Dev
       } else {
         // For mobile/desktop, load from .env file
         await dotenv.load(fileName: "assets/.env");
