@@ -2759,13 +2759,17 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
     }
     
     // Check Safety approver
+    final requirements = _tripDetails?.details.approval.requirements;
     if (approval?.approvers.safety?.id == currentUser.id) {
       return approval?.approvers.safety?.status;
     }
-
-    if (approval?.requirements.requireSafetyApprover == true && approval?.approvers.safety == null) {
-      return 'pending';
+    else if (requirements?.requireSafetyApprover == true && currentUser.canSafetyApprove){
+      return "pending";
     }
+
+    // if (approval?.requirements.requireSafetyApprover == true && approval?.approvers.safety == null) {
+    //   return 'pending';
+    // }
     
     return null;
   }
@@ -2792,11 +2796,11 @@ class _ApprovalDetailsScreenState extends State<ApprovalDetailsScreen> {
     final isSysAdmin = currentUser?.role.value.toLowerCase() == 'sysadmin';
 
     // Get current user's approval status for this trip
-    final approval = _tripDetails?.details.approval;
+    // final approval = _tripDetails?.details.approval;
     final currentApprovalStatus = _getCurrentUserApprovalStatus();
     print("Current approver status: $currentApprovalStatus");
     // If current user has already approved and is not sysadmin, hide buttons
-    if (currentApprovalStatus == null || (currentApprovalStatus?.toLowerCase() == 'approved' && !isSysAdmin)) {
+    if ((currentApprovalStatus == null && !isSysAdmin) || (currentApprovalStatus?.toLowerCase() == 'approved' && !isSysAdmin)) {
       return SizedBox.shrink();
     }
 

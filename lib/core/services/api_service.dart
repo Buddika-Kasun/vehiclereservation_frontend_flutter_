@@ -628,6 +628,7 @@ class ApiService {
     String? role,
     String? sort,
     String? search,
+    String? version,
   }) async {
     final body = <String, dynamic>{'page': page, 'limit': limit};
 
@@ -642,6 +643,9 @@ class ApiService {
     }
     if (search != null && search.isNotEmpty) {
       body['search'] = search;
+    }
+    if (version != null && version.isNotEmpty) {
+      body['version'] = version;
     }
 
     return await authenticatedApiCall(
