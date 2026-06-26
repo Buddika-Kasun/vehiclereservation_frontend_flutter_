@@ -1720,7 +1720,8 @@ class _ExceedTripDetailsScreenState extends State<ExceedTripDetailsScreen> {
     final hasApprovers =
         (_tripDetails!.details.approval.approvers.hod?.id != -1 ||
         _tripDetails!.details.approval.approvers.secondary != null ||
-        _tripDetails!.details.approval.approvers.safety != null);
+        _tripDetails!.details.approval.requirements.requireSafetyApprover == true);
+        // _tripDetails!.details.approval.approvers.safety != null);
 
     final hasApproval = _tripDetails?.details.approval.hasApproval == true;
 
@@ -1842,7 +1843,7 @@ class _ExceedTripDetailsScreenState extends State<ExceedTripDetailsScreen> {
             ),
           ),
           SizedBox(height: 12),
-          if (_tripDetails?.details.approval.approvers.hod != null) ...[
+          if (_tripDetails?.details.approval.approvers.hod != null && _tripDetails?.details.approval.approvers.hod?.id != -1) ...[
             _buildApproverRow(
               _tripDetails!.tripType == 'emergency'
                   ? 'Emergency Approval'
