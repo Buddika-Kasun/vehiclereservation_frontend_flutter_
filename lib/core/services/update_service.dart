@@ -182,18 +182,18 @@ class UpdateService {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Version ${update.version} is available on the Play Store.',
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 12),
+            // Text(
+            //   'Version ${update.version} is available on the Play Store.',
+            //   style: const TextStyle(fontSize: 16),
+            // ),
+            // const SizedBox(height: 12),
             if (update.releaseNotes != null &&
                 update.releaseNotes!.isNotEmpty) ...[
-              const Text(
-                'What\'s new:',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
+              // const Text(
+              //   'What\'s new:',
+              //   style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              // ),
+              // const SizedBox(height: 8),
               Text(
                 update.releaseNotes!,
                 style: const TextStyle(fontSize: 14, color: Colors.grey),
