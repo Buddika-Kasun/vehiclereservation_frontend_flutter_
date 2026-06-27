@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/available_vehicles_response.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:intl/intl.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/review_(Supervisors)/review_trip_details_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/shared/widgets/message_overlay.dart';
 
 class ReviewVehicleSelectionScreen extends StatefulWidget {
@@ -169,6 +170,32 @@ class _ReviewVehicleSelectionScreenState
       );
     } finally {
       setState(() => _isBooking = false);
+    }
+  }
+
+  void _navigateToConflictingTrip(BuildContext context, int tripId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ReviewTripDetailsScreen(tripId: tripId),
+      ),
+    );
+  }
+
+  String _formatTimeToAMPM(String time) {
+    try {
+      // Split time string (assumes format "HH:mm:ss" or "HH:mm")
+      List<String> parts = time.split(':');
+      int hour = int.parse(parts[0]);
+      int minute = int.parse(parts[1]);
+
+      String period = hour >= 12 ? 'PM' : 'AM';
+      int hour12 = hour % 12;
+      if (hour12 == 0) hour12 = 12;
+
+      return '$hour12:${minute.toString().padLeft(2, '0')} $period';
+    } catch (e) {
+      return time; // Return original if parsing fails
     }
   }
 
@@ -636,26 +663,90 @@ class _ReviewVehicleSelectionScreenState
                 ),
 
               // Conflict warning
-              if (availableVehicle.isInConflict)
-                Container(
-                  margin: EdgeInsets.only(top: 8),
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.orange),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.warning, color: Colors.orange, size: 16),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Schedule conflict',
-                          style: TextStyle(color: Colors.orange, fontSize: 12),
+              // if (availableVehicle.isInConflict)
+              //   Container(
+              //     margin: EdgeInsets.only(top: 8),
+              //     padding: EdgeInsets.all(8),
+              //     decoration: BoxDecoration(
+              //       color: Colors.orange.withOpacity(0.1),
+              //       borderRadius: BorderRadius.circular(8),
+              //       border: Border.all(color: Colors.orange),
+              //     ),
+              //     child: Row(
+              //       children: [
+              //         Icon(Icons.warning, color: Colors.orange, size: 16),
+              //         SizedBox(width: 8),
+              //         Expanded(
+              //           child: Text(
+              //             'Schedule conflict',
+              //             style: TextStyle(color: Colors.orange, fontSize: 12),
+              //           ),
+              //         ),
+              //       ],
+              //     ),
+              //   ),
+              if (availableVehicle.isInConflict &&
+                  availableVehicle.conflictingTripData != null)
+                GestureDetector(
+                  onTap: () {
+                    _navigateToConflictingTrip(
+                      context,
+                      availableVehicle.conflictingTripData!.tripId,
+                    );
+                  },
+                  child: Container(
+                    margin: EdgeInsets.only(top: 8),
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.warning, color: Colors.orange, size: 16),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '⚠️ Schedule Conflict',
+                                style: TextStyle(
+                                  color: Colors.orange,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Trip #${availableVehicle.conflictingTripData!.tripId}  -  ${_formatTimeToAMPM(availableVehicle.conflictingTripData!.startTime)}',
+                                style: TextStyle(
+                                  color: Colors.deepOrangeAccent,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Tap to view conflicting trip',
+                                style: TextStyle(
+                                  color: Colors.orange.withOpacity(0.7),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                        Icon(
+                          Icons.arrow_forward_ios,
+                          color: Colors.orange,
+                          size: 14,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
 
