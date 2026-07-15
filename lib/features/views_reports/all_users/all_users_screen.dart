@@ -35,6 +35,7 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
   // Filters
   int? selectedDepartmentId;
   String? selectedRole;
+  String? selectedVersion = "all";
   String searchQuery = '';
 
   // Sort
@@ -50,6 +51,13 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
     'HR',
     'HOD',
     'Employee',
+  ];
+
+  // Version filter options
+  final List<Map<String, dynamic>> versionFilters = [
+    {'label': 'All Versions', 'value': 'all'},
+    {'label': 'Latest Version', 'value': 'latest'},
+    {'label': 'Old Version', 'value': 'old'},
   ];
 
   // Search mode state
@@ -84,6 +92,27 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
         _hasText = hasText;
       });
     }
+  }
+
+  void _toggleSearchMode() {
+    setState(() {
+      _isSearchMode = !_isSearchMode;
+      if (!_isSearchMode) {
+        _searchController.clear();
+        _hasText = false;
+        _onSearchChanged('');
+      }
+    });
+  }
+
+  void _onVersionChanged(String? version) {
+    setState(() {
+      selectedVersion = version;
+      page = 1;
+      hasMore = true;
+      isLoading = true;
+    });
+    _fetchUsers(reset: true);
   }
 
   void _onSearchChanged(String query) {
@@ -133,7 +162,10 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
           _departments = departments
               .map((data) => Department.fromJson(data))
               .toList();
-          _departments.insert(0, Department(id: 0, name: 'All Departments', isActive: true));
+          _departments.insert(
+            0,
+            Department(id: 0, name: 'All Departments', isActive: true),
+          );
         });
       } else {
         throw Exception(response['message'] ?? 'Failed to load cost centers');
@@ -141,7 +173,9 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
     } catch (e) {
       print('Error fetching departments: $e');
       setState(() {
-        _departments = [Department(id: 0, name: 'All Departments', isActive: true)];
+        _departments = [
+          Department(id: 0, name: 'All Departments', isActive: true),
+        ];
       });
     }
   }
@@ -163,14 +197,13 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
       final response = await ApiService.getUsersByFiltration(
         page: page.toString(),
         limit: limit.toString(),
-        departmentId:
-            selectedDepartmentId != null &&
-                selectedDepartmentId != 0
+        departmentId: selectedDepartmentId != null && selectedDepartmentId != 0
             ? selectedDepartmentId
             : null,
         role: selectedRole,
         sort: currentOrder == SortOrder.asc ? 'asc' : 'desc',
         search: searchQuery.isEmpty ? null : searchQuery,
+        version: selectedVersion != 'all' ? selectedVersion : null,
       );
 
       if (response['success'] == true && response['data'] != null) {
@@ -235,8 +268,11 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
     setState(() {
       selectedDepartmentId = null;
       selectedRole = null;
+      selectedVersion = "all";
       if (!_isSearchMode) {
         searchQuery = '';
+        _searchController.clear();
+        _hasText = false;
       }
       currentOrder = SortOrder.asc;
       page = 1;
@@ -249,7 +285,9 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
   void _navigateToUserDetails(dynamic user) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => UserDetailsScreen(userId: user['id'])),
+      MaterialPageRoute(
+        builder: (context) => UserDetailsScreen(userId: user['id']),
+      ),
     );
   }
 
@@ -321,7 +359,6 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      //color: Colors.green,
       padding: const EdgeInsets.fromLTRB(24, 0, 16, 5),
       child: Row(
         children: [
@@ -337,7 +374,8 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
           ),
           if (selectedDepartmentId != null ||
               selectedRole != null ||
-              searchQuery.isNotEmpty)
+              searchQuery.isNotEmpty ||
+              selectedVersion != "all")
             GestureDetector(
               onTap: _clearFilters,
               child: Container(
@@ -365,16 +403,15 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
 
   Widget _buildFilterSection() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(0, 8, 0, 10),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
       color: Colors.black,
       child: Column(
         children: [
-          // Department Dropdown Row
+          // Department
           Row(
             children: [
               Expanded(
                 child: Container(
-                  margin: EdgeInsets.fromLTRB(16, 0, 16, 0),
                   height: _componentHeight,
                   decoration: BoxDecoration(
                     color: Colors.grey[900],
@@ -383,16 +420,15 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
                   child: _buildDepartmentDropdown(),
                 ),
               ),
-            ],
+            ]
           ),
           SizedBox(height: 8),
 
-          // Role Dropdown Row
+          // Role
           Row(
             children: [
               Expanded(
                 child: Container(
-                  margin: EdgeInsets.fromLTRB(16, 0, 16, 0),
                   height: _componentHeight,
                   decoration: BoxDecoration(
                     color: Colors.grey[900],
@@ -403,20 +439,45 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
               ),
             ],
           ),
-
           SizedBox(height: 8),
-          // Search Row
+
+
+          // Version dropdown and Search
           Row(
             children: [
               Expanded(
+                flex: 2,
                 child: Container(
-                  margin: EdgeInsets.fromLTRB(16, 0, 16, 0),
                   height: _componentHeight,
                   decoration: BoxDecoration(
                     color: Colors.grey[900],
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: _buildSearchField(),
+                  child: _isSearchMode
+                      ? _buildSearchField()
+                      : _buildVersionDropdown(),
+                ),
+              ),
+              SizedBox(width: 8),
+              Container(
+                height: _componentHeight,
+                width: _componentHeight,
+                decoration: BoxDecoration(
+                  color: _isSearchMode
+                      ? const Color(0xFFF9C80E)
+                      : Colors.grey[900],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: IconButton(
+                  icon: Icon(
+                    _isSearchMode ? Icons.close : Icons.search,
+                    color: _isSearchMode ? Colors.black : Colors.white,
+                    size: 20,
+                  ),
+                  onPressed: _toggleSearchMode,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints.expand(),
+                  tooltip: _isSearchMode ? 'Close search' : 'Search users',
                 ),
               ),
             ],
@@ -456,9 +517,7 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
         }).toList(),
         onChanged: (int? newValue) {
           setState(() {
-            selectedDepartmentId = newValue == 0
-                ? null
-                : newValue;
+            selectedDepartmentId = newValue == 0 ? null : newValue;
             page = 1;
             hasMore = true;
             isLoading = true;
@@ -468,7 +527,7 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
         hint: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Text(
-            'Filter by department',
+            'Department',
             style: TextStyle(color: Colors.grey[400], fontSize: 14),
           ),
         ),
@@ -523,7 +582,47 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
         hint: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Text(
-            'Filter by role',
+            'Role',
+            style: TextStyle(color: Colors.grey[400], fontSize: 14),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVersionDropdown() {
+    return DropdownButtonHideUnderline(
+      child: DropdownButton<String>(
+        value: selectedVersion,
+        isExpanded: true,
+        icon: Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: Icon(Icons.arrow_drop_down, color: Colors.white, size: 22),
+        ),
+        dropdownColor: Colors.grey[900],
+        style: const TextStyle(color: Colors.white, fontSize: 14),
+        items: versionFilters.map((filter) {
+          return DropdownMenuItem<String>(
+            value: filter['value'] as String,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+              child: Text(
+                filter['label'] as String,
+                style: TextStyle(
+                  color: selectedVersion == filter['value']
+                      ? const Color(0xFFF9C80E)
+                      : Colors.white,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+        onChanged: _onVersionChanged,
+        hint: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            'Version',
             style: TextStyle(color: Colors.grey[400], fontSize: 14),
           ),
         ),
@@ -599,15 +698,11 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
               ),
             ],
           ),
-
           const Spacer(),
-
-          // Sort Button
           Container(
             decoration: BoxDecoration(
               color: Colors.grey[900],
               borderRadius: BorderRadius.circular(10),
-              //border: Border.all(color: Colors.grey[800]!),
             ),
             child: InkWell(
               onTap: _toggleSortOrder,
@@ -645,12 +740,9 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
               if (index == users.length && hasMore) {
                 return _buildLoadingMoreIndicator();
               }
-
-              // Safety check for index out of range
               if (index >= users.length) {
                 return const SizedBox.shrink();
               }
-              
               return _buildUserCard(users[index]);
             },
           ),
@@ -668,11 +760,9 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
         decoration: BoxDecoration(
           color: Colors.grey[900],
           borderRadius: BorderRadius.circular(12),
-          //border: Border.all(color: Colors.grey[800]!),
         ),
         child: Row(
           children: [
-            // Avatar
             Container(
               width: 50,
               height: 50,
@@ -692,8 +782,6 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
               ),
             ),
             SizedBox(width: 16),
-
-            // User Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -734,8 +822,6 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
                 ],
               ),
             ),
-
-            // Arrow icon
             Icon(
               Icons.arrow_forward_ios_rounded,
               color: Colors.grey[600],
@@ -835,7 +921,8 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
                 SizedBox(height: 8),
                 if (searchQuery.isNotEmpty ||
                     selectedDepartmentId != null ||
-                    selectedRole != null)
+                    selectedRole != null ||
+                    selectedVersion != "all")
                   TextButton(
                     onPressed: _clearFilters,
                     child: Text(

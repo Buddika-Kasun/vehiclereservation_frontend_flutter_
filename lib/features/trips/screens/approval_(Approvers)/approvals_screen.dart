@@ -4,7 +4,6 @@ import 'package:vehiclereservation_frontend_flutter_/data/new_models/trip_card_m
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/base/base_trip_list_state.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/approval_(Approvers)/approval_details_screen.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/utils/helper_methods.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/utils/sort_enums.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/sort_button.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/status_filter_customized_dropdown.dart';

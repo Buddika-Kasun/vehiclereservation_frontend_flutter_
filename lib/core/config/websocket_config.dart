@@ -23,7 +23,7 @@ class WebSocketConfig {
         //   return 'http://localhost:3000'; // Dev
         // }
         return 'https://pcw-ride-server.up.railway.app'; // Prod
-        //return 'http://localhost:3000'; // Dev
+        // return 'http://localhost:3000'; // Dev
       }
 
       // For mobile, use from config

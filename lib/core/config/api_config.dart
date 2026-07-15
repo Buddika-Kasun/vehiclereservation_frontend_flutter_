@@ -17,7 +17,7 @@ class ApiConfig {
         //   _loadWebConfig();                         // Prod
         // }
         _loadWebConfig();                         // Prod
-        //await dotenv.load(fileName: "assets/.env"); // Dev
+        // await dotenv.load(fileName: "assets/.env"); // Dev
       } else {
         // For mobile/desktop, load from .env file
         await dotenv.load(fileName: "assets/.env");
