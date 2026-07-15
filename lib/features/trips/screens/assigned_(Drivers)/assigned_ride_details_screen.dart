@@ -1834,7 +1834,8 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
     final hasApprovers =
         (_tripDetails!.details.approval.approvers.hod?.id != -1 ||
         _tripDetails!.details.approval.approvers.secondary != null ||
-        _tripDetails!.details.approval.approvers.safety != null);
+        _tripDetails!.details.approval.requirements.requireSafetyApprover == true);
+        // _tripDetails!.details.approval.approvers.safety != null);
 
     final hasApproval = _tripDetails?.details.approval.hasApproval == true;
 
@@ -1956,7 +1957,7 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
             ),
           ),
           SizedBox(height: 12),
-          if (_tripDetails?.details.approval.approvers.hod != null) ...[
+          if (_tripDetails?.details.approval.approvers.hod != null && _tripDetails?.details.approval.approvers.hod?.id != -1) ...[
             _buildApproverRow(
               _tripDetails!.tripType == 'emergency'
                   ? 'Emergency Approval'
@@ -1978,10 +1979,11 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
               'Secondary Approval',
               _tripDetails!.details.approval.approvers.secondary!,
             ),
-          if (_tripDetails?.details.approval.approvers.safety != null)
+          // if (_tripDetails?.details.approval.approvers.safety != null)
+          if (_tripDetails?.details.approval.requirements.requireSafetyApprover == true)
             _buildApproverRow(
               'Safety Approval',
-              _tripDetails!.details.approval.approvers.safety!,
+              _tripDetails?.details.approval.approvers.safety,
             ),
         ],
       ),
@@ -2605,7 +2607,7 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
     }
   }
 
-  Widget _buildApproverRow(String label, Approver approver) {
+  Widget _buildApproverRow(String label, Approver? approver) {
     return Container(
       margin: EdgeInsets.only(bottom: 8),
       padding: EdgeInsets.all(12),
@@ -2619,11 +2621,11 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: _getApprovalStatusColor(approver.status),
+              color: _getApprovalStatusColor(approver?.status ?? 'pending'),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Icon(
-              _getApprovalStatusIcon(approver.status),
+              _getApprovalStatusIcon(approver?.status ?? 'pending'),
               color: Colors.white,
               size: 20,
             ),
@@ -2635,25 +2637,28 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
               children: [
                 Text(
                   label,
-                  style: TextStyle(color: Colors.grey[300], fontSize: 12),
+                  style: TextStyle(
+                    color: Colors.grey[300],
+                    fontSize: 12,
+                  ),
                 ),
                 SizedBox(height: 4),
-                // Show department
-                if (approver.department != null)
+                // Show department 
+                if (approver?.department != null)
                   Text(
-                    _tripDetails!.requester.department,
+                    approver?.department ?? '',
                     style: TextStyle(color: Colors.grey[300], fontSize: 12),
                   ),
                 SizedBox(height: 4),
                 Text(
-                  approver.name ?? 'Pending Assignee',
+                  approver?.name ?? 'Pending Assignee',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                if (approver.comments != null && approver.comments!.isNotEmpty)
+                if (approver?.comments != null && approver!.comments!.isNotEmpty)
                   Padding(
                     padding: EdgeInsets.only(top: 4),
                     child: Text(
@@ -2667,13 +2672,13 @@ class _RideDetailsScreenState extends State<RideDetailsScreen> {
           Container(
             padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: _getApprovalStatusColor(approver.status).withOpacity(0.1),
+              color: _getApprovalStatusColor(approver?.status ?? 'pending').withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              approver.status.toUpperCase(),
+              approver?.status.toUpperCase() ?? 'PENDING',
               style: TextStyle(
-                color: _getApprovalStatusColor(approver.status),
+                color: _getApprovalStatusColor(approver?.status ?? 'pending'),
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
               ),

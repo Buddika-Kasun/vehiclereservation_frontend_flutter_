@@ -15,6 +15,7 @@ class VehicleChecklistCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isSubmitted = checklist.isSubmitted;
+    final hasStatus = checklist.status != null && checklist.status!.isNotEmpty;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -38,7 +39,7 @@ class VehicleChecklistCard extends StatelessWidget {
                 if (checklist.isSubmitted) ...[
                   const SizedBox(height: 16),
                   _buildFooter(isSubmitted),
-                ]
+                ],
               ],
             ),
           ),
@@ -97,10 +98,10 @@ class VehicleChecklistCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: checklist.getStatusColor().withOpacity(0.2),
+                color: _getStatusColor(checklist.status!).withOpacity(0.2),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: checklist.getStatusColor().withOpacity(0.3),
+                  color: _getStatusColor(checklist.status!).withOpacity(0.3),
                 ),
               ),
               child: Row(
@@ -109,9 +110,9 @@ class VehicleChecklistCard extends StatelessWidget {
                   _getStatusIcon(checklist.status!),
                   const SizedBox(width: 4),
                   Text(
-                    checklist.getStatusText(),
+                    _getStatusText(checklist.status!),
                     style: TextStyle(
-                      color: checklist.getStatusColor(),
+                      color: _getStatusColor(checklist.status!),
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                     ),
@@ -131,9 +132,13 @@ class VehicleChecklistCard extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.hourglass_empty, size: 12, color: Colors.orange),
+                  const Icon(
+                    Icons.hourglass_empty,
+                    size: 12,
+                    color: Colors.orange,
+                  ),
                   const SizedBox(width: 4),
-                  Text(
+                  const Text(
                     'DRAFT',
                     style: TextStyle(
                       color: Colors.orange,
@@ -188,7 +193,7 @@ class VehicleChecklistCard extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              checklist.formatCheckedDate(),
+              _formatDate(checklist.checklistDate),
               style: const TextStyle(color: Colors.white, fontSize: 13),
             ),
           ],
@@ -222,7 +227,9 @@ class VehicleChecklistCard extends StatelessWidget {
     );
   }
 
-  Widget _buildFooter(bool isSubmitted) { 
+  Widget _buildFooter(bool isSubmitted) {
+    final version = checklist.version ?? 0;
+
     return Container(
       padding: const EdgeInsets.only(top: 8),
       decoration: BoxDecoration(
@@ -231,21 +238,74 @@ class VehicleChecklistCard extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            'Click for full details',
-            style: TextStyle(
-              color: const Color(0xFFF9C80E),
-              fontSize: 14,
-            ),
-          ),
-          Icon(
-            Icons.arrow_forward_ios,
-            color: const Color(0xFFF9C80E),
-            size: 16,
+          // Version on the left
+          if (version > 0)
+            Row(
+              children: [
+                Icon(Icons.tag, size: 14, color: Colors.grey[400]),
+                const SizedBox(width: 4),
+                Text(
+                  'Version $version',
+                  style: TextStyle(
+                    color: const Color(0xFFF9C80E),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            )
+          else
+            const SizedBox.shrink(),
+
+          // Click for full details on the right
+          Row(
+            children: [
+              Text(
+                'Click for full details',
+                style: TextStyle(color: const Color(0xFFF9C80E), fontSize: 13),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.arrow_forward_ios,
+                color: const Color(0xFFF9C80E),
+                size: 12,
+              ),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'N/A';
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+
+  String _getStatusText(String status) {
+    switch (status.toLowerCase()) {
+      case 'submitted':
+        return 'REVIEWING';
+      case 'approved':
+        return 'APPROVED';
+      case 'rejected':
+        return 'REJECTED';
+      default:
+        return status.toUpperCase();
+    }
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'submitted':
+        return Colors.orange;
+      case 'approved':
+        return Colors.green;
+      case 'rejected':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
   }
 
   Widget _getStatusIcon(String status) {
@@ -260,5 +320,4 @@ class VehicleChecklistCard extends StatelessWidget {
         return Icon(Icons.info, size: 12, color: Colors.grey);
     }
   }
-
 }

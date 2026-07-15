@@ -19,11 +19,11 @@ class WebSocketConfig {
     try {
       if (kIsWeb) {
         // For web, always use the full URL with correct protocol
-        if (!ApiConfig.isProduction) {
-          return 'http://localhost:3000'; // Dev
-        }
+        // if (!ApiConfig.isProduction) {
+        //   return 'http://localhost:3000'; // Dev
+        // }
         return 'https://pcw-ride-server.up.railway.app'; // Prod
-        //return 'http://localhost:3000'; // Dev
+        // return 'http://localhost:3000'; // Dev
       }
 
       // For mobile, use from config

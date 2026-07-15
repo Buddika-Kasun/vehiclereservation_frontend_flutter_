@@ -9,14 +9,9 @@ import 'package:vehiclereservation_frontend_flutter_/shared/widgets/message_over
 class ChecklistDetailsScreen extends StatefulWidget {
   final String checklistId;
   final bool hasActions;
-  final List<ChecklistResponse>? allVersions;
 
-  const ChecklistDetailsScreen({
-    Key? key,
-    required this.checklistId,
-    this.hasActions = false,
-    this.allVersions,
-  }) : super(key: key);
+  const ChecklistDetailsScreen({Key? key, required this.checklistId, this.hasActions = false})
+    : super(key: key);
 
   @override
   _ChecklistDetailsScreenState createState() => _ChecklistDetailsScreenState();
@@ -24,7 +19,6 @@ class ChecklistDetailsScreen extends StatefulWidget {
 
 class _ChecklistDetailsScreenState extends State<ChecklistDetailsScreen> {
   ChecklistResponse? _checklist;
-  List<ChecklistResponse> _allVersions = [];
   bool _isLoading = true;
   bool _isApproving = false;
   bool _isRejecting = false;
@@ -54,31 +48,6 @@ class _ChecklistDetailsScreenState extends State<ChecklistDetailsScreen> {
 
     try {
       final checklist = await ApiService.getChecklistById(widget.checklistId);
-
-      // If we have allVersions passed, use them, otherwise fetch them
-      if (widget.allVersions != null && widget.allVersions!.isNotEmpty) {
-        _allVersions = widget.allVersions!;
-        // Sort by version
-        _allVersions.sort((a, b) {
-          final vA = a.version ?? 0;
-          final vB = b.version ?? 0;
-          return vA.compareTo(vB);
-        });
-      } else {
-        // Fetch all versions for this date
-        final allChecklists = await ApiService.getAllChecklistsByDate(
-          vehicleId: checklist.vehicleId,
-          date: checklist.checklistDate,
-        );
-        _allVersions = allChecklists;
-        // Sort by version
-        _allVersions.sort((a, b) {
-          final vA = a.version ?? 0;
-          final vB = b.version ?? 0;
-          return vA.compareTo(vB);
-        });
-      }
-
       setState(() {
         _checklist = checklist;
         _isLoading = false;
@@ -123,13 +92,6 @@ class _ChecklistDetailsScreenState extends State<ChecklistDetailsScreen> {
         showOkButton: true,
       );
     }
-  }
-
-  void _loadVersion(ChecklistResponse version) {
-    setState(() {
-      _checklist = version;
-      _expandedItems.clear();
-    });
   }
 
   void _showApprovalDialog() {
@@ -507,9 +469,6 @@ class _ChecklistDetailsScreenState extends State<ChecklistDetailsScreen> {
                   ),
                 ),
 
-                // Sticky Version Chips
-                if (_allVersions.length > 1) _buildStickyVersionChips(),
-
                 // Content
                 Expanded(
                   child: SingleChildScrollView(
@@ -540,79 +499,6 @@ class _ChecklistDetailsScreenState extends State<ChecklistDetailsScreen> {
             ),
       bottomNavigationBar: _buildActionButtons(),
     );
-  }
-
-  // Sticky Version Chips
-  Widget _buildStickyVersionChips() {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.black,
-        // border: Border(bottom: BorderSide(color: Colors.grey[800]!, width: 1)),
-      ),
-      child: SizedBox(
-        height: 40,
-        child: ListView.builder(
-          scrollDirection: Axis.horizontal,
-          itemCount: _allVersions.length,
-          itemBuilder: (context, index) {
-            final version = _allVersions[index];
-            final versionNumber = version.version ?? index + 1;
-            final isActive = _checklist != null && version.id == _checklist!.id;
-
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: ActionChip(
-                label: Text(
-                  'v$versionNumber',
-                  style: TextStyle(
-                    color: isActive ? Colors.black : Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-                backgroundColor: isActive
-                    ? _getStatusColor(version.status)
-                    : Colors.grey[800],
-                side: BorderSide(
-                  color: _getStatusColor(version.status),
-                  width: 1,
-                ),
-                avatar: CircleAvatar(
-                  backgroundColor: isActive
-                      ? Colors.white.withOpacity(0.3)
-                      : Colors.transparent,
-                  radius: 12,
-                  child: Icon(
-                    _getStatusIcon(version.status),
-                    size: 12,
-                    color: isActive
-                        ? Colors.black
-                        : _getStatusColor(version.status),
-                  ),
-                ),
-                onPressed: () {
-                  _loadVersion(version);
-                },
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  IconData _getStatusIcon(String? status) {
-    switch (status?.toLowerCase()) {
-      case 'submitted':
-        return Icons.hourglass_top;
-      case 'approved':
-        return Icons.check_circle;
-      case 'rejected':
-        return Icons.cancel;
-      default:
-        return Icons.info;
-    }
   }
 
   Widget _buildVehicleInfoSection() {
@@ -658,24 +544,6 @@ class _ChecklistDetailsScreenState extends State<ChecklistDetailsScreen> {
               ],
             ),
           ),
-          // Show version badge
-          if (_checklist!.version != null && _checklist!.version! > 0)
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: Color(0xFFF9C80E).withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Color(0xFFF9C80E).withOpacity(0.3)),
-              ),
-              child: Text(
-                'v${_checklist!.version}',
-                style: TextStyle(
-                  color: Color(0xFFF9C80E),
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -688,27 +556,77 @@ class _ChecklistDetailsScreenState extends State<ChecklistDetailsScreen> {
         color: Colors.grey[900],
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.calendar_today, color: Color(0xFFF9C80E), size: 20),
-          SizedBox(width: 8),
-          Text(
-            _formatDate(_checklist!.checklistDate),
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            children: [
+              Icon(Icons.calendar_today, color: Color(0xFFF9C80E), size: 20),
+              SizedBox(width: 8),
+              Text(
+                _formatDate(_checklist!.checklistDate),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Spacer(),
+              Text(
+                '#${_checklist!.id}',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
-          Spacer(),
-          Text(
-            '#${_checklist!.id}',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
+          /*
+          SizedBox(height: 12),
+          Divider(color: Colors.grey[800]),
+          SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Checklist ID',
+                      style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      '#${_checklist!.id}',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'Submitted At',
+                      style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      _getSriLankanTime(_checklist!.createdAt),
+                      style: TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
+          */
         ],
       ),
     );
@@ -1308,8 +1226,8 @@ class _ChecklistDetailsScreenState extends State<ChecklistDetailsScreen> {
     );
   }
 
-  Color _getStatusColor(String? status) {
-    switch (status?.toLowerCase()) {
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
       case 'submitted':
         return Colors.orange;
       case 'approved':
@@ -1320,4 +1238,5 @@ class _ChecklistDetailsScreenState extends State<ChecklistDetailsScreen> {
         return Colors.grey;
     }
   }
+
 }

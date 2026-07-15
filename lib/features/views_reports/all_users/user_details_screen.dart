@@ -317,7 +317,27 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
               ),
             ),
 
-          if (!_user!.canTripApprove && !_user!.canUserCreate)
+          if (_user!.canSafetyApprove)
+            Container(
+              margin: EdgeInsets.only(top: 8),
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.greenAccent, size: 16),
+                  SizedBox(width: 8),
+                  Text(
+                    'Can Safety Approve',
+                    style: TextStyle(color: Colors.greenAccent, fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+
+          if (!_user!.canTripApprove && !_user!.canUserCreate && !_user!.canSafetyApprove)
             Container(
               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(

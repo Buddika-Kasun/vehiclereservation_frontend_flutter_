@@ -9,6 +9,7 @@ import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/all_
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/exceed_trips_(Sysadmin)/exceed_trips_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/review_(Supervisors)/review_trips_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/ride_(Users)/rides_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/users/admin/approval_safety_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/approval_trip_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/approval_user_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/users/admin/vehicleType_managemnet_screen.dart';
@@ -450,6 +451,7 @@ class _HomeScreenState extends State<HomeScreen> {
             //token: _token!,
             onApprovalUsersPressed: _switchToApprovalUsersScreen,
             onApprovalTripsPressed: _switchToApprovalTripsScreen,
+            onApprovalSafetyPressed: _switchToApprovalSafetyScreen,
           );
           break;
         case 'approval_users':
@@ -460,6 +462,12 @@ class _HomeScreenState extends State<HomeScreen> {
           break;
         case 'approval_trips':
           _currentScreen = ApprovalTripsScreen(
+            //token: _token!,
+            onBackToApprovalConfig: _switchToApprovalManagementScreen,
+          );
+          break;
+        case 'approval_safety':
+          _currentScreen = ApprovalSafetyScreen(
             //token: _token!,
             onBackToApprovalConfig: _switchToApprovalManagementScreen,
           );
@@ -727,6 +735,15 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _navigateToApprovalSafety() {
+    setState(() {
+      _currentScreen = ApprovalSafetyScreen(
+        //token: _token!,
+        onBackToApprovalConfig: _switchToApprovalManagementScreen,
+      );
+    });
+  }
+
   void _handleAdminMenuItem(String adminItem) {
     switch (adminItem) {
       case 'Company':
@@ -752,6 +769,9 @@ class _HomeScreenState extends State<HomeScreen> {
         break;
       case 'Approval Trips':
         _navigateToApprovalTrips();
+        break;
+      case 'Approval Safety':
+        _navigateToApprovalSafety();
         break;
     }
   }
@@ -828,12 +848,22 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _switchToApprovalSafetyScreen() {
+    setState(() {
+      _currentScreen = ApprovalSafetyScreen(
+        //token: _token!,
+        onBackToApprovalConfig: _switchToApprovalManagementScreen,
+      );
+    });
+  }
+
   void _switchToApprovalManagementScreen() {
     setState(() {
       _currentScreen = ApprovalManagementScreen(
         //token: _token!,
         onApprovalUsersPressed: _switchToApprovalUsersScreen,
         onApprovalTripsPressed: _switchToApprovalTripsScreen,
+        onApprovalSafetyPressed: _switchToApprovalSafetyScreen,
       );
     });
   }

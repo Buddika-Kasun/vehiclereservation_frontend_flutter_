@@ -20,6 +20,7 @@ class Vehicle {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final bool? todayChecked;
+  final String? checklistStatus;
 
   Vehicle({
     required this.id,
@@ -41,6 +42,7 @@ class Vehicle {
     this.assignedDriverSecondaryName,
     required this.isActive,
     this.todayChecked,
+    this.checklistStatus,
     this.createdAt,
     this.updatedAt,
   });
@@ -66,6 +68,7 @@ class Vehicle {
       assignedDriverSecondaryName: json['assignedDriverSecondary']?['displayname'],
       isActive: json['isActive']?? true,
       todayChecked: json['todayChecked'] ?? json['today_checked'],
+      checklistStatus: json['checklistStatus'] ?? 'draft',
       createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
       updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
     );
