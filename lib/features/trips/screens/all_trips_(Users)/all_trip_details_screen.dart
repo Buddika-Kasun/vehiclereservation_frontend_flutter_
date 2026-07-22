@@ -18,6 +18,7 @@ import 'package:flutter/foundation.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/websocket_manager.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/handlers/trip_handler.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/review_(Supervisors)/review_trip_vehicle_selection_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/user_search_dialog.dart';
 import 'package:vehiclereservation_frontend_flutter_/shared/widgets/message_overlay.dart';
 
@@ -1476,6 +1477,30 @@ class _AllTripDetailsScreenState extends State<AllTripDetailsScreen> {
     );
   }
 
+  void _navigateToVehicleSelection() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            ReviewVehicleSelectionScreen(
+              tripId: widget.tripId.toString(), 
+              distance: double.parse(_tripDetails!.details.route.metrics.distance) * 2,
+        ),
+      ),
+    );
+
+    // If vehicle was assigned, refresh trip details
+    if (result == true) {
+      _loadTripDetails();
+    }
+  }
+  
+  bool get _canVehicleChange {
+    final userRole = widget.userRole.value.toLowerCase();
+    final status = _tripDetails?.status.toLowerCase();
+    return (status == 'draft' || status == 'pending' || status == 'approved') && (userRole == 'supervisor' || userRole == 'sysadmin');
+  }
+
   // Update the _buildVehicleSection() method:
   Widget _buildVehicleSection() {
     // Check if vehicle details are null or empty
@@ -1618,6 +1643,12 @@ class _AllTripDetailsScreenState extends State<AllTripDetailsScreen> {
                           ],
                         ),
                       ),
+                      if (_canVehicleChange)
+                        IconButton(
+                          onPressed: _navigateToVehicleSelection,
+                          icon: Icon(Icons.edit, color: Colors.yellow[600]),
+                          tooltip: 'Change Vehicle',
+                        ),
                     ],
                   ),
                   /*
@@ -2509,6 +2540,7 @@ class _AllTripDetailsScreenState extends State<AllTripDetailsScreen> {
     );
   }
 */
+  
   Widget _buildLocationsSection() {
     return Container(
       padding: EdgeInsets.all(16),
@@ -3408,6 +3440,7 @@ class _AllTripDetailsScreenState extends State<AllTripDetailsScreen> {
     );
   }
   */
+  
   Widget _buildActionButtons() {
     final isPermissionUser =
         widget.userRole == UserRole.sysadmin ||
@@ -4490,4 +4523,5 @@ class _AllTripDetailsScreenState extends State<AllTripDetailsScreen> {
       ],
     );
   }
+
 }
