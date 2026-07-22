@@ -2270,6 +2270,29 @@ class _ReviewTripDetailsScreenState extends State<ReviewTripDetailsScreen> {
                         ],
                       ),
                       SizedBox(height: 12),
+                      if (_tripDetails
+                              ?.details
+                              .vehicleDetails
+                              .status
+                              .odometerLastReading !=
+                          null)
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.speed,
+                              color: Colors.grey[400],
+                              size: 16,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Last Odometer: ${_tripDetails!.details.vehicleDetails.status.odometerLastReading} km',
+                              style: TextStyle(
+                                color: Colors.grey[300],
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
                       // ... rest of vehicle details code
                     ],
                   ),
