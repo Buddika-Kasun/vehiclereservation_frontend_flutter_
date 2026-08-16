@@ -743,6 +743,7 @@ class _ChecklistDetailsScreenState extends State<ChecklistDetailsScreen> {
         'Seat adjusting condition',
         'AC condition',
         'Toolkit',
+        'Dashboard camera',
       ],
       'Safety Items': [
         'First aid box',
