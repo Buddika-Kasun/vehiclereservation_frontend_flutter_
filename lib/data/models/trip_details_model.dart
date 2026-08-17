@@ -3,6 +3,7 @@ import 'dart:convert';
 class TripDetails {
   final int id;
   final Requester requester;
+  final OdometerLog? odometerLog;
   final String status;
   final String? purpose;
   final String? specialRemarks;
@@ -29,6 +30,7 @@ class TripDetails {
   TripDetails({
     required this.id,
     required this.requester,
+    this.odometerLog,
     required this.status,
     this.purpose,
     this.specialRemarks,
@@ -56,7 +58,6 @@ class TripDetails {
   factory TripDetails.fromJson(Map<String, dynamic> json) {
     return TripDetails(
       id: json['id'] ?? 0,
-      
       status: json['status'] ?? '',
       purpose: json['purpose'],
       specialRemarks: json['specialRemarks'],
@@ -71,6 +72,7 @@ class TripDetails {
       createdAt: DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
       updatedAt: DateTime.parse(json['updatedAt'] ?? DateTime.now().toIso8601String()),
       requester: Requester.fromJson(json['requester'] ?? {}),
+      odometerLog: OdometerLog.fromJson(json['odometerLog'] ?? {}),
       vehicle: Vehicle.fromJson(json['vehicle'] ?? {}),
       location: Location.fromJson(json['location'] ?? {}),
       details: Details.fromJson(json['details'] ?? {}),
@@ -108,6 +110,27 @@ class Requester {
       email: json['email'] ?? '',
       phone: json['phone'] ?? '',
       department: json['department'] ?? '',
+    );
+  }
+}
+
+class OdometerLog {
+  final double start;
+  final double end;
+
+  OdometerLog({
+    required this.start,
+    required this.end,
+  });
+
+  factory OdometerLog.fromJson(Map<String, dynamic> json) {
+    return OdometerLog(
+      start: json['start'] != null
+          ? double.tryParse(json['start'].toString()) ?? 0.0
+          : 0.0,
+      end: json['end'] != null
+          ? double.tryParse(json['end'].toString()) ?? 0.0
+          : 0.0,
     );
   }
 }

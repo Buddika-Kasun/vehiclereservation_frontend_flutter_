@@ -4,7 +4,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:get/get_utils/get_utils.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/optional_permission_manager%20copy.dart';
@@ -60,9 +59,6 @@ class _ExceedTripDetailsScreenState extends State<ExceedTripDetailsScreen> {
   bool _isConnected = false;
   bool _isInitializing = false;
   Timer? _debounceTimer;
-
-  bool _isOdometerDialogOpen = false;
-  double _newEndOdometer = 0.0;
 
   // Add these helper methods
   String _getTripTypeDisplayName(String type) {
@@ -285,49 +281,6 @@ class _ExceedTripDetailsScreenState extends State<ExceedTripDetailsScreen> {
       setState(() {
         _errorMessage = 'Error loading trip details: ${e.toString()}';
       });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _updateEndOdometer() async {
-    if (_tripDetails == null) return;
-
-    try {
-      setState(() {
-        _isLoading = true;
-      });
-
-      final response = await ApiService.updateExceedTripEndOdometer(
-        widget.tripId,
-        _newEndOdometer,
-      );
-
-      if (response['success'] == true) {
-        MessageOverlay.showSuccess(
-          context: context,
-          message: 'End odometer updated successfully!',
-          position: OverlayPosition.top,
-          showBackgroundOverlay: true,
-          duration: const Duration(seconds: 2),
-          onComplete: () {},
-        );
-
-        // Reload trip details to get updated data
-        await _loadTripDetails();
-      } else {
-        throw Exception(response['message'] ?? 'Failed to update end odometer');
-      }
-    } catch (e) {
-      MessageOverlay.showError(
-        context: context,
-        message: 'Error updating end odometer: ${e.toString()}',
-        position: OverlayPosition.top,
-        showBackgroundOverlay: true,
-        showOkButton: true,
-      );
     } finally {
       setState(() {
         _isLoading = false;
@@ -781,357 +734,6 @@ class _ExceedTripDetailsScreenState extends State<ExceedTripDetailsScreen> {
           ],
         );
       },
-    );
-  }
-
-  void _showEditOdometerDialog() {
-    if (_tripDetails?.odometerLog == null) {
-      _showSnackBar('No odometer data available', Colors.orange);
-      return;
-    }
-
-    final odometerLog = _tripDetails!.odometerLog!;
-    final startValue = odometerLog.start;
-    final currentEndValue = odometerLog.end;
-    final currentDistance = currentEndValue > 0
-        ? currentEndValue - startValue
-        : 0.0;
-
-    _newEndOdometer = 0;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setStateDialog) {
-            return AlertDialog(
-              backgroundColor: const Color.fromARGB(237, 83, 83, 83),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              title: Row(
-                children: [
-                  Icon(Icons.speed, color: Color(0xFFF9C80E), size: 28),
-                  SizedBox(width: 4),
-                  Text(
-                    'Update End Odometer',
-                    style: TextStyle(color: Colors.white, fontSize: 20),
-                  ),
-                ],
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Current trip info
-                    // Container(
-                    //   padding: EdgeInsets.all(12),
-                    //   decoration: BoxDecoration(
-                    //     color: Colors.grey[800],
-                    //     borderRadius: BorderRadius.circular(8),
-                    //   ),
-                    //   child: Column(
-                    //     children: [
-                    //       _buildOdometerInfoRow(
-                    //         'Trip ID',
-                    //         '#${_tripDetails?.id ?? 'N/A'}',
-                    //         Icons.trip_origin,
-                    //       ),
-                    //       SizedBox(height: 8),
-                    //       _buildOdometerInfoRow(
-                    //         'Trip Status',
-                    //         _tripDetails?.status.toUpperCase() ?? 'N/A',
-                    //         Icons.info,
-                    //       ),
-                    //     ],
-                    //   ),
-                    // ),
-
-                    // SizedBox(height: 16),
-
-                    // Start odometer value (read-only)
-                    _buildOdometerInfoRow(
-                      'Start Odometer',
-                      '${startValue.toStringAsFixed(1)} km',
-                      Icons.trip_origin,
-                      color: Colors.green,
-                    ),
-
-                    SizedBox(height: 12),
-
-                    // Current end odometer value (read-only)
-                    _buildOdometerInfoRow(
-                      'Current End Odometer',
-                      '${currentEndValue.toStringAsFixed(1)} km',
-                      Icons.location_on,
-                      color: Colors.orange,
-                    ),
-
-                    SizedBox(height: 12),
-
-                    // Current distance (read-only)
-                    _buildOdometerInfoRow(
-                      'Current Distance',
-                      '${currentDistance.toStringAsFixed(1)} km',
-                      Icons.linear_scale,
-                      color: Colors.blue,
-                    ),
-
-                    Divider(color: Colors.grey[700], height: 24),
-
-                    // New end odometer input
-                    Text(
-                      'New End Odometer',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    TextField(
-                      keyboardType: TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      style: TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        hintText: 'Enter new end odometer value',
-                        hintStyle: TextStyle(color: Colors.grey[400]),
-                        prefixIcon: Icon(Icons.speed, color: Color(0xFFF9C80E)),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Colors.grey[700]!),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Colors.grey[700]!),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Color(0xFFF9C80E)),
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey[800],
-                        suffixText: 'km',
-                        suffixStyle: TextStyle(color: Colors.grey[400]),
-                      ),
-                      onChanged: (value) {
-                        if (value.isNotEmpty) {
-                          final newValue = double.tryParse(value);
-                          if (newValue != null && newValue >= 0) {
-                            setStateDialog(() {
-                              _newEndOdometer = newValue;
-                            });
-                          }
-                        }
-                      },
-                    ),
-
-                    SizedBox(height: 12),
-
-                    // New distance preview - always show with conditional content
-                    Container(
-                      padding: EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.calculate, color: Colors.blue, size: 20),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'New Distance',
-                                  style: TextStyle(
-                                    color: Colors.grey[300],
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                Text(
-                                  // Show calculated distance if valid, otherwise show placeholder
-                                  (_newEndOdometer != null &&
-                                          _newEndOdometer! > 0)
-                                      ? '${(_newEndOdometer! - startValue).toStringAsFixed(1)} km'
-                                      : '-- km',
-                                  style: TextStyle(
-                                    color:
-                                        (_newEndOdometer != null &&
-                                            _newEndOdometer! > 0)
-                                        ? Colors.white
-                                        : Colors.grey[500],
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Warning message - show when end is less than start OR when value is empty/invalid
-                    if (_newEndOdometer != null &&
-                        _newEndOdometer! > 0 &&
-                        _newEndOdometer! < startValue)
-                      Padding(
-                        padding: EdgeInsets.only(top: 8),
-                        child: Container(
-                          padding: EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: Colors.red.withOpacity(0.3),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.warning, color: Colors.red, size: 16),
-                              SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'End odometer cannot be less than start odometer (${startValue.toStringAsFixed(1)} km)',
-                                  style: TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                    // Show hint message when empty
-                    if (_newEndOdometer == null || _newEndOdometer == 0.0)
-                      Padding(
-                        padding: EdgeInsets.only(top: 8),
-                        child: Container(
-                          padding: EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: Colors.orange.withOpacity(0.3),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.info_outline,
-                                color: Colors.orange,
-                                size: 16,
-                              ),
-                              SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Please enter a value greater than ${startValue.toStringAsFixed(1)} km',
-                                  style: TextStyle(
-                                    color: Colors.orange,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(
-                    'Cancel',
-                    style: TextStyle(color: Colors.grey[400], fontSize: 16),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    if (_newEndOdometer <= 0) {
-                      _showSnackBar(
-                        'Please enter a valid odometer value',
-                        Colors.orange,
-                      );
-                      return;
-                    }
-                    if (_newEndOdometer < startValue) {
-                      _showSnackBar(
-                        'End odometer must be greater than start odometer',
-                        Colors.red,
-                      );
-                      return;
-                    }
-                    Navigator.pop(context);
-                    _updateEndOdometer();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFFF9C80E),
-                    foregroundColor: Colors.black,
-                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.update, size: 20),
-                      SizedBox(width: 8),
-                      Text('Update', style: TextStyle(fontSize: 16)),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildOdometerInfoRow(
-    String label,
-    String value,
-    IconData icon, {
-    Color color = Colors.white,
-  }) {
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 18),
-          SizedBox(width: 12),
-          Expanded(
-            flex: 2,
-            child: Text(
-              label,
-              style: TextStyle(color: Colors.grey[400], fontSize: 14),
-            ),
-          ),
-          Expanded(
-            flex: 1,
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -2118,9 +1720,8 @@ class _ExceedTripDetailsScreenState extends State<ExceedTripDetailsScreen> {
     final hasApprovers =
         (_tripDetails!.details.approval.approvers.hod?.id != -1 ||
         _tripDetails!.details.approval.approvers.secondary != null ||
-        _tripDetails!.details.approval.requirements.requireSafetyApprover ==
-            true);
-    // _tripDetails!.details.approval.approvers.safety != null);
+        _tripDetails!.details.approval.requirements.requireSafetyApprover == true);
+        // _tripDetails!.details.approval.approvers.safety != null);
 
     final hasApproval = _tripDetails?.details.approval.hasApproval == true;
 
@@ -2215,9 +1816,7 @@ class _ExceedTripDetailsScreenState extends State<ExceedTripDetailsScreen> {
               'Auto approved',
               Approver(
                 //name: 'Night trip (8PM-12AM) - No HOD approval needed',
-                name:
-                    _tripDetails!.details.approval.approvers.hod?.comments ??
-                    "Not a special",
+                name: _tripDetails!.details.approval.approvers.hod?.comments ?? "Not a special",
                 status: 'approved',
               ),
             ),
@@ -2244,8 +1843,7 @@ class _ExceedTripDetailsScreenState extends State<ExceedTripDetailsScreen> {
             ),
           ),
           SizedBox(height: 12),
-          if (_tripDetails?.details.approval.approvers.hod != null &&
-              _tripDetails?.details.approval.approvers.hod?.id != -1) ...[
+          if (_tripDetails?.details.approval.approvers.hod != null && _tripDetails?.details.approval.approvers.hod?.id != -1) ...[
             _buildApproverRow(
               _tripDetails!.tripType == 'emergency'
                   ? 'Emergency Approval'
@@ -2257,9 +1855,7 @@ class _ExceedTripDetailsScreenState extends State<ExceedTripDetailsScreen> {
               'Auto approved',
               Approver(
                 //name: 'Night trip (8PM-12AM) - No HOD approval needed',
-                name:
-                    _tripDetails!.details.approval.approvers.hod?.comments ??
-                    "Not a special",
+                name: _tripDetails!.details.approval.approvers.hod?.comments ?? "Not a special",
                 status: 'approved',
               ),
             ),
@@ -2270,12 +1866,7 @@ class _ExceedTripDetailsScreenState extends State<ExceedTripDetailsScreen> {
               _tripDetails!.details.approval.approvers.secondary!,
             ),
           // if (_tripDetails?.details.approval.approvers.safety != null)
-          if (_tripDetails
-                  ?.details
-                  .approval
-                  .requirements
-                  .requireSafetyApprover ==
-              true)
+          if (_tripDetails?.details.approval.requirements.requireSafetyApprover == true)
             _buildApproverRow(
               'Safety Approval',
               _tripDetails?.details.approval.approvers.safety,
@@ -3241,10 +2832,13 @@ class _ExceedTripDetailsScreenState extends State<ExceedTripDetailsScreen> {
               children: [
                 Text(
                   label,
-                  style: TextStyle(color: Colors.grey[300], fontSize: 12),
+                  style: TextStyle(
+                    color: Colors.grey[300],
+                    fontSize: 12,
+                  ),
                 ),
                 SizedBox(height: 4),
-                // Show department
+                // Show department 
                 if (approver?.department != null)
                   Text(
                     approver?.department ?? '',
@@ -3259,8 +2853,7 @@ class _ExceedTripDetailsScreenState extends State<ExceedTripDetailsScreen> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                if (approver?.comments != null &&
-                    approver!.comments!.isNotEmpty)
+                if (approver?.comments != null && approver!.comments!.isNotEmpty)
                   Padding(
                     padding: EdgeInsets.only(top: 4),
                     child: Text(
@@ -3274,9 +2867,7 @@ class _ExceedTripDetailsScreenState extends State<ExceedTripDetailsScreen> {
           Container(
             padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: _getApprovalStatusColor(
-                approver?.status ?? 'pending',
-              ).withOpacity(0.1),
+              color: _getApprovalStatusColor(approver?.status ?? 'pending').withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
@@ -3828,9 +3419,6 @@ class _ExceedTripDetailsScreenState extends State<ExceedTripDetailsScreen> {
       return SizedBox.shrink(); // Return empty widget for non-permission users
     }
 
-    // Check if odometer data is available
-    final hasOdometerData = _tripDetails?.odometerLog != null;
-
     // Permission user Accept button logic
     bool isAcceptEnabled = false;
     String acceptButtonText = '';
@@ -3846,104 +3434,48 @@ class _ExceedTripDetailsScreenState extends State<ExceedTripDetailsScreen> {
     acceptButtonColor = Colors.green;
     acceptOnPressed = _showAcceptTripConfirmation;
 
-    // Odometer button logic
-    bool isOdometerEnabled =
-        hasOdometerData &&
-        _tripDetails?.odometerLog?.end != null &&
-        _tripDetails!.odometerLog!.end > 0;
-    String odometerButtonText = isOdometerEnabled
-        ? 'Edit Odometer'
-        : 'No Odometer Data';
-    Color odometerButtonColor = isOdometerEnabled
-        ? Colors.orange
-        : Colors.grey[700]!;
-    VoidCallback? odometerOnPressed = isOdometerEnabled
-        ? _showEditOdometerDialog
-        : null;
-
     return Container(
-      padding: EdgeInsets.all(8),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.black,
         border: Border(top: BorderSide(color: Colors.grey[800]!)),
       ),
-      child: Column(
+      child: Row(
         children: [
-          // Row 1: Edit Odometer Button
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: odometerOnPressed,
+          // Accept Button
+          Expanded(
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                ElevatedButton(
+                  onPressed: acceptOnPressed,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: odometerButtonColor,
+                    backgroundColor: acceptButtonColor,
                     foregroundColor: Colors.white,
-                    minimumSize: Size(double.infinity, 40),
+                    minimumSize: Size(double.infinity, 50),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    elevation: isOdometerEnabled ? 2 : 0,
+                    elevation: isAcceptEnabled ? 2 : 0,
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.speed, size: 20),
-                      SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          odometerButtonText,
+                          acceptButtonText,
                           style: TextStyle(fontSize: 18),
                           textAlign: TextAlign.center,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      Icon(Icons.check_circle, size: 20),
                     ],
                   ),
                 ),
-              ),
-            ],
-          ),
-
-          SizedBox(height: 4), // Spacing between rows
-          // Row 2: Accept Button
-          Row(
-            children: [
-              Expanded(
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    ElevatedButton(
-                      onPressed: acceptOnPressed,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: acceptButtonColor,
-                        foregroundColor: Colors.white,
-                        minimumSize: Size(double.infinity, 40),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        elevation: isAcceptEnabled ? 2 : 0,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              acceptButtonText,
-                              style: TextStyle(fontSize: 18),
-                              textAlign: TextAlign.center,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Icon(Icons.check_circle, size: 20),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
