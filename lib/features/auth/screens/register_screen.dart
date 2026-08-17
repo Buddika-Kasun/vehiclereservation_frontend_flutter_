@@ -24,6 +24,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _hasCompanyEmail = true;
+  bool _disableToggleButton = false;
   String? _selectedRole;
   String? _selectedDepartment;
 
@@ -523,12 +524,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     scale: 0.8,
                     child: Switch(
                       value: !_hasCompanyEmail,
-                      onChanged: (bool value) {
-                        setState(() {
-                          _hasCompanyEmail = !value;
-                          print(_hasCompanyEmail);
-                        });
-                      },
+                      onChanged: !_disableToggleButton
+                          ? (bool value) {
+                              setState(() {
+                                _hasCompanyEmail = !value;
+                                print(_hasCompanyEmail);
+                              });
+                            }
+                          : null,
                       inactiveTrackColor: Colors.transparent,
                       inactiveThumbColor: Colors.yellow.shade600,
                       activeColor: Colors.yellow[600],
@@ -798,6 +801,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   setState(() {
                     _selectedRole = newValue;
                   });
+
+                  if(!(newValue == "Driver" || newValue == "Security")) {
+                    setState(() {
+                      _hasCompanyEmail = true;
+                      // print(_hasCompanyEmail);
+                      _disableToggleButton = true;
+                    });
+                  }
+                  else {
+                    _disableToggleButton = false;
+                  }
                 }
               },
             ),
