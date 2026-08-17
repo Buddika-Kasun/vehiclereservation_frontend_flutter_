@@ -1278,6 +1278,19 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> updateExceedTripEndOdometer(int tripId, double meterValue) async {
+    try {
+      return await ApiService.authenticatedApiCall(
+        'trips/update-exceed-trip-end-odometer/$tripId',
+        method: 'POST',
+        body: { 'newEndValue': meterValue}
+      );
+    } catch (e) {
+      print('Error updating exceed trip end odometer value: $e');
+      rethrow;
+    }
+  }
+
   static Future<TripListResponse> getSupervisorTrips(
     TripListRequest request,
   ) async {
