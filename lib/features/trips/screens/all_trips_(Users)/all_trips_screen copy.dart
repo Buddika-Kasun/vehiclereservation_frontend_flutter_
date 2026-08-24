@@ -1,9 +1,11 @@
-// lib/features/trips/approvals_(Approvers)/approvals_screen.dart
+// lib/features/trips/all_trips_(Users)/all_trips_screen.dart
 import 'package:flutter/material.dart';
+import 'package:vehiclereservation_frontend_flutter_/data/models/user_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/data/new_models/trip_card_model.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/api_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/base/base_trip_list_state.dart';
-import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/approval_(Approvers)/approval_details_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/all_trips_(Users)/all_trip_details_screen.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/trips/utils/helper_methods.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/utils/sort_enums.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/sort_button.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/status_filter_customized_dropdown.dart';
@@ -15,27 +17,21 @@ import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/trip
 import 'package:vehiclereservation_frontend_flutter_/shared/widgets/loading_overlay.dart';
 import 'package:vehiclereservation_frontend_flutter_/shared/widgets/count_badge.dart';
 
-class ApprovalsScreen extends StatefulWidget {
-  final int userId;
+class AllTripsScreen extends StatefulWidget {
+  final UserRole userRole;
 
-  const ApprovalsScreen({Key? key, required this.userId}) : super(key: key);
+  const AllTripsScreen({Key? key, required this.userRole}) : super(key: key);
 
   @override
-  _ApprovalsScreenState createState() => _ApprovalsScreenState();
+  _AllTripsScreenState createState() => _AllTripsScreenState();
 }
 
-class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
+class _AllTripsScreenState extends BaseTripListState<AllTripsScreen> {
   @override
-  void initState() {
-    statusFilter = 'pendingForMe';
-    super.initState();
-  }
+  String getScreenTitle() => 'All Trips';
 
   @override
-  String getScreenTitle() => 'Approval Trips';
-
-  @override
-  String getScreenSubtitle() => 'Trips where you are the approver';
+  String getScreenSubtitle() => 'Browse all available trips and add or join';
 
   @override
   String getEmptyStateMessage() => 'No trips found';
@@ -49,8 +45,39 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
   @override
   VoidCallback? getRefreshAction() => refreshTrips;
 
-  void _handleSearch(String query) {
-    setSearchQueryDebounced(query);
+  @override
+  void initState() {
+    statusFilter = 'scheduled'; 
+    super.initState();
+  }
+
+  @override
+  void setTimeFilter(String filter) {
+    setState(() {
+      searchQuery = ''; // Clear search when changing filter
+      timeFilter = filter;
+      sortField = SortField.startTime;
+      sortOrder = filter == 'today' ? SortOrder.asc : SortOrder.desc;
+      total = null;
+      if (timeFilter == 'today') {
+        statusFilter = 'scheduled';
+      } else {
+        statusFilter = null;
+      }
+      page = 1;
+    });
+    fetchTrips(reset: true); // ONLY ONE API CALL
+  }
+
+  @override
+  void setStatusFilter(String? status) {
+    setState(() {
+      statusFilter = status;
+      page = 1;
+      searchQuery = ''; // Clear search when changing filter
+      total = null;
+    });
+    fetchTrips(reset: true);
   }
 
   @override
@@ -63,7 +90,6 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
           }
           page = 1;
           hasMore = true;
-          // Don't clear trips array during silent refresh
           if (!silent) {
             trips = [];
           }
@@ -78,18 +104,17 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
         searchQuery: searchQuery.isNotEmpty ? searchQuery : null,
         page: page,
         limit: limit,
-        sortField: sortField.name,
-        sortOrder: sortOrder.name,
+        sortField: sortField.name, // 'id' or 'startTime'
+        sortOrder: sortOrder.name, // 'asc' or 'desc'
       );
 
-      final response = await ApiService.getPendingApprovalsNew(request);
+      final response = await ApiService.getAllTrips(request);
 
       final newTrips = response.data.trips;
       final newTotal = response.data.total;
 
       if (reset) {
         if (silent) {
-          // Use the helper method for silent updates
           updateTripsSilently(newTrips, response.data.hasMore, newTotal);
           if (mounted) {
             setState(() {
@@ -123,22 +148,8 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
     }
   }
 
-  @override
-  void setTimeFilter(String filter) {
-    setState(() {
-      searchQuery = '';
-      timeFilter = filter;
-      sortField = SortField.startTime;
-      sortOrder = filter == 'today' ? SortOrder.asc : SortOrder.desc;
-      total = null;
-      if (timeFilter == 'today') {
-        statusFilter = 'pendingForMe';
-      } else {
-        statusFilter = null;
-      }
-      page = 1;
-    });
-    fetchTrips(reset: true);
+  void _handleSearch(String query) {
+    setSearchQueryDebounced(query);
   }
 
   void _navigateToTripDetails(TripCardModel trip) async {
@@ -146,7 +157,7 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
       context,
       MaterialPageRoute(
         builder: (context) =>
-            ApprovalDetailsScreen(tripId: trip.id, tripData: trip),
+            AllTripDetailsScreen(userRole: widget.userRole, tripId: trip.id),
       ),
     );
 
@@ -175,6 +186,7 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
             ),
             if (timeFilter != 'today') ...[
               StatusFilterDropdown(
+                // KEY CHANGES WITH timeFilter - FORCES NEW WIDGET, NO API CALL
                 key: ValueKey('regular_$timeFilter'),
                 currentFilter: statusFilter,
                 onFilterSelected: setStatusFilter,
@@ -182,6 +194,7 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
                 enableSearch: true,
                 statusFilters: [
                   {'label': 'All Status', 'value': null},
+                  {'label': 'Draft', 'value': 'draft'},
                   {'label': 'Pending', 'value': 'pending'},
                   {'label': 'Canceled', 'value': 'canceled'},
                   {'label': 'Approved', 'value': 'approved'},
@@ -194,19 +207,22 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
               ),
             ] else ...[
               StatusFilterDropdownCustomized(
+                // KEY CHANGES WITH timeFilter - FORCES NEW WIDGET, NO API CALL
                 key: ValueKey('custom_$timeFilter'),
                 currentFilter: statusFilter,
                 onFilterSelected: setStatusFilter,
                 onSearch: _handleSearch,
                 enableSearch: true,
                 statusFilters: [
-                  {'label': 'Pending For Me', 'value': 'pendingForMe'},
-                  //{'label': 'Approved', 'value': 'approved'},
-                  //{'label': 'Rejected', 'value': 'rejected'},
-                  {'label': 'All', 'value': null},
+                  {'label': 'Scheduled', 'value': 'scheduled'},
+                  {'label': 'Normal', 'value': 'normal'},
                 ],
               ),
             ],
+
+            //if (searchQuery.isNotEmpty) buildSearchIndicator(),
+
+            //CountBadge(totalCount: total, label: getDynamicBadgeLabel()),
 
             // Replace the CountBadge section with this:
             Padding(
@@ -229,7 +245,7 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
                 ],
               ),
             ),
-
+            
             Expanded(
               child: TripListContent(
                 scrollController: scrollController,
@@ -239,7 +255,7 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
                 errorMessage: errorMessage,
                 hasMore: hasMore,
                 onRetry: refreshTrips,
-                emptyStateMessage: getEmptyStateMessage(),
+                emptyStateMessage: getDynamicEmptyStateMessage(),
                 buildTripCard: (trip) => TripCard<TripCardModel>(
                   trip: trip,
                   onTap: () => _navigateToTripDetails(trip),
@@ -247,7 +263,6 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
                   showLocationInfo: true,
                   showScheduleInfo: true,
                   showTripType: true,
-                  showConfirmAt: true,
                 ),
               ),
             ),
