@@ -14,6 +14,7 @@ import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/trip
 import 'package:vehiclereservation_frontend_flutter_/features/trips/widgets/trip_list_content.dart';
 import 'package:vehiclereservation_frontend_flutter_/shared/widgets/loading_overlay.dart';
 import 'package:vehiclereservation_frontend_flutter_/shared/widgets/count_badge.dart';
+import 'package:intl/intl.dart';
 
 class ApprovalsScreen extends StatefulWidget {
   final int userId;
@@ -72,8 +73,13 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
         setState(() => loadingMore = true);
       }
 
+      String dateFilter = timeFilter;
+      if (isDateSelected && selectedDate.isNotEmpty) {
+        dateFilter = selectedDate;
+      }
+
       final request = TripCardListRequest(
-        timeFilter: timeFilter,
+        timeFilter: dateFilter,
         statusFilter: statusFilter,
         searchQuery: searchQuery.isNotEmpty ? searchQuery : null,
         page: page,
@@ -125,30 +131,95 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
 
   @override
   void setTimeFilter(String filter) {
-    setState(() {
-      searchQuery = '';
-      timeFilter = filter;
-      sortField = SortField.startTime;
-      sortOrder = filter == 'today' ? SortOrder.asc : SortOrder.desc;
-      total = null;
-      if (timeFilter == 'today') {
-        statusFilter = 'pendingForMe';
-      } else {
+    if (filter == 'date') {
+      _selectDate();
+    } else {
+      setState(() {
+        isDateSelected = false;
+        selectedDate = '';
+        searchQuery = '';
+        timeFilter = filter;
+        sortField = SortField.startTime;
+        sortOrder = filter == 'today' ? SortOrder.asc : SortOrder.desc;
+        total = null;
+        if (timeFilter == 'today') {
+          statusFilter = 'pendingForMe';
+        } else {
+          statusFilter = null;
+        }
+        page = 1;
+      });
+      fetchTrips(reset: true);
+    }
+  }
+
+  Future<void> _selectDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.dark(
+              primary: const Color(0xFFF9C80E),
+              onPrimary: Colors.black,
+              surface: Colors.grey[900]!,
+              onSurface: Colors.white,
+            ),
+            dialogBackgroundColor: Colors.grey[900],
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      final formattedDate = DateFormat('yyyy-MM-dd').format(picked);
+      setState(() {
+        selectedDate = formattedDate;
+        isDateSelected = true;
+        timeFilter = 'date';
+        page = 1;
+        searchQuery = '';
+        total = null;
+        sortField = SortField.startTime;
+        sortOrder = SortOrder.asc;
+        // Reset status filter when selecting a specific date
         statusFilter = null;
+      });
+      fetchTrips(reset: true);
+    } else {
+      // If user cancels date selection and no date was previously selected,
+      // revert to 'today'
+      if (!isDateSelected) {
+        setState(() {
+          timeFilter = 'today';
+          statusFilter = 'pendingForMe';
+        });
       }
-      page = 1;
-    });
-    fetchTrips(reset: true);
+    }
+  }
+
+  String _getTimeFilterDisplayText() {
+    if (isDateSelected && selectedDate.isNotEmpty) {
+      try {
+        final date = DateTime.parse(selectedDate);
+        return DateFormat('MMM dd, yyyy').format(date);
+      } catch (e) {
+        return selectedDate;
+      }
+    }
+    return 'Today';
   }
 
   void _navigateToTripDetails(TripCardModel trip) async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ApprovalDetailsScreen(
-          tripId: trip.id,
-          tripData: trip,
-        ),
+        builder: (context) =>
+            ApprovalDetailsScreen(tripId: trip.id, tripData: trip),
       ),
     );
 
@@ -172,9 +243,79 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
               onRefresh: getRefreshAction(),
             ),
             TimeFilterRow(
+              filters: [
+                {'label': 'Today', 'value': 'today'},
+                {'label': 'Week', 'value': 'week'},
+                {'label': 'Date', 'value': 'date'},
+                {'label': 'All', 'value': 'all'},
+              ],
               currentFilter: timeFilter,
               onFilterSelected: setTimeFilter,
+              selectedDate: isDateSelected ? selectedDate : null,
             ),
+
+            // Date indicator - shows when a specific date is selected
+            if (isDateSelected && selectedDate.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                child: Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9C80E).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: const Color(0xFFF9C80E).withOpacity(0.3),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Icon(
+                        Icons.calendar_today,
+                        size: 14,
+                        color: const Color(0xFFF9C80E),
+                      ),
+                      Text(
+                        'Showing trips for: ${_getTimeFilterDisplayText()}',
+                        style: TextStyle(
+                          color: const Color(0xFFF9C80E),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            isDateSelected = false;
+                            selectedDate = '';
+                            timeFilter = 'today';
+                            page = 1;
+                            total = null;
+                            statusFilter = 'pendingForMe';
+                            sortField = SortField.startTime;
+                            sortOrder = SortOrder.asc;
+                          });
+                          fetchTrips(reset: true);
+                        },
+                        child: Container(
+                          padding: EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.close,
+                            size: 12,
+                            color: const Color(0xFFF9C80E),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
             if (timeFilter != 'today') ...[
               StatusFilterDropdown(
                 key: ValueKey('regular_$timeFilter'),
@@ -203,13 +344,11 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
                 enableSearch: true,
                 statusFilters: [
                   {'label': 'Pending For Me', 'value': 'pendingForMe'},
-                  //{'label': 'Approved', 'value': 'approved'},
-                  //{'label': 'Rejected', 'value': 'rejected'},
                   {'label': 'All', 'value': null},
                 ],
               ),
             ],
-            
+
             // Replace the CountBadge section with this:
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 2, 16, 14),
@@ -217,10 +356,7 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   // CountBadge (using your existing widget)
-                  CountBadge(
-                    totalCount: total, 
-                    label: getDynamicBadgeLabel()
-                  ),
+                  CountBadge(totalCount: total, label: getDynamicBadgeLabel()),
 
                   const Spacer(),
 
@@ -234,7 +370,7 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
                 ],
               ),
             ),
-            
+
             Expanded(
               child: TripListContent(
                 scrollController: scrollController,
@@ -261,5 +397,4 @@ class _ApprovalsScreenState extends BaseTripListState<ApprovalsScreen> {
       ),
     );
   }
-
 }

@@ -26,6 +26,10 @@ abstract class BaseTripListState<T extends StatefulWidget> extends State<T> {
   String timeFilter = 'today';
   String? statusFilter;
 
+  // Date selection
+  String selectedDate = '';
+  bool isDateSelected = false;
+
   // Controllers
   late ScrollController scrollController;
 
