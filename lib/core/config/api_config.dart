@@ -16,8 +16,8 @@ class ApiConfig {
         //   // For web (Railway), load from hardcoded config
         //   _loadWebConfig();                         // Prod
         // }
-        _loadWebConfig();                         // Prod
-        // await dotenv.load(fileName: "assets/.env"); // Dev
+        // _loadWebConfig();                         // Prod
+        await dotenv.load(fileName: "assets/.env"); // Dev
       } else {
         // For mobile/desktop, load from .env file
         await dotenv.load(fileName: "assets/.env");
@@ -34,14 +34,26 @@ class ApiConfig {
         'API_URL': 'https://pcw-ride-server.up.railway.app',
         'WS_URL':
             'wss://pcw-ride-server.up.railway.app', // Fixed: Use wss:// for WebSocket
+        'PCW_EATS_URL':'https://pcweats.up.railway.app/',
       };
     } catch (e) {
       // Fallback values
       _webEnv = {
         'API_URL': 'https://pcw-ride-server.up.railway.app',
         'WS_URL': 'wss://pcw-ride-server.up.railway.app', // Fixed
+        'PCW_EATS_URL': 'https://pcweats.up.railway.app',
       };
     }
+  }
+
+  // PCW Eats URL
+  static String get pcwEatsUrl {
+    if (!_initialized) {
+      throw Exception(
+        'ApiConfig not initialized. Call ApiConfig.init() first.',
+      );
+    }
+    return _getEnv('PCW_EATS_URL', 'http://localhost:3002');
   }
 
   // Helper method to get values from the right source

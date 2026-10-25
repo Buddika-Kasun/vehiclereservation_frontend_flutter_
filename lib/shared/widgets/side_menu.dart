@@ -59,7 +59,11 @@ class SideMenu extends StatelessWidget {
     final items = <MenuItem>[];
 
     // PCW Eats entry — before Home
-    items.add(MenuItem(Icons.restaurant, 'PCW Eats', route: 'eats'));
+    // items.add(MenuItem(Icons.restaurant, 'PCW Eats', route: 'eats'));
+
+    if (user.role == UserRole.sysadmin) {
+      items.add(MenuItem(Icons.restaurant, 'PCW Eats', route: 'eats'));
+    }
 
     items.add(MenuItem(Icons.home, 'Home'));
 
@@ -459,6 +463,10 @@ class SideMenu extends StatelessWidget {
       case true when item.route == 'reports':
         onMenuTap('Open Reports');
         break;
+      case true when item.route == 'eats':
+        Navigator.pop(context); // close drawer first
+        onMenuTap('Open Eats'); // let parent handle navigation
+        break;
       default:
         Navigator.pop(context);
         onMenuTap(item.title);
@@ -493,7 +501,7 @@ Color getItemColor(item) {
     case true when item.route == 'reports':
       return const Color.fromARGB(255, 0, 73, 200);
     case true when item.route == 'eats':
-      return const Color.fromARGB(255, 0, 94, 16); 
+      return const Color.fromARGB(255, 0, 94, 16);
     default:
       return Colors.black;
   }
@@ -506,7 +514,7 @@ Color getItemArrowColor(item) {
     case true when item.route == 'reports':
       return const Color.fromARGB(255, 0, 73, 200);
     case true when item.route == 'eats':
-      return const Color.fromARGB(255, 0, 134, 22); 
+      return const Color.fromARGB(255, 0, 134, 22);
     default:
       return Colors.grey[600]!;
   }
@@ -528,7 +536,7 @@ List<Color> getItemBgColor(item) {
       return [
         const Color.fromARGB(186, 0, 190, 32),
         const Color.fromARGB(7, 46, 220, 2),
-      ]; 
+      ];
     default:
       return [const Color.fromARGB(28, 5, 3, 0), Colors.transparent];
   }
