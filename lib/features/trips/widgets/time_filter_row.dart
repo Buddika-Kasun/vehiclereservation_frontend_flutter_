@@ -36,7 +36,7 @@ class TimeFilterRow extends StatelessWidget {
         children: filters.map((filter) {
           return Expanded(
             child: _buildFilterButton(
-              label: filter['label'] == 'Select Date' && selectedDate != null
+              label: (filter['label'] == 'Select Date' || filter['label'] == 'Date') && selectedDate != null
                   ? _formatDateForDisplay(selectedDate!)
                   : filter['label']!,
               value: filter['value'] as String,
