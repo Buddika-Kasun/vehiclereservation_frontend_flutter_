@@ -1,6 +1,7 @@
 // File: lib/screens/home_screen.dart
 import 'package:flutter/foundation.dart';
-import 'dart:html' as html;
+// import 'dart:html' as html;
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/config/api_config.dart';
@@ -100,7 +101,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (kIsWeb) {
       // html.window.open('$eatsUrl/sso?token=$token', '_blank');
-      html.window.open('$eatsUrl/welcome?token=$token', '_blank');
+      // html.window.open('$eatsUrl/welcome?token=$token', '_blank');
+      final uri = Uri.parse('$eatsUrl/welcome?token=$token');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, webOnlyWindowName: '_blank');
+      }
     } else {
       if (!mounted) return;
       Navigator.push(
