@@ -23,6 +23,7 @@ flutter pub get
 
 # 6. Build release APK
 flutter build apk --release
+flutter build appbundle --release
 
 # for delete .gradle/cache
 taskkill /F /IM java.exe

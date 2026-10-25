@@ -1,10 +1,14 @@
 // File: lib/screens/home_screen.dart
 import 'package:flutter/foundation.dart';
+import 'dart:html' as html;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:vehiclereservation_frontend_flutter_/core/config/api_config.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/firebase_notification_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/pending_navigation_service.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/services/ws/global_websocket.dart';
 import 'package:vehiclereservation_frontend_flutter_/core/utils/navigation_helper.dart';
+import 'package:vehiclereservation_frontend_flutter_/features/pcw_eats/pcw_eats_webview_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/all_trips_(Users)/all_trips_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/exceed_trips_(Sysadmin)/exceed_trips_screen.dart';
 import 'package:vehiclereservation_frontend_flutter_/features/trips/screens/review_(Supervisors)/review_trips_screen.dart';
@@ -88,6 +92,22 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _handlePendingNotification();
     });
+  }
+
+  Future<void> _openPcwEats() async {
+    final token = await SecureStorageService().accessToken ?? '';
+    final eatsUrl = ApiConfig.pcwEatsUrl;
+
+    if (kIsWeb) {
+      // html.window.open('$eatsUrl/sso?token=$token', '_blank');
+      html.window.open('$eatsUrl/welcome?token=$token', '_blank');
+    } else {
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => PcwEatsWebViewScreen(user: null)),
+      );
+    }
   }
 
   void _handlePendingNotification() {
@@ -571,6 +591,9 @@ class _HomeScreenState extends State<HomeScreen> {
         break;
       case 'Notifications':
         _navigateToNotifications();
+        break;
+      case 'Open Eats':
+        _openPcwEats();
         break;
     }
   }

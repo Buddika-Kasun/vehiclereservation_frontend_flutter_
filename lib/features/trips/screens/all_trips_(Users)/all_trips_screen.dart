@@ -109,7 +109,8 @@ class _AllTripsScreenState extends BaseTripListState<AllTripsScreen> {
         total = null;
         sortField = SortField.startTime;
         sortOrder = SortOrder.asc;
-        statusFilter = null;
+        // statusFilter = null;
+        statusFilter = 'scheduled';
       });
       fetchTrips(reset: true);
     } else {
@@ -327,7 +328,7 @@ class _AllTripsScreenState extends BaseTripListState<AllTripsScreen> {
                 ),
               ),
 
-            if (timeFilter != 'today') ...[
+            if (timeFilter == 'all' || timeFilter == 'week') ...[
               StatusFilterDropdown(
                 // KEY CHANGES WITH timeFilter - FORCES NEW WIDGET, NO API CALL
                 key: ValueKey('regular_$timeFilter'),
