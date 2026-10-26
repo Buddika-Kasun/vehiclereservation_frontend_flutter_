@@ -96,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openPcwEats() async {
-    final token = await SecureStorageService().accessToken ?? '';
+    // final token = await SecureStorageService().accessToken ?? '';
     final eatsUrl = ApiConfig.pcwEatsUrl;
 
     // if (kIsWeb) {
