@@ -95,7 +95,28 @@ class _PcwEatsWebViewScreenState extends State<PcwEatsWebViewScreen> {
       );
     }
 
+    final token = _token ?? '';
+    final finalUrl = _buildEatsUrl(widget.eatsUrl, token);
+    debugPrint('PCW Eats URL: $finalUrl');
+
     // Delegates to platform-specific view
-    return buildPcwEatsView(url: widget.eatsUrl, token: _token ?? '');
+    return buildPcwEatsView(url: finalUrl, token: token);
+  }
+
+  /// Builds `<base>/welcome?token=<token>` from a base URL.
+  /// Handles trailing slashes safely.
+  String _buildEatsUrl(String baseUrl, String token) {
+    // Trim any trailing slashes so we don't end up with `//welcome`
+    final cleanedBase = baseUrl.replaceFirst(RegExp(r'/+$'), '');
+
+    // Parse to safely add query params
+    final uri = Uri.parse('$cleanedBase/welcome');
+    final withToken = uri.replace(
+      queryParameters: {
+        ...uri.queryParameters,
+        if (token.isNotEmpty) 'token': token,
+      },
+    );
+    return withToken.toString();
   }
 }

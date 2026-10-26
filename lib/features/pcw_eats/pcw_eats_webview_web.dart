@@ -26,12 +26,13 @@ class _WebEatsIframeState extends State<_WebEatsIframe> {
     _viewId = 'pcw-eats-iframe-${DateTime.now().microsecondsSinceEpoch}';
 
     ui_web.platformViewRegistry.registerViewFactory(_viewId, (int _) {
-      final src = Uri.parse(
-        widget.url,
-      ).replace(queryParameters: {'token': widget.token}).toString();
+      // final src = Uri.parse(
+      //   widget.url,
+      // ).replace(queryParameters: {'token': widget.token}).toString();
 
       final iframe = html.IFrameElement()
-        ..src = src
+        // ..src = src
+        ..src = widget.url
         ..style.border = 'none'
         ..style.width = '100%'
         ..style.height = '100%'
