@@ -110,7 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => PcwEatsWebViewScreen(user: null)),
+        MaterialPageRoute(builder: (_) => PcwEatsWebViewScreen(user: null, eatsUrl: eatsUrl)),
       );
     // }
   }
