@@ -99,20 +99,20 @@ class _HomeScreenState extends State<HomeScreen> {
     final token = await SecureStorageService().accessToken ?? '';
     final eatsUrl = ApiConfig.pcwEatsUrl;
 
-    if (kIsWeb) {
-      // html.window.open('$eatsUrl/sso?token=$token', '_blank');
-      // html.window.open('$eatsUrl/welcome?token=$token', '_blank');
-      final uri = Uri.parse('$eatsUrl/welcome?token=$token');
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, webOnlyWindowName: '_blank');
-      }
-    } else {
+    // if (kIsWeb) {
+    //   // html.window.open('$eatsUrl/sso?token=$token', '_blank');
+    //   // html.window.open('$eatsUrl/welcome?token=$token', '_blank');
+    //   final uri = Uri.parse('$eatsUrl/welcome?token=$token');
+    //   if (await canLaunchUrl(uri)) {
+    //     await launchUrl(uri, webOnlyWindowName: '_blank');
+    //   }
+    // } else {
       if (!mounted) return;
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => PcwEatsWebViewScreen(user: null)),
       );
-    }
+    // }
   }
 
   void _handlePendingNotification() {
