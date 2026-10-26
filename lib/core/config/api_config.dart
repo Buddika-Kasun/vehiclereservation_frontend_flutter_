@@ -34,7 +34,7 @@ class ApiConfig {
         'API_URL': 'https://pcw-ride-server.up.railway.app',
         'WS_URL':
             'wss://pcw-ride-server.up.railway.app', // Fixed: Use wss:// for WebSocket
-        'PCW_EATS_URL':'https://pcweats.up.railway.app/',
+        'PCW_EATS_URL':'https://pcweats.up.railway.app',
       };
     } catch (e) {
       // Fallback values
