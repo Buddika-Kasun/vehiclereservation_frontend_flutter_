@@ -9,14 +9,14 @@ import 'pcw_eats_webview_stub.dart'
 
 class PcwEatsWebViewScreen extends StatefulWidget {
   final User? user;
-  const PcwEatsWebViewScreen({Key? key, required this.user}) : super(key: key);
+  final String eatsUrl;
+  const PcwEatsWebViewScreen({Key? key, required this.user, required this.eatsUrl}) : super(key: key);
 
   @override
   State<PcwEatsWebViewScreen> createState() => _PcwEatsWebViewScreenState();
 }
 
 class _PcwEatsWebViewScreenState extends State<PcwEatsWebViewScreen> {
-  static const _eatsUrl = 'http://localhost:3002';
 
   String? _token;
   bool _loading = true;
@@ -96,6 +96,6 @@ class _PcwEatsWebViewScreenState extends State<PcwEatsWebViewScreen> {
     }
 
     // Delegates to platform-specific view
-    return buildPcwEatsView(url: _eatsUrl, token: _token ?? '');
+    return buildPcwEatsView(url: widget.eatsUrl, token: _token ?? '');
   }
 }
