@@ -14,7 +14,7 @@ class ApiConfig {
         // }
         // else{
         //   // For web (Railway), load from hardcoded config
-        //   _loadWebConfig();                         // Prod
+          _loadWebConfig();                         // Prod
         // }
         _loadWebConfig();                         // Prod
         // await dotenv.load(fileName: "assets/.env"); // Dev
