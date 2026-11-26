@@ -59,11 +59,11 @@ class SideMenu extends StatelessWidget {
     final items = <MenuItem>[];
 
     // PCW Eats entry — before Home
-    // items.add(MenuItem(Icons.restaurant, 'PCW Eats', route: 'eats'));
+    items.add(MenuItem(Icons.restaurant, 'PCW Eats', route: 'eats'));
 
-    if (user.role == UserRole.sysadmin) {
-      items.add(MenuItem(Icons.restaurant, 'PCW Eats', route: 'eats'));
-    }
+    // if (user.role == UserRole.sysadmin) {
+    //   items.add(MenuItem(Icons.restaurant, 'PCW Eats', route: 'eats'));
+    // }
 
     items.add(MenuItem(Icons.home, 'Home'));
 
