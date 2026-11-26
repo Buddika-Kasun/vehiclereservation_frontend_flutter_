@@ -261,6 +261,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
             ),
           ),
           SizedBox(height: 16),
+          _buildInfoRow('User ID', _user!.id.toString()),
           _buildInfoRow('User Name', _user!.username),
           _buildInfoRow('Display Name', _user!.displayname),
           _buildInfoRow('Role', _getRoleDisplayName(_user!.role.value)),
