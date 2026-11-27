@@ -30,7 +30,8 @@ class UserCreationsScreen extends StatefulWidget {
   _UserCreationsScreenState createState() => _UserCreationsScreenState();
 }
 
-class _UserCreationsScreenState extends BaseUserCreationListState<UserCreationsScreen> {
+class _UserCreationsScreenState
+    extends BaseUserCreationListState<UserCreationsScreen> {
   List<Department> _availableDepartments = [];
 
   String loadingMsg = 'Loading...';
@@ -38,6 +39,14 @@ class _UserCreationsScreenState extends BaseUserCreationListState<UserCreationsS
   // Add polling timer for auto-refresh
   Timer? _refreshTimer;
   bool _isRefreshingSilently = false;
+
+  // Search state
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounceTimer;
+  String searchQuery = '';
+  bool _hasText = false;
+
+  static const double _componentHeight = 40;
 
   @override
   void initState() {
@@ -54,7 +63,47 @@ class _UserCreationsScreenState extends BaseUserCreationListState<UserCreationsS
     }
 
     super.initState();
+    _searchController.addListener(_onTextChanged);
     _loadDepartments();
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onTextChanged);
+    _searchController.dispose();
+    _debounceTimer?.cancel();
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  void _onTextChanged() {
+    final hasText = _searchController.text.isNotEmpty;
+    if (hasText != _hasText) {
+      setState(() {
+        _hasText = hasText;
+      });
+    }
+  }
+
+  void _onSearchChanged(String query) {
+    if (_debounceTimer?.isActive ?? false) {
+      _debounceTimer?.cancel();
+    }
+
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      setState(() {
+        searchQuery = query;
+        currentPage = 1;
+        hasMoreData = true;
+        isLoading = true;
+      });
+      fetchUserCreations(reset: true);
+    });
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    _onSearchChanged('');
   }
 
   @override
@@ -65,6 +114,9 @@ class _UserCreationsScreenState extends BaseUserCreationListState<UserCreationsS
 
   @override
   String getEmptyStateMessage() {
+    if (searchQuery.isNotEmpty) {
+      return 'No users found matching "$searchQuery"';
+    }
     if (selectedFilter == 'Pending') {
       return 'No pending requests';
     }
@@ -124,6 +176,7 @@ class _UserCreationsScreenState extends BaseUserCreationListState<UserCreationsS
         status: selectedFilter == 'All' ? null : selectedFilter,
         page: currentPage,
         limit: itemsPerPage,
+        search: searchQuery.isEmpty ? null : searchQuery,
       );
 
       if (response['success'] == true) {
@@ -188,7 +241,6 @@ class _UserCreationsScreenState extends BaseUserCreationListState<UserCreationsS
     final userCreation = displayedUserCreations[index];
 
     try {
-
       setState(() {
         loadingMsg = 'Processing...';
         isLoading = true;
@@ -210,9 +262,7 @@ class _UserCreationsScreenState extends BaseUserCreationListState<UserCreationsS
             context: context,
             message: "User approved successfully!",
             duration: const Duration(seconds: 2),
-            onComplete: () {
-              
-            },
+            onComplete: () {},
             position: OverlayPosition.top,
             showBackgroundOverlay: true,
           );
@@ -227,7 +277,6 @@ class _UserCreationsScreenState extends BaseUserCreationListState<UserCreationsS
         throw Exception(response['message'] ?? 'Failed to approve user');
       }
     } catch (e) {
-
       setState(() {
         isLoading = false;
       });
@@ -245,7 +294,7 @@ class _UserCreationsScreenState extends BaseUserCreationListState<UserCreationsS
           showOkButton: true, // Show OK button for errors
           position: OverlayPosition.top,
           showBackgroundOverlay: true,
-        );  
+        );
       }
     }
   }
@@ -261,7 +310,7 @@ class _UserCreationsScreenState extends BaseUserCreationListState<UserCreationsS
 
       final response = await ApiService.rejectUserCreation(userCreation.id);
 
-      if (response['success'] == true) {  
+      if (response['success'] == true) {
         setState(() {
           loadingMsg = 'Loading users...';
         });
@@ -282,7 +331,6 @@ class _UserCreationsScreenState extends BaseUserCreationListState<UserCreationsS
           expandedIndex = null;
         });
         await fetchUserCreations(reset: true);
-
       } else {
         throw Exception(response['message'] ?? 'Failed to reject user');
       }
@@ -312,6 +360,97 @@ class _UserCreationsScreenState extends BaseUserCreationListState<UserCreationsS
     {'label': 'All', 'value': 'All'},
   ];
 
+  // Search input field with search button (always visible)
+  Widget _buildSearchSection() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              height: _componentHeight,
+              decoration: BoxDecoration(
+                color: Colors.grey[900],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const SizedBox(width: 12),
+                  Icon(Icons.search, color: Colors.grey[400], size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                      decoration: InputDecoration(
+                        hintText: 'Search by name or email...',
+                        hintStyle: TextStyle(
+                          color: Colors.grey[500],
+                          fontSize: 14,
+                        ),
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 10,
+                        ),
+                      ),
+                      onChanged: _onSearchChanged,
+                      textAlignVertical: TextAlignVertical.center,
+                    ),
+                  ),
+                  if (_hasText)
+                    IconButton(
+                      icon: Icon(
+                        Icons.clear,
+                        color: Colors.grey[400],
+                        size: 18,
+                      ),
+                      onPressed: _clearSearch,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 32,
+                        minHeight: 32,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          // SizedBox(width: 8),
+          // Container(
+          //   height: _componentHeight,
+          //   width: _componentHeight,
+          //   decoration: BoxDecoration(
+          //     color: const Color(0xFFF9C80E),
+          //     borderRadius: BorderRadius.circular(8),
+          //   ),
+          //   child: IconButton(
+          //     icon: const Icon(Icons.search, color: Colors.black, size: 20),
+          //     onPressed: () {
+          //       // Trigger search immediately
+          //       if (_debounceTimer?.isActive ?? false) {
+          //         _debounceTimer?.cancel();
+          //       }
+          //       setState(() {
+          //         searchQuery = _searchController.text;
+          //         currentPage = 1;
+          //         hasMoreData = true;
+          //         isLoading = true;
+          //       });
+          //       fetchUserCreations(reset: true);
+          //     },
+          //     padding: EdgeInsets.zero,
+          //     constraints: const BoxConstraints.expand(),
+          //     tooltip: 'Search users',
+          //   ),
+          // ),
+        
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -332,6 +471,8 @@ class _UserCreationsScreenState extends BaseUserCreationListState<UserCreationsS
               onFilterSelected: (value) => setFilter(value ?? 'Pending'),
               statusFilters: _statusFilters,
             ),
+            // Search input field + search button below filter tabs
+            _buildSearchSection(),
             // Replace the CountBadge section with this:
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 2, 16, 14),

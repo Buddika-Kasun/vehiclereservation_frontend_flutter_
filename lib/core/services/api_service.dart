@@ -843,17 +843,42 @@ class ApiService {
     return await authenticatedApiCall('vehicle/delete/$id', method: 'DELETE');
   }
 
+  // // UserCreation API methods
+  // static Future<Map<String, dynamic>> getUserCreations({
+  //   String? status,
+  //   int page = 1,
+  //   int limit = 10,
+  // }) async {
+  //   // Prepare body data
+  //   final Map<String, dynamic> body = {'page': page, 'limit': limit};
+
+  //   if (status != null && status != 'All') {
+  //     body['status'] = status.toLowerCase();
+  //   }
+
+  //   return await authenticatedApiCall(
+  //     'user/get-all-by-status',
+  //     method: 'POST',
+  //     body: body, // This will be sent as body
+  //   );
+  // }
+
   // UserCreation API methods
   static Future<Map<String, dynamic>> getUserCreations({
     String? status,
     int page = 1,
     int limit = 10,
+    String? search,
   }) async {
     // Prepare body data
     final Map<String, dynamic> body = {'page': page, 'limit': limit};
 
     if (status != null && status != 'All') {
       body['status'] = status.toLowerCase();
+    }
+
+    if (search != null && search.trim().isNotEmpty) {
+      body['search'] = search.trim();
     }
 
     return await authenticatedApiCall(
