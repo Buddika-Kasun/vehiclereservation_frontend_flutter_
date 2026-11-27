@@ -301,7 +301,8 @@ class SideMenu extends StatelessWidget {
             radius: 40,
             backgroundColor: Colors.white,
             child: Text(
-              _getAvatarText(),
+              // _getAvatarText(),
+              _getUserId(),
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -419,6 +420,10 @@ class SideMenu extends StatelessWidget {
       return user.displayname[0].toUpperCase();
     }
     return 'U';
+  }
+
+  String _getUserId() {
+    return  user.id.toString();
   }
 
   Widget _buildMenuItem(MenuItem item, BuildContext context) {
